@@ -1,0 +1,95 @@
+{
+  "_schema": "schemas/resource/page.json",
+  "_description": "A physical page in the resource. contentBlocks are the ordered visual elements on the page.",
+  "_phase": "PHASE_1_SAMPLE",
+  "_required_fields": ["id", "pageType", "resourceId"],
+
+  "id": "f62bf5d1-991b-40a7-92c5-85e74413184f",
+  "resourceId": "2fe34114-d275-496f-8e77-6268b13a5166",
+  "pageType": "SRB_LESSON_INTRODUCTION_ACTIVATE",
+
+  "contentBlocks": [
+    {
+      "sequenceNumber": 1,
+      "blockType": "LESSON_HEADER",
+      "contentId": null,
+      "contentType": null,
+      "content": {
+        "lessonNumber": 5,
+        "title": "Function Families for 200, Alex",
+        "subtitle": "Recognizing Functions by Characteristics"
+      }
+    },
+    {
+      "sequenceNumber": 2,
+      "blockType": "IMAGE",
+      "contentId": "a7e76c39-fcea-48e5-8061-890b431e27d9",
+      "contentType": "IMAGE",
+      "content": null
+    },
+    {
+      "sequenceNumber": 3,
+      "blockType": "LEARNING_GOALS",
+      "contentId": null,
+      "contentType": null,
+      "content": {
+        "goals": [
+          "I can interpret key features of a function in terms of the situation it represents.",
+          "I can sketch a graph showing key features of a function, given a verbal description."
+        ]
+      }
+    },
+    {
+      "sequenceNumber": 4,
+      "blockType": "STANDARDS_BLOCK",
+      "contentId": "136f0c40-054b-4d7b-bf1b-3df87b17af63",
+      "contentType": "STANDARDS_BLOCK",
+      "content": null
+    },
+    {
+      "sequenceNumber": 5,
+      "blockType": "SIDEBAR",
+      "contentId": null,
+      "contentType": null,
+      "content": {
+        "sidebarType": "MAKE_A_CONNECTION",
+        "title": "Make a Connection",
+        "text": "You have identified key characteristics of graphs."
+      }
+    },
+    {
+      "sequenceNumber": 6,
+      "blockType": "SIDEBAR",
+      "contentId": null,
+      "contentType": null,
+      "content": {
+        "sidebarType": "LEARNING_PROMPT",
+        "title": "Learning Prompt",
+        "text": "How can the key characteristics help you sketch the graph of a function?"
+      }
+    },
+    {
+      "sequenceNumber": 7,
+      "blockType": "ACTIVITY_HEADER",
+      "contentId": "38dbb156-9086-4c36-8607-747343254f1b",
+      "contentType": "ACTIVITY",
+      "content": null
+    }
+  ],
+
+  "metadata": {
+    "pageNumberRepresentations": {
+      "numeric": 31,
+      "romanNumeral": "XXXI",
+      "wordForm": "thirty-one"
+    },
+    "lessonContext": {
+      "moduleNumber": 1,
+      "moduleTitle": "Quantities and Relationships",
+      "topicNumber": 1,
+      "topicTitle": "Quantities and Relationships",
+      "lessonNumber": 5,
+      "lessonTitle": "Function Families for 200, Alex"
+    }
+  }
+}

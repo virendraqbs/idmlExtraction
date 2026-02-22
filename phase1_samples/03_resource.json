@@ -1,0 +1,64 @@
+{
+  "_schema": "schemas/resource/resource.json",
+  "_description": "Top-level resource (Student Resource Book). Root of physical hierarchy.",
+  "_phase": "PHASE_1_SAMPLE",
+  "_required_fields": ["id", "resourceType", "title", "gradeLevel"],
+
+  "id": "2fe34114-d275-496f-8e77-6268b13a5166",
+  "resourceType": "STUDENT_RESOURCE_BOOK",
+  "title": "Algebra I — Quantities and Relationships",
+  "subtitle": "California High School Edition",
+  "series": "Carnegie Learning MATHia",
+  "edition": "2024",
+  "publisher": "Carnegie Learning, Inc.",
+  "gradeLevel": "HS",
+
+  "isbn": {
+    "isbn13": "978-1-60972-XXX-X",
+    "isbn10": "1-60972-XXX-X"
+  },
+
+  "pages": [
+    { "id": "f62bf5d1-991b-40a7-92c5-85e74413184f", "type": "PAGES", "sequenceNumber": 1 },
+    { "id": "5584366f-7a72-4cad-8171-8c58124f1058", "type": "PAGES", "sequenceNumber": 2 },
+    { "id": "9eee08a8-5e58-442c-8b4d-3b97389fdea0", "type": "PAGES", "sequenceNumber": 3 },
+    { "id": "1ec72519-5e7d-44e6-893f-d770a49053fe", "type": "PAGES", "sequenceNumber": 4 },
+    { "id": "25392131-7835-45cd-ba00-ceb387610838", "type": "PAGES", "sequenceNumber": 5 }
+  ],
+
+  "modules": [
+    { "id": "2ee676d3-7d13-46bd-9ed5-fd74cd0af422", "type": "MODULE", "sequenceNumber": 1 }
+  ],
+
+  "standards": [
+    { "id": "b1c0942f-3840-4703-bffc-92e5470706f0", "type": "STANDARDS" },
+    { "id": "18c631d6-7d49-43d5-ba86-75a356991043", "type": "STANDARDS" }
+  ],
+
+  "presentation": {
+    "pageSize": "LETTER",
+    "orientation": "PORTRAIT",
+    "binding": "LEFT",
+    "theme": "STANDARD"
+  },
+
+  "metadata": {
+    "totalPages": 5,
+    "subjects": ["Mathematics"],
+    "keywords": ["algebra", "functions", "linear", "exponential", "quadratic"],
+    "publishingMetadata": {
+      "status": "IN_PROGRESS",
+      "lastModifiedDate": "2026-02-22T00:00:00Z"
+    },
+    "copyrightInfo": {
+      "year": 2024,
+      "holder": "Carnegie Learning, Inc.",
+      "statement": "© Carnegie Learning, Inc."
+    },
+    "localizationInfo": {
+      "language": "en",
+      "locale": "en-US",
+      "state": "CA"
+    }
+  }
+}

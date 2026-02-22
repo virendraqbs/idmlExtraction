@@ -1,0 +1,59 @@
+{
+  "_schema": "schemas/media/image.json",
+  "_description": "An image asset. Non-decorative images MUST have altText. TECHNICAL_ART MUST have technicalArtType.",
+  "_phase": "PHASE_1_SAMPLE",
+  "_required_fields": ["id", "imageType", "filename", "altText (if non-decorative)"],
+
+  "id": "a7e76c39-fcea-48e5-8061-890b431e27d9",
+  "imageType": "LESSON_COVER",
+  "technicalArtType": null,
+  "title": "Alg1 Lesson 5 Cover Photo",
+  "filename": "alg1-m1-t1-l5-cover.jpg",
+  "filepath": "assets/images/lesson-covers/",
+  "url": "https://assets.carnegielearning.com/alg1-m1-t1-l5-cover.jpg",
+  "sourceFilename": "alg1-m1-t1-l5-cover.ai",
+  "altText": "Aerial photograph of a modern curved architectural bridge structure surrounded by lush forest, illustrating how real-world structures can be modeled by mathematical function families.",
+  "caption": null,
+
+  "dimensions": {
+    "width": 1200,
+    "height": 400,
+    "unit": "PIXELS"
+  },
+
+  "format": "JPG",
+
+  "fileSize": {
+    "bytes": 148736,
+    "formatted": "145.2 KB"
+  },
+
+  "usage": {
+    "usedInPages": [31],
+    "usedInActivities": [],
+    "usedInTasks": [],
+    "isReusable": false
+  },
+
+  "accessibility": {
+    "isDecorative": false,
+    "longDescription": null,
+    "transcriptUrl": null
+  },
+
+  "copyright": {
+    "holder": "Carnegie Learning, Inc.",
+    "year": 2024,
+    "license": "Proprietary",
+    "attribution": null,
+    "source": null
+  },
+
+  "metadata": {
+    "createdDate": "2024-01-15",
+    "lastModifiedDate": "2024-03-20",
+    "creator": "CL Design Team",
+    "tags": ["architecture", "bridge", "lesson-cover", "module-1"],
+    "notes": "Full-bleed header image for Lesson 5 introduction page"
+  }
+}

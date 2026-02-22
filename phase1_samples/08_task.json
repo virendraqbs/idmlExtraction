@@ -1,0 +1,28 @@
+{
+  "_schema": "schemas/content/task.json",
+  "_description": "A task within an activity. Contains ordered stems (question prompts).",
+  "_phase": "PHASE_1_SAMPLE",
+  "_required_fields": ["id", "taskNumber", "taskType", "activityId"],
+
+  "id": "baec0bc7-08fd-4201-8236-a2fb217ac3c5",
+  "activityId": "3ef856d1-f201-4551-9d2d-cd6e999e676e",
+  "taskNumber": "1",
+  "taskType": "OPEN_ENDED",
+
+  "stems": [
+    {
+      "id": "8e07dcde-1732-4c09-b8ab-3b60e9424259",
+      "type": "STEM",
+      "sequenceNumber": 1
+    }
+  ],
+
+  "scaffolding": [
+    {
+      "id": "scaffold-think-about-001",
+      "type": "SCAFFOLDING",
+      "scaffoldingType": "CHARACTER_SUPPORT",
+      "text": "Think About . . . Don't forget about the function family graphic organizers you created if you need some help."
+    }
+  ]
+}

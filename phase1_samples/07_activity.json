@@ -1,0 +1,60 @@
+{
+  "_schema": "schemas/content/activity.json",
+  "_description": "An activity within a lesson. One of: ACTIVATE, EXPLORE, REFLECT, PRACTICE_QUESTIONS.",
+  "_phase": "PHASE_1_SAMPLE",
+  "_required_fields": ["id", "activityType", "lessonId"],
+
+  "id": "3ef856d1-f201-4551-9d2d-cd6e999e676e",
+  "lessonId": "ed094f67-0412-4d5c-b3b5-1d9bd4f600eb",
+  "activityType": "EXPLORE",
+  "title": "Building Graphs from Characteristics",
+  "activityLabel": "Explore and Develop | Activity 2",
+
+  "directions": [
+    {
+      "sequenceNumber": 1,
+      "type": "DIRECTION_LINE",
+      "text": "In this activity, you will write equations and sketch a graph based on given characteristics."
+    },
+    {
+      "sequenceNumber": 2,
+      "type": "DIRECTION_LINE",
+      "text": "Use the given characteristics to create an equation and sketch a graph. Use the equations of functions given in the box as a guide. When creating your equation, use a, b, and c values that are any real numbers between (−3) and 3. Do not use any functions that were used previously in this topic."
+    }
+  ],
+
+  "goals": [
+    {
+      "id": "goal-hom-001",
+      "type": "GOALS",
+      "goalType": "HABITS_OF_MIND",
+      "goalItems": [
+        "Model with mathematics.",
+        "Use appropriate tools strategically."
+      ]
+    }
+  ],
+
+  "scaffolding": [],
+
+  "images": [],
+
+  "tasks": [
+    { "id": "baec0bc7-08fd-4201-8236-a2fb217ac3c5", "type": "TASK", "sequenceNumber": 1 },
+    { "id": "47d2638d-70e0-45ff-a62e-73bab7d87581", "type": "TASK", "sequenceNumber": 2 },
+    { "id": "f9c282c0-b676-4918-9718-47534a2e44e8", "type": "TASK", "sequenceNumber": 3 },
+    { "id": "5fb78c50-1fac-49e4-a5b1-9007c6c403d7", "type": "TASK", "sequenceNumber": 4 },
+    { "id": "1daf846e-d19e-4f3d-bc08-2546e8d5cb40", "type": "TASK", "sequenceNumber": 5 },
+    { "id": "bc26269a-f406-468a-b585-6bf759cc9b47", "type": "TASK", "sequenceNumber": 6 },
+    { "id": "e1c617c1-b7c4-4c88-b6a3-9329c114b9ab", "type": "TASK", "sequenceNumber": 7 },
+    { "id": "1974cf17-f6a5-4a06-817b-1796cd616aa7", "type": "TASK", "sequenceNumber": 8 },
+    { "id": "b8f38649-0b58-4978-b53f-9d6a25fb066e", "type": "TASK", "sequenceNumber": 9 }
+  ],
+
+  "metadata": {
+    "pacingEstimate": {
+      "value": 20,
+      "unit": "MINUTES"
+    }
+  }
+}

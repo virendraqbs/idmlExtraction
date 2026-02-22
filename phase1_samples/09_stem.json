@@ -1,0 +1,14 @@
+{
+  "_schema": "schemas/content/stem.json",
+  "_description": "A stem (question prompt) within a task. The atomic unit of student-facing content.",
+  "_phase": "PHASE_1_SAMPLE",
+  "_required_fields": ["id", "stemType", "taskId"],
+
+  "id": "8e07dcde-1732-4c09-b8ab-3b60e9424259",
+  "taskId": "baec0bc7-08fd-4201-8236-a2fb217ac3c5",
+  "stemType": "TEXT_WITH_RESPONSE_AREA",
+  "stemText": "Create an equation and sketch a graph with these characteristics: a function; exponential; continuous; decreasing.",
+  "ancillaryText": "Equation: ___________________",
+  "image": null,
+  "responseArea": "ra-8e07dcde-grid-001"
+}

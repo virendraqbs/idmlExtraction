@@ -1,0 +1,38 @@
+{
+  "_schema": "schemas/content/lesson.json",
+  "_description": "A lesson containing multiple activities (Activate → Explore → Reflect → Practice).",
+  "_phase": "PHASE_1_SAMPLE",
+  "_required_fields": ["id", "lessonNumber", "title", "topicId"],
+
+  "id": "ed094f67-0412-4d5c-b3b5-1d9bd4f600eb",
+  "topicId": "7f08f6b5-5fc3-4937-94d8-1492e0196e75",
+  "lessonNumber": 5,
+  "lessonType": "CONCEPT_LESSON",
+  "title": "Function Families for 200, Alex",
+  "lessonSummary": "Recognizing Functions by Characteristics. Students identify function families from graphical characteristics, write equations that satisfy given constraints, and sketch graphs from verbal descriptions.",
+
+  "learningGoals": [
+    "I can interpret key features of a function in terms of the situation it represents.",
+    "I can sketch a graph showing key features of a function, given a verbal description."
+  ],
+
+  "standardsBlock": "136f0c40-054b-4d7b-bf1b-3df87b17af63",
+
+  "activities": [
+    { "id": "38dbb156-9086-4c36-8607-747343254f1b", "type": "ACTIVITY", "sequenceNumber": 1 },
+    { "id": "2fed322b-92ed-435d-aaa8-da2df238fe53", "type": "ACTIVITY", "sequenceNumber": 2 },
+    { "id": "3ef856d1-f201-4551-9d2d-cd6e999e676e", "type": "ACTIVITY", "sequenceNumber": 3 },
+    { "id": "a2d51614-8a88-45da-8e9b-2ba2a52c40a6", "type": "ACTIVITY", "sequenceNumber": 4 },
+    { "id": "f7d3cc01-2407-4471-9087-a5c5347f6085", "type": "ACTIVITY", "sequenceNumber": 5 }
+  ],
+
+  "images": [],
+
+  "metadata": {
+    "pacingEstimate": {
+      "value": 50,
+      "unit": "MINUTES",
+      "range": { "min": 45, "max": 55 }
+    }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "_schema": "schemas/common/primitives.json",
+  "_description": "Reusable primitive types — UUID and Reference patterns used across all schemas",
+  "_phase": "PHASE_1_SAMPLE",
+
+  "UUID_example": "ed094f67-0412-4d5c-b3b5-1d9bd4f600eb",
+
+  "Reference_example": {
+    "id": "ed094f67-0412-4d5c-b3b5-1d9bd4f600eb",
+    "type": "LESSON",
+    "sequenceNumber": 1
+  },
+
+  "Image_primitive_example": {
+    "id": "a7e76c39-fcea-48e5-8061-890b431e27d9",
+    "type": "LESSON_COVER",
+    "url": "https://assets.carnegielearning.com/images/lesson-covers/alg1-l5-cover.png",
+    "altText": "Aerial photograph of a modern curved bridge structure surrounded by forest, illustrating architectural function families",
+    "caption": "Real-world structures embody mathematical function families"
+  }
+}

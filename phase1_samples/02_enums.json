@@ -1,0 +1,109 @@
+{
+  "_schema": "schemas/common/enums.json",
+  "_description": "All valid enum values used across the CL schema system",
+  "_phase": "PHASE_1_SAMPLE",
+
+  "Language": "en",
+  "Locale": "en-US",
+  "State": "CA",
+  "StandardsBody": "CA_CCSS",
+  "ResourceType": "STUDENT_RESOURCE_BOOK",
+
+  "PageType": "SRB_LESSON_INTRODUCTION_ACTIVATE",
+  "PageType_all_valid_values": [
+    "SRB_TOC", "SRB_APPENDIX", "SRB_GLOSSARY",
+    "SRB_MODULE_INTRODUCTION", "SRB_MODULE_INTRODUCTION_CONTINUED",
+    "SRB_TOPIC_TOC", "SRB_TOPIC_SUMMARY", "SRB_TOPIC_SUMMARY_CONTINUED",
+    "SRB_TOPIC_INTRODUCTION", "SRB_TOPIC_STANDARDS_OVERVIEW", "SRB_TOPIC_STANDARDS_OVERVIEW_CONTINUED",
+    "SRB_LESSON_INTRODUCTION_ACTIVATE", "SRB_LESSON_EXPLORE", "SRB_LESSON_EXPLORE_CONTINUED", "SRB_LESSON_REFLECT",
+    "SPB_TOC", "SPB_LESSON_PRACTICE", "SPB_LESSON_PRACTICE_CONTINUED",
+    "TIG_TOC", "TIG_STANDARDS_ALIGNMENT", "TIG_COURSE_SEQUENCE", "TIG_APPENDIX",
+    "TIG_MODULE_OVERVIEW", "TIG_MODULE_OVERVIEW_CONTINUED", "TIG_TOPIC_OVERVIEW",
+    "TIG_LESSON_OVERVIEW", "TIG_LESSON_ACTIVATE",
+    "TIG_LESSON_EXPLORE", "TIG_LESSON_EXPLORE_CONTINUED",
+    "TIG_LESSON_REFLECT", "TIG_LESSON_REFLECT_CONTINUED", "TIG_NOTES"
+  ],
+
+  "ActivityType": "EXPLORE",
+  "ActivityType_all_valid_values": [
+    "ACTIVATE", "EXPLORE", "REFLECT",
+    "KEY_TERMS", "KEY_IDEAS", "PRACTICE_QUESTIONS",
+    "PRACTICE_CONVERSATION_STARTERS", "GAMES_AND_ADDITIONAL_RESOURCES"
+  ],
+
+  "DirectionType": "DIRECTION_LINE",
+  "DirectionType_all_valid_values": ["DIRECTION_LINE", "STORY"],
+
+  "TaskType": "OPEN_ENDED",
+  "TaskType_all_valid_values": [
+    "COMPLETION", "CALCULATION", "STRATEGY_ANALYSIS",
+    "MULTIPLE_CHOICE", "SHORT_ANSWER", "WORD_PROBLEM", "OPEN_ENDED"
+  ],
+
+  "ResponseAreaType": "GRID",
+  "ResponseAreaType_all_valid_values": [
+    "STEM", "OPEN_ENDED", "CROSS_NUMBER_PUZZLE",
+    "NUMBER_LINE", "GRID", "ALGORITHM_WORKSPACE"
+  ],
+
+  "StemType": "TEXT_WITH_RESPONSE_AREA",
+  "StemType_all_valid_values": ["TEXT_ONLY", "TEXT_WITH_IMAGE", "TEXT_WITH_RESPONSE_AREA"],
+
+  "ImageType": "LESSON_COVER",
+  "ImageType_all_valid_values": [
+    "MODULE_COVER", "TOPIC_COVER", "LESSON_COVER",
+    "INSTRUCTIONAL", "DECORATIVE", "TECHNICAL_ART",
+    "CHARACTER_SUPPORT", "MANIPULATIVE", "ICON"
+  ],
+
+  "TechnicalArtType": "BAR_AND_LINE_GRAPHS",
+  "TechnicalArtType_all_valid_values": [
+    "NUMBER_LINES", "BAR_GRAPHS", "WOLS", "SHAPES_OUTLINED",
+    "SHAPES_FILLED", "SHAPES_3D", "TABLES", "CLOCKS", "SHAPES_GRID",
+    "PLACE_VALUE", "CROSS_NUMBER_PUZZLES", "BAR_AND_LINE_GRAPHS",
+    "COUNTING_CHART", "SPINNER_CHARTS", "SHAPES_GRIDS_AND_COUNTERS",
+    "SHAPES_ANGLE_MEASUREMENTS"
+  ],
+
+  "GoalType": "HABITS_OF_MIND",
+  "GoalType_all_valid_values": [
+    "HABITS_OF_MIND", "COMMON_CORE_LEARNING_GOAL", "NGSS_PERFORMANCE_EXPECTATION"
+  ],
+
+  "InstructionalSegmentType": "TASK",
+  "InstructionalSegmentType_all_valid_values": [
+    "INTRODUCTION", "ABOUT_THE_MATH", "LESSON_STRUCTURE_AND_PACING",
+    "SETTING_THE_STAGE", "TASK", "CLOSING",
+    "DIFFERENTIATION_STRATEGY", "ONGOING_ASSESSMENT", "LANGUAGE_LINK"
+  ],
+
+  "InstructionalPromptType": "HABITS_OF_MIND",
+  "InstructionalPromptType_all_valid_values": [
+    "LEARNING_GOALS", "LANGUAGE_GOALS", "DAILY_MATH_ROUTINES",
+    "MULTILINGUAL_LEARNER_SUPPORT", "TEACHER_STORY", "HABITS_OF_MIND",
+    "STUDENT_LOOK_FORS", "CULTIVATE_CONNECTIONS",
+    "STUDENT_EDITION_PAGE_IMAGE", "MATERIALS_LIST"
+  ],
+
+  "PromptDisplayStyle": "BOX",
+  "PromptDisplayStyle_all_valid_values": ["BOX", "SIDEBAR", "INLINE", "CALLOUT"],
+
+  "LessonType": "CONCEPT_LESSON",
+  "LessonType_all_valid_values": ["CONCEPT_LESSON", "RE-ENGAGEMENT_LESSON"],
+
+  "ReferenceType_all_valid_values": [
+    "LESSON", "ACTIVITY", "TASK", "STANDARDS_BLOCK", "STANDARDS",
+    "INSTRUCTIONAL_GUIDE_PROMPT", "GOALS", "IMAGE", "STEM",
+    "SCAFFOLDING", "PAGES", "INSTRUCTIONAL_SEGMENT", "INSTRUCTIONAL_PROMPT"
+  ],
+
+  "Status": "IN_PROGRESS",
+  "Status_all_valid_values": [
+    "NOT_STARTED", "IN_PROGRESS", "COMPLETE", "REVIEWED", "PUBLISHED"
+  ],
+
+  "RelationshipType_all_valid_values": ["MIRRORS", "EXTENDS", "SUPPORTS", "ANSWERS", "REFERENCES"],
+
+  "scaffoldingType_all_valid_values": ["CHARACTER_SUPPORT"],
+  "PracticeSectionType_all_valid_values": ["LESSON_PRACTICE", "FAMILY_GUIDE"]
+}

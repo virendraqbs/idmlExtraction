@@ -1,0 +1,23 @@
+{
+  "_schema": "schemas/instructional-guide/instructional-prompt.json",
+  "_description": "Teacher Implementation Guide prompt element (Learning Goals, Habits of Mind, Teacher Story, etc.).",
+  "_phase": "PHASE_1_SAMPLE",
+  "_required_fields": ["id", "instructionalPromptType"],
+
+  "id": "ip-001-habits-of-mind-explore1",
+  "studentContentReferenceId": "2fed322b-92ed-435d-aaa8-da2df238fe53",
+  "instructionalPromptType": "HABITS_OF_MIND",
+  "title": "Habits of Mind / SMP",
+
+  "content": null,
+  "contentItems": [
+    "Look for and make use of structure. (SMP 7)",
+    "Look for and express regularity in repeated reasoning. (SMP 8)"
+  ],
+
+  "images": [],
+
+  "metadata": {
+    "displayStyle": "BOX"
+  }
+}

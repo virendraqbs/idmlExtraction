@@ -1,0 +1,24 @@
+{
+  "_schema": "schemas/standards/standard.json",
+  "_description": "A single educational standard (CA_CCSS, CCSS, TEKS, or BEST).",
+  "_phase": "PHASE_1_SAMPLE",
+  "_required_fields": ["id", "body", "code", "gradeLevel", "fullText"],
+
+  "id": "b1c0942f-3840-4703-bffc-92e5470706f0",
+  "body": "CA_CCSS",
+  "code": "F-IF.4",
+  "gradeLevel": "HS",
+  "domain": "Functions",
+  "cluster": "Interpreting Functions",
+  "description": "Interpret key features of graphs and tables in terms of quantities; sketch graphs given verbal descriptions.",
+
+  "fullText": "For a function that models a relationship between two quantities, interpret key features of graphs and tables in terms of the quantities, and sketch graphs showing key features given a verbal description of the relationship. Key features include: intercepts; intervals where the function is increasing, decreasing, positive, or negative; relative maximums and minimums; symmetries; end behavior; and periodicity. ★",
+
+  "hasModelingSymbol": true,
+
+  "metadata": {
+    "publishedDate": "2013-01-01",
+    "lastUpdated": "2023-09-01",
+    "officialUrl": "https://www.cde.ca.gov/be/st/ss/documents/ccssmathstandardaug2013.pdf"
+  }
+}

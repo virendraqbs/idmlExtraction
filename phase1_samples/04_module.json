@@ -1,0 +1,30 @@
+{
+  "_schema": "schemas/content/module.json",
+  "_description": "A module grouping related topics. Links to resource via resourceId.",
+  "_phase": "PHASE_1_SAMPLE",
+  "_required_fields": ["id", "resourceId", "moduleNumber", "title"],
+
+  "id": "2ee676d3-7d13-46bd-9ed5-fd74cd0af422",
+  "resourceId": "2fe34114-d275-496f-8e77-6268b13a5166",
+  "moduleNumber": 1,
+  "title": "Quantities and Relationships",
+  "moduleSummary": "Students explore how mathematical relationships between quantities can be modeled using families of functions. They identify, graph, and interpret linear, exponential, quadratic, absolute value, and piecewise functions.",
+  "gradeLevel": "HS",
+  "standardsBody": "CA_CCSS",
+
+  "topics": [
+    { "id": "7f08f6b5-5fc3-4937-94d8-1492e0196e75", "type": "TOPIC", "sequenceNumber": 1 }
+  ],
+
+  "images": [
+    { "id": "module-cover-img-001", "type": "IMAGE" }
+  ],
+
+  "metadata": {
+    "pacingEstimate": {
+      "value": 45,
+      "unit": "DAYS",
+      "range": { "min": 40, "max": 50 }
+    }
+  }
+}

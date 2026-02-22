@@ -1,0 +1,28 @@
+{
+  "_schema": "schemas/content/topic.json",
+  "_description": "A topic grouping related lessons within a module.",
+  "_phase": "PHASE_1_SAMPLE",
+  "_required_fields": ["id", "moduleId", "topicNumber", "title"],
+
+  "id": "7f08f6b5-5fc3-4937-94d8-1492e0196e75",
+  "moduleId": "2ee676d3-7d13-46bd-9ed5-fd74cd0af422",
+  "topicNumber": 1,
+  "title": "Quantities and Relationships",
+  "topicSummary": "Students categorize real-world situations into function families. They connect graphical behavior (continuous vs. discrete, increasing vs. decreasing) to function types and practice sketching graphs from verbal descriptions.",
+
+  "lessons": [
+    { "id": "ed094f67-0412-4d5c-b3b5-1d9bd4f600eb", "type": "LESSON", "sequenceNumber": 5 }
+  ],
+
+  "images": [
+    { "id": "topic-cover-img-001", "type": "IMAGE" }
+  ],
+
+  "metadata": {
+    "pacingEstimate": {
+      "value": 9,
+      "unit": "DAYS",
+      "range": { "min": 8, "max": 10 }
+    }
+  }
+}

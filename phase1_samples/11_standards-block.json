@@ -1,0 +1,35 @@
+{
+  "_schema": "schemas/standards/standards-block.json",
+  "_description": "A grouped display of standards as they appear in the student book. Links to individual standard records.",
+  "_phase": "PHASE_1_SAMPLE",
+  "_required_fields": ["id", "gradeLevel"],
+
+  "id": "136f0c40-054b-4d7b-bf1b-3df87b17af63",
+  "body": "CA_CCSS",
+  "gradeLevel": "HS",
+  "title": "California High School",
+  "standardsSubtitle": "Functions Standards",
+
+  "standards": [
+    {
+      "id": "b1c0942f-3840-4703-bffc-92e5470706f0",
+      "type": "STANDARDS",
+      "sequenceNumber": 1
+    },
+    {
+      "id": "18c631d6-7d49-43d5-ba86-75a356991043",
+      "type": "STANDARDS",
+      "sequenceNumber": 2
+    }
+  ],
+
+  "conceptualOverlaySubtitle": "Big Idea",
+  "conceptualOverlays": [
+    {
+      "sequenceNumber": 1,
+      "text": "Features of Functions"
+    }
+  ],
+
+  "pageLocationHelpText": "See student book page 31"
+}

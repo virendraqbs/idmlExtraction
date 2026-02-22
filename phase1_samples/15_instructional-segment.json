@@ -1,0 +1,33 @@
+{
+  "_schema": "schemas/instructional-guide/instructional-segment.json",
+  "_description": "Teacher Implementation Guide segment. Groups teacher-facing directions and student questions for a specific segment type.",
+  "_phase": "PHASE_1_SAMPLE",
+  "_required_fields": ["id", "instructionalSegmentType"],
+
+  "id": "is-001-task-explore2-task1",
+  "studentContentReferenceId": "baec0bc7-08fd-4201-8236-a2fb217ac3c5",
+  "instructionalSegmentType": "TASK",
+
+  "directions": [
+    {
+      "sequenceNumber": 1,
+      "text": "Have students work individually or in pairs to create an equation for an exponential function that is continuous and decreasing. Circulate and check that students use valid values for a, b, and c between −3 and 3.",
+      "studentQuestions": [
+        {
+          "questionText": "How do you know your function is decreasing just by looking at the equation?",
+          "sampleAnswers": "The base b must be between 0 and 1 for an exponential function to be decreasing. For example, f(x) = 2 · (0.5)^x + 1."
+        },
+        {
+          "questionText": "What does it mean for a function to be continuous?",
+          "sampleAnswers": "A continuous function has no gaps or breaks — you can draw it without lifting your pencil."
+        }
+      ]
+    },
+    {
+      "sequenceNumber": 2,
+      "text": "After students complete their sketches, ask them to compare with a partner. Prompt discussion: Did you create the same function? What makes your functions different?"
+    }
+  ],
+
+  "images": []
+}
