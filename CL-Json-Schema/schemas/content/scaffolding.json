@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "schemas/response/scaffolding.json",
+  "title": "Scaffolding",
+  "description": "Scaffolding support for a task or activity",
+  "type": "object",
+  "properties": {
+    "id": {
+      "$ref": "../common/primitives.json#/definitions/UUID"
+    },
+    "scaffoldingType": {
+      "$ref": "../common/enums.json#/definitions/ScaffoldingType",
+      "description": "Type of scaffolding support"
+    },
+    "content": {
+      "type": "string",
+      "description": "The scaffolding content or text"
+    },
+    "image": {
+      "$ref": "../common/primitives.json#/definitions/UUID",
+      "description": "Optional image associated with the scaffolding"
+    }
+  },
+  "required": ["id", "scaffoldingType", "content"]
+}

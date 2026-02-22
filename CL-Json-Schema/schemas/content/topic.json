@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "schemas/content/topic.json",
+  "title": "Topic",
+  "description": "A topic containing multiple lessons",
+  "type": "object",
+  "properties": {
+    "id": {
+      "$ref": "../common/primitives.json#/definitions/UUID"
+    },
+    "moduleId": {
+      "$ref": "../common/primitives.json#/definitions/UUID",
+      "description": "Reference to the parent module"
+    },
+    "topicNumber": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Topic number within the module"
+    },
+    "title": {
+      "type": "string",
+      "description": "Topic title"
+    },
+    "topicSummary": {
+      "type": "string",
+      "description": "Topic summary"
+    },
+    "images": {
+      "type": "array",
+      "items": {
+        "$ref": "../common/primitives.json#/definitions/Reference"
+      },
+      "description": "Images used within the topic not directly tied to a specific lesson"
+    },
+    "lessons": {
+      "type": "array",
+      "items": {
+        "$ref": "../common/primitives.json#/definitions/Reference"
+      },
+      "description": "References to lessons in this topic"
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "pacingEstimate": {
+          "$ref": "../common/metadata.json#/definitions/PacingEstimate"
+        }
+      }
+    }
+  },
+  "required": ["id", "topicNumber", "title", "moduleId"]
+}

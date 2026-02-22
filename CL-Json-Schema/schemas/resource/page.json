@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "schemas/content/page.json",
+  "title": "Page",
+  "description": "A page in a resource (student book, practice book, or teacher guide)",
+  "type": "object",
+  "properties": {
+    "id": {
+      "$ref": "../common/primitives.json#/definitions/UUID"
+    },
+    "resourceId": {
+      "$ref": "../common/primitives.json#/definitions/UUID",
+      "description": "Reference to the parent resource"
+    },
+    "pageType": {
+      "$ref": "../common/enums.json#/definitions/PageType",
+      "description": "Type of page (e.g., SRB_LESSON_INTRODUCTION_ACTIVATE, TIG_LESSON_OVERVIEW)"
+    },
+    "contentBlocks": {
+      "type": "array",
+      "items": {
+        "$ref": "../common/primitives.json#/definitions/Reference"
+      },
+      "description": "Content blocks presented on this page"
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "pageNumberRepresentations": {
+          "$ref": "../common/metadata.json#/definitions/PageNumberRepresentations"
+        },
+        "lessonContext": {
+          "$ref": "../common/metadata.json#/definitions/LessonContext"
+        }
+      }
+    }
+  },
+  "required": ["id", "pageNumber", "pageType", "resourceId"]
+}

@@ -1,0 +1,60 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "schemas/instructional/standard.json",
+  "title": "Standard",
+  "description": "An educational standard (CCSS, state standard, etc.)",
+  "type": "object",
+  "properties": {
+    "id": {
+      "$ref": "../common/primitives.json#/definitions/UUID"
+    },
+    "body": {
+      "$ref": "../common/enums.json#/definitions/StandardsBody",
+      "description": "Standards body (CCSS, CA_CCSS, TEKS, BEST)"
+    },
+    "code": {
+      "type": "string",
+      "description": "Standard code (e.g., '4.NBT.4', 'K.CC.1')"
+    },
+    "gradeLevel": {
+      "type": "string",
+      "description": "Grade level (e.g., 'K', '1', '2', '3', '4', '5')"
+    },
+    "domain": {
+      "type": "string",
+      "description": "Content domain (e.g., 'Number and Operations in Base Ten')"
+    },
+    "cluster": {
+      "type": "string",
+      "description": "Cluster or subcategory within the domain"
+    },
+    "description": {
+      "type": "string",
+      "description": "Short description of the standard"
+    },
+    "fullText": {
+      "type": "string",
+      "description": "Full text of the standard"
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "publishedDate": {
+          "type": "string",
+          "format": "date",
+          "description": "When this standard was published"
+        },
+        "lastUpdated": {
+          "type": "string",
+          "format": "date"
+        },
+        "officialUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "Link to official standard document"
+        }
+      }
+    }
+  },
+  "required": ["id", "body", "code", "gradeLevel", "fullText"]
+}

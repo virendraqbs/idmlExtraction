@@ -1,0 +1,185 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "schemas/media/image.json",
+  "title": "Image",
+  "description": "An image asset used in educational content",
+  "type": "object",
+  "properties": {
+    "id": {
+      "$ref": "../common/primitives.json#/definitions/UUID"
+    },
+    "imageType": {
+      "$ref": "../common/enums.json#/definitions/ImageType",
+      "description": "Type of image (INSTRUCTIONAL, DECORATIVE, TECHNICAL_ART, etc.)"
+    },
+    "technicalArtType": {
+      "$ref": "../common/enums.json#/definitions/TechnicalArtType",
+      "description": "Specific type of technical art (if imageType is TECHNICAL_ART)"
+    },
+    "filename": {
+      "type": "string",
+      "description": "Filename of the image file"
+    },
+    "filepath": {
+      "type": "string",
+      "description": "Relative path to the image file"
+    },
+    "url": {
+      "type": "string",
+      "format": "uri",
+      "description": "URL to the image (if hosted externally)"
+    },
+    "sourceFilename": {
+      "type": "string",
+      "description": "Original source filename of the image - ie the .ai or .psd"
+    },
+    "sourceFileUrl": {
+      "type": "string",
+      "format": "uri",
+      "description": "URL to the original source file of the image"
+    },
+    "altText": {
+      "type": "string",
+      "description": "Alternative text for accessibility (required for all non-decorative images)"
+    },
+    "caption": {
+      "type": "string",
+      "description": "Caption displayed below the image"
+    },
+    "title": {
+      "type": "string",
+      "description": "Image title or name"
+    },
+    "dimensions": {
+      "type": "object",
+      "properties": {
+        "width": { "type": "integer", "description": "Width in pixels" },
+        "height": { "type": "integer", "description": "Height in pixels" },
+        "unit": { "type": "string", "enum": ["PIXELS", "INCHES", "CM"] }
+      }
+    },
+    "format": {
+      "type": "string",
+      "enum": ["PNG", "JPG", "JPEG", "SVG", "GIF", "WEBP"],
+      "description": "Image file format"
+    },
+    "fileSize": {
+      "type": "object",
+      "properties": {
+        "bytes": { "type": "integer" },
+        "formatted": { "type": "string", "description": "e.g., '145.2 KB'" }
+      }
+    },
+    "usage": {
+      "type": "object",
+      "description": "Where and how this image is used",
+      "properties": {
+        "usedInPages": {
+          "type": "array",
+          "items": { "type": "integer" },
+          "description": "Page numbers where this image appears"
+        },
+        "usedInActivities": {
+          "type": "array",
+          "items": {
+            "$ref": "../common/primitives.json#/definitions/Reference"
+          },
+          "description": "References to activities using this image"
+        },
+        "usedInTasks": {
+          "type": "array",
+          "items": {
+            "$ref": "../common/primitives.json#/definitions/Reference"
+          },
+          "description": "References to tasks using this image"
+        },
+        "isReusable": {
+          "type": "boolean",
+          "description": "Whether this image can be reused across content"
+        }
+      }
+    },
+    "accessibility": {
+      "type": "object",
+      "properties": {
+        "isDecorative": {
+          "type": "boolean",
+          "description": "Whether this image is purely decorative (no alt text needed)"
+        },
+        "longDescription": {
+          "type": "string",
+          "description": "Extended description for complex images"
+        },
+        "transcriptUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL to full transcript for complex diagrams"
+        }
+      }
+    },
+    "copyright": {
+      "type": "object",
+      "properties": {
+        "holder": { "type": "string" },
+        "year": { "type": "integer" },
+        "license": { "type": "string" },
+        "attribution": { "type": "string" },
+        "source": { "type": "string", "description": "Original source if not created in-house" }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "createdDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "lastModifiedDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "creator": {
+          "type": "string",
+          "description": "Name of image creator"
+        },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Tags for searchability"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Internal notes about the image"
+        }
+      }
+    }
+  },
+  "required": ["id", "imageType", "filename"],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "imageType": { "const": "DECORATIVE" }
+        }
+      },
+      "then": {
+        "properties": {
+          "altText": { "const": "" }
+        }
+      },
+      "else": {
+        "required": ["altText"]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "imageType": { "const": "TECHNICAL_ART" }
+        }
+      },
+      "then": {
+        "required": ["technicalArtType"]
+      }
+    }
+  ]
+}

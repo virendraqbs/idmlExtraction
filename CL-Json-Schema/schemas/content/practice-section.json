@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "schemas/content/practice-section.json",
+  "title": "Practice Section",
+  "description": "A section containing multiple practice activities",
+  "type": "object",
+  "properties": {
+    "id": {
+      "$ref": "../common/primitives.json#/definitions/UUID"
+    },
+    "parentId": {
+      "$ref": "../common/primitives.json#/definitions/UUID",
+      "description": "Reference to the parent topic or lesson"
+    },
+    "practiceSectionType": {
+      "$ref": "../common/enums.json#/definitions/PracticeSectionType",
+      "description": "Type of practice section (e.g., LESSON_PRACTICE, FAMILY_GUIDE)"
+    },
+    "title": {
+      "type": "string",
+      "description": "Practice section title"
+    },
+    "activities": {
+      "type": "array",
+      "items": {
+        "allOf": [
+          { "$ref": "../common/primitives.json#/definitions/Reference" },
+          {
+            "type": "object",
+            "properties": {
+              "sequenceNumber": { 
+                "type": "integer", 
+                "minimum": 1,
+                "description": "Order of the activity within the practice section"
+              }
+            },
+            "required": ["sequenceNumber"]
+          }
+        ]
+      },
+      "description": "References to activities in this practice section (eg., practice questions, family review)"
+    }
+  },
+  "required": ["id", "parentId", "practiceSectionType"]
+}

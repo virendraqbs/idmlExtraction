@@ -1,0 +1,69 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "schemas/instructional/standards-block.json",
+  "title": "Standards Block",
+  "description": "An educational standard block (CCSS, state standard, etc.), containing standards details",
+  "type": "object",
+  "properties": {
+    "id": {
+      "$ref": "../common/primitives.json#/definitions/UUID"
+    },
+    "body": {
+      "$ref": "../common/enums.json#/definitions/StandardsBody",
+      "description": "Standards body (CCSS, CA_CCSS, TEKS, BEST)"
+    },
+    "gradeLevel": {
+      "type": "string",
+      "description": "Grade level (e.g., 'K', '1', '2', '3', '4', '5')"
+    },
+    "title": {
+      "type": "string",
+      "description": "Title of the standards block, ie 'California'"
+    },
+    "conceptualOverlaySubtitle": {
+      "type": "string",
+      "description": "Optional subtitle for conceptual overlay display"
+    },
+    "conceptualOverlays": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "sequenceNumber": { "type": "integer", "minimum": 1 },
+          "text": { "type": "string" }
+        },
+        "required": ["sequenceNumber", "text"]
+      },
+      "description": "Optional conceptual overlays associated with this standards block"
+    },
+    "standardsSubtitle": {
+      "type": "string",
+      "description": "Subtitle for standards block"
+    },
+    "standards": {
+      "type": "array",
+      "items": {
+        "allOf": [
+          { "$ref": "../common/primitives.json#/definitions/Reference" },
+          {
+            "type": "object",
+            "properties": {
+              "sequenceNumber": { 
+                "type": "integer", 
+                "minimum": 1,
+                "description": "Order of the standards within the standards block"
+              }
+            },
+            "required": ["sequenceNumber"]
+          }
+        ]
+      },
+      "description": "References to standards in this standards block"
+    },
+    "pageLocationHelpText": {
+      "type": "string",
+      "description": "Help text for locating the standard within the resource"
+    }
+  },
+  "required": ["id", "gradeLevel"]
+}

@@ -1,0 +1,117 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "schemas/extraction/extraction-job-result.json",
+  "title": "ExtractionJobResult",
+  "description": "Result of a document extraction job: per-page text, blocks (with bbox), and extracted images",
+  "type": "object",
+  "properties": {
+    "meta": {
+      "type": "object",
+      "description": "Job-level metadata",
+      "properties": {
+        "job_id": {
+          "type": "string",
+          "description": "Unique identifier for the extraction job"
+        },
+        "original_filename": {
+          "type": "string",
+          "description": "Original document filename"
+        },
+        "page_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of pages"
+        },
+        "extracted_image_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of extracted images across all pages"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the job was created (ISO 8601)"
+        }
+      },
+      "required": ["job_id", "created_at"]
+    },
+    "pages": {
+      "type": "array",
+      "description": "One entry per page with extracted text, blocks, and images",
+      "items": {
+        "type": "object",
+        "properties": {
+          "page_number": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "1-based page index"
+          },
+          "text": {
+            "type": "string",
+            "description": "Full extracted text for this page"
+          },
+          "blocks": {
+            "type": "array",
+            "description": "Text/content blocks with bounding boxes",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "Block type (e.g. text)"
+                },
+                "bbox": {
+                  "type": "array",
+                  "minItems": 4,
+                  "maxItems": 4,
+                  "items": { "type": "number" },
+                  "description": "Bounding box [x0, y0, x1, y1]"
+                },
+                "text": {
+                  "type": "string",
+                  "description": "Block text content"
+                }
+              },
+              "required": ["type", "bbox", "text"]
+            }
+          },
+          "images": {
+            "type": "array",
+            "description": "Images extracted from this page",
+            "items": {
+              "type": "object",
+              "properties": {
+                "image_id": {
+                  "type": "string",
+                  "description": "Unique identifier for the image"
+                },
+                "file": {
+                  "type": "string",
+                  "description": "Relative path under the job folder"
+                },
+                "ext": {
+                  "type": "string",
+                  "enum": ["png", "jpg", "jpeg"],
+                  "description": "Image file extension"
+                },
+                "width": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Image width in pixels"
+                },
+                "height": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Image height in pixels"
+                }
+              },
+              "required": ["image_id", "file", "ext"]
+            }
+          }
+        },
+        "required": ["page_number"]
+      }
+    }
+  },
+  "required": ["meta", "pages"]
+}

@@ -1,0 +1,115 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "schemas/content/activity.json",
+  "title": "Activity",
+  "description": "An activity within a lesson (activate, explore, or reflect)",
+  "type": "object",
+  "properties": {
+    "id": {
+      "$ref": "../common/primitives.json#/definitions/UUID"
+    },
+    "lessonId": {
+      "$ref": "../common/primitives.json#/definitions/UUID",
+      "description": "Reference to the parent lesson"
+    },
+    "activityType": {
+      "$ref": "../common/enums.json#/definitions/ActivityType",
+      "description": "Type of activity (ACTIVATE, EXPLORE, REFLECT, PRACTICE, etc.)"
+    },
+    "goals": {
+      "type": "array",
+      "items": {
+        "$ref": "../common/primitives.json#/definitions/Reference"
+      },
+      "description": "References to activity level goals, usually specific to standards, such as habit of mind"
+    },
+    "scaffolding": {
+      "type": "array",
+      "items": {
+        "$ref": "../common/primitives.json#/definitions/Reference"
+      },
+      "description": "References to scaffolding supports for this activity"
+    },
+    "title": {
+      "type": "string",
+      "description": "Activity title"
+    },
+    "directions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "sequenceNumber": { "type": "integer", "minimum": 1 },
+          "type": { "$ref": "../common/enums.json#/definitions/DirectionType" },
+          "text": { "type": "string" }
+        },
+        "required": ["sequenceNumber", "type", "text"]
+      },
+      "description": "Instructional directions for the activity"
+    },
+    "images": {
+      "type": "array",
+      "items": {
+        "$ref": "../common/primitives.json#/definitions/Reference"
+      },
+      "description": "Images used in this activity not directly tied to a specific task"
+    },
+    "tasks": {
+      "type": "array",
+      "items": {
+        "allOf": [
+          { "$ref": "../common/primitives.json#/definitions/Reference" },
+          {
+            "type": "object",
+            "properties": {
+              "sequenceNumber": { 
+                "type": "integer", 
+                "minimum": 1,
+                "description": "Order of this task within the activity"
+              }
+            },
+            "required": ["sequenceNumber"]
+          }
+        ]
+      },
+      "description": "References to tasks in this activity"
+    },
+    "teacherGuidance": {
+      "type": "object",
+      "description": "Teacher-specific guidance (only in teacher guides)",
+      "properties": {
+        "linkedStudentActivity": {
+          "$ref": "../common/metadata.json#/definitions/TeacherStudentLink",
+          "description": "Link to corresponding student activity"
+        },
+        "instructionType": {
+          "$ref": "../common/enums.json#/definitions/TeacherInstructionType",
+          "description": "Type of teacher instruction"
+        },
+        "instructionalText": {  
+          "type": "string",
+          "description": "Instructional text for teachers"
+        },
+        "teacherPrompts": {
+          "type": "array",
+          "items": {
+            "$ref": "../common/primitives.json#/definitions/Reference"
+          },
+          "description": "References to teacher instructional prompts"
+        },
+        "differentiationStrategies": {
+          "$ref": "../common/metadata.json#/definitions/DifferentiationStrategies"
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "pacingEstimate": {
+          "$ref": "../common/metadata.json#/definitions/PacingEstimate"
+        }
+      }
+    }
+  },
+  "required": ["id", "activityType", "lessonId"]
+}

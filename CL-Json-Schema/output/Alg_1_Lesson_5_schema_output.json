@@ -1,0 +1,973 @@
+{
+  "resources": [
+    {
+      "id": "8b52eeda-7420-46e4-a130-cce3ad45ef39",
+      "resourceType": "STUDENT_RESOURCE_BOOK",
+      "title": "Algebra 1",
+      "gradeLevel": "HS"
+    }
+  ],
+  "modules": [
+    {
+      "id": "eadf5a7f-ea0f-4e5a-ac3a-4042660c974f",
+      "resourceId": "8b52eeda-7420-46e4-a130-cce3ad45ef39",
+      "standardsBody": "CA_CCSS",
+      "moduleNumber": 1,
+      "title": "Quantities and Relationships",
+      "gradeLevel": "HS",
+      "topics": [
+        {
+          "id": "8bfcc95a-4df2-4ba3-9304-8f8bc8b422bb",
+          "type": "TOPIC",
+          "sequenceNumber": 1
+        }
+      ]
+    }
+  ],
+  "topics": [
+    {
+      "id": "8bfcc95a-4df2-4ba3-9304-8f8bc8b422bb",
+      "moduleId": "eadf5a7f-ea0f-4e5a-ac3a-4042660c974f",
+      "topicNumber": 1,
+      "title": "Features of Functions"
+    }
+  ],
+  "lessons": [
+    {
+      "id": "26007733-9029-4bae-8f8b-7c79fbe2ea74",
+      "topicId": "8bfcc95a-4df2-4ba3-9304-8f8bc8b422bb",
+      "lessonNumber": 5,
+      "title": "Function Families for 200, Alex",
+      "lessonSummary": "Recognizing Functions by Characteristics",
+      "learningGoals": [
+        "I can interpret key features of a function in terms of the situation",
+        "I can sketch a graph showing key features of a function, given a"
+      ],
+      "standardsBlock": "9da3bf1c-b57d-40f6-ae5d-a77109048e4f",
+      "activities": [
+        {
+          "id": "2a6fb0cb-9dbd-4879-850f-89625073fe88",
+          "type": "ACTIVITY",
+          "sequenceNumber": 1
+        },
+        {
+          "id": "003cc452-e054-46ac-9f1d-35099955c5d5",
+          "type": "ACTIVITY",
+          "sequenceNumber": 2
+        },
+        {
+          "id": "e68f0041-3e13-4699-a03f-e65a911ca4d4",
+          "type": "ACTIVITY",
+          "sequenceNumber": 3
+        },
+        {
+          "id": "b1b60ba7-5e40-492f-a77b-4c6ba3dd9582",
+          "type": "ACTIVITY",
+          "sequenceNumber": 4
+        }
+      ]
+    }
+  ],
+  "standardsBlocks": [
+    {
+      "id": "9da3bf1c-b57d-40f6-ae5d-a77109048e4f",
+      "body": "CA_CCSS",
+      "gradeLevel": "HS",
+      "title": "Functions Standards",
+      "standardsSubtitle": "Interpreting Functions",
+      "standards": [
+        {
+          "id": "b7309607-a6e8-4cad-95c0-b9e70499c092",
+          "type": "STANDARDS",
+          "sequenceNumber": 1
+        },
+        {
+          "id": "3b97750b-4fac-47a4-84da-96b01a86274c",
+          "type": "STANDARDS",
+          "sequenceNumber": 2
+        }
+      ]
+    }
+  ],
+  "standards": [
+    {
+      "id": "b7309607-a6e8-4cad-95c0-b9e70499c092",
+      "body": "CA_CCSS",
+      "code": "F-IF.4",
+      "gradeLevel": "HS",
+      "domain": "Interpreting Functions",
+      "fullText": "4. For a function that models a relationship between two  quantities, interpret key features of graphs and tables in  terms of the quantities, and sketch graphs showing key  features given a verbal description of the relationship.   Key features include: intercepts; intervals where the  function\u00a0is increasing, decreasing, positive, or negative;  relative maximums and minimums; symmetries; end  behavior; and periodicity. \u2605"
+    },
+    {
+      "id": "3b97750b-4fac-47a4-84da-96b01a86274c",
+      "body": "CA_CCSS",
+      "code": "F-IF.5",
+      "gradeLevel": "HS",
+      "domain": "Interpreting Functions",
+      "fullText": "5. Relate the domain of a function to its graph and, where  applicable, to the quantitative relationship it describes. For  example, if the function h gives the number of person-hours  it takes to assemble n engines in a factory, then the positive  integers would be an appropriate domain for the\u00a0function. \u2605 California High School Function Families  for 200, Alex LESSON 5 Recognizing Functions  by Characteristics \u00a9 Carnegie Learning, Inc. 31 42 53 4 Lesson 5 Topic 1 1 6 42 53 4 Lesson 5 Topic 1 1 6"
+    }
+  ],
+  "images": [
+    {
+      "id": "218a69dd-b8a1-4a5c-9ae4-4c4e87731aaa",
+      "imageType": "DECORATIVE",
+      "filename": "curved_roof_architecture.jpg",
+      "format": "JPG",
+      "altText": "",
+      "usage": {
+        "usedInPages": [
+          31
+        ]
+      },
+      "accessibility": {
+        "isDecorative": true
+      }
+    },
+    {
+      "id": "c7f501c3-1a12-460f-98cd-52fae6ceb96a",
+      "imageType": "DECORATIVE",
+      "filename": "california_flag_icon.svg",
+      "format": "SVG",
+      "altText": "",
+      "dimensions": {
+        "width": 95,
+        "height": 65,
+        "unit": "PIXELS"
+      },
+      "accessibility": {
+        "isDecorative": true
+      }
+    },
+    {
+      "id": "2828c5c8-6f86-4e06-a459-ce71a30e4989",
+      "imageType": "INSTRUCTIONAL",
+      "filename": "laptop_function_practice.png",
+      "altText": "Laptop computer displaying interactive function graphs and equations including f(x)=ax+b, g(x)=ab^x+c, h(x)=ax^2+bx+c",
+      "title": "LiveHint Interactive Platform",
+      "dimensions": {
+        "width": 350,
+        "height": 245,
+        "unit": "PIXELS"
+      },
+      "usage": {
+        "usedInPages": [
+          35
+        ]
+      },
+      "accessibility": {
+        "isDecorative": false,
+        "longDescription": "Computer screen showing three function graphs with corresponding equations displayed in colored boxes"
+      }
+    }
+  ],
+  "instructionalPrompts": [
+    {
+      "id": "904fb4dc-0604-4ada-951c-6fc377e138ce",
+      "instructionalPromptType": "STUDENT_LOOK_FORS",
+      "title": "Learning Prompt",
+      "content": "How can the key characteristics help you sketch the graph of a function?",
+      "metadata": {
+        "displayStyle": "CALLOUT"
+      }
+    },
+    {
+      "id": "e274fc67-1a51-4b7d-964e-d9d295c20091",
+      "instructionalPromptType": "CULTIVATE_CONNECTIONS",
+      "title": "Make a Connection",
+      "content": "You have identified key characteristics of graphs.",
+      "metadata": {
+        "displayStyle": "CALLOUT"
+      }
+    },
+    {
+      "id": "b2ea9bcc-f507-4027-b83e-fb780b77c078",
+      "instructionalPromptType": "STUDENT_LOOK_FORS",
+      "title": "Remember . . .",
+      "content": "Each of the graphs representing the situations was drawn with either a continuous line or a continuous smooth curve to model the problem situation.",
+      "metadata": {
+        "displayStyle": "SIDEBAR"
+      }
+    },
+    {
+      "id": "717c3b67-0562-47be-8526-7537c0c395c0",
+      "instructionalPromptType": "STUDENT_LOOK_FORS",
+      "title": "Think About . . .",
+      "content": "Don't forget about the function family graphic organizers you created if you need some help.",
+      "metadata": {
+        "displayStyle": "SIDEBAR"
+      }
+    },
+    {
+      "id": "08295faf-1274-4bb2-8f95-e8cbe3fbee75",
+      "instructionalPromptType": "DAILY_MATH_ROUTINES",
+      "content": "Go online to identify the function family, domain and graphical behavior in given situations.",
+      "metadata": {
+        "displayStyle": "INLINE"
+      }
+    },
+    {
+      "id": "d627ebfa-5342-4988-9ba9-411afbc70660",
+      "instructionalPromptType": "DAILY_MATH_ROUTINES",
+      "content": "Go online to create equations and sketch graphs with given characteristics.",
+      "metadata": {
+        "displayStyle": "INLINE"
+      }
+    }
+  ],
+  "instructionalSegments": [
+    {
+      "id": "69aa8b7d-3669-48a7-b9d0-b07f4851180a",
+      "instructionalSegmentType": "INTRODUCTION",
+      "directions": [
+        {
+          "sequenceNumber": 1,
+          "text": "Linear"
+        },
+        {
+          "sequenceNumber": 2,
+          "text": "Exponential"
+        },
+        {
+          "sequenceNumber": 3,
+          "text": "Quadratic"
+        },
+        {
+          "sequenceNumber": 4,
+          "text": "Linear absolute value"
+        },
+        {
+          "sequenceNumber": 5,
+          "text": "Linear piecewise"
+        }
+      ]
+    },
+    {
+      "id": "3595a5b6-50fa-4f44-857f-bd83690d4d50",
+      "instructionalSegmentType": "INTRODUCTION",
+      "directions": [
+        {
+          "sequenceNumber": 1,
+          "text": "Let's revisit Lesson 1, A Picture is Worth a Thousand Words. Each of the situations in that lesson represents one of these function families."
+        }
+      ]
+    }
+  ],
+  "activityGoals": [
+    {
+      "id": "cbfa338f-10e1-4408-b39b-92227094b119",
+      "activityId": "003cc452-e054-46ac-9f1d-35099955c5d5",
+      "goalType": "HABITS_OF_MIND",
+      "goalItems": [
+        "Look for and make use of structure.",
+        "Look for and express regularity in repeated reasoning."
+      ]
+    },
+    {
+      "id": "4f22b95a-7a82-4dfb-b59c-46f1b987a820",
+      "activityId": "e68f0041-3e13-4699-a03f-e65a911ca4d4",
+      "goalType": "HABITS_OF_MIND",
+      "goalItems": [
+        "Model with mathematics.",
+        "Use appropriate tools strategically."
+      ]
+    }
+  ],
+  "activities": [
+    {
+      "id": "2a6fb0cb-9dbd-4879-850f-89625073fe88",
+      "lessonId": "26007733-9029-4bae-8f8b-7c79fbe2ea74",
+      "activityType": "ACTIVATE",
+      "title": "Name That Function!",
+      "directions": [
+        {
+          "sequenceNumber": 1,
+          "type": "DIRECTION_LINE",
+          "text": "Consider the characteristics and graphical descriptions shared by your teacher. Prepare to share and discuss which function families apply with your classmates."
+        }
+      ]
+    },
+    {
+      "id": "003cc452-e054-46ac-9f1d-35099955c5d5",
+      "lessonId": "26007733-9029-4bae-8f8b-7c79fbe2ea74",
+      "activityType": "EXPLORE",
+      "title": "Categorizing Situations into Their Function Families",
+      "goals": [
+        {
+          "id": "cbfa338f-10e1-4408-b39b-92227094b119",
+          "type": "GOALS"
+        }
+      ],
+      "tasks": [
+        {
+          "id": "e7ee9a64-e467-495b-a9d6-561ad79fb910",
+          "type": "TASK",
+          "sequenceNumber": 1
+        }
+      ]
+    },
+    {
+      "id": "e68f0041-3e13-4699-a03f-e65a911ca4d4",
+      "lessonId": "26007733-9029-4bae-8f8b-7c79fbe2ea74",
+      "activityType": "EXPLORE",
+      "title": "Building Graphs from Characteristics",
+      "goals": [
+        {
+          "id": "4f22b95a-7a82-4dfb-b59c-46f1b987a820",
+          "type": "GOALS"
+        }
+      ],
+      "directions": [
+        {
+          "sequenceNumber": 1,
+          "type": "DIRECTION_LINE",
+          "text": "In this activity, you will write equations and sketch a graph based on given characteristics."
+        },
+        {
+          "sequenceNumber": 2,
+          "type": "DIRECTION_LINE",
+          "text": "Use the given characteristics to create an equation and sketch a graph. Use the equations of functions given in the box as a guide. When creating your equation, use a, b, and c values that are any real numbers between (-3) and 3. Do not use any functions that were used previously in this topic."
+        }
+      ],
+      "tasks": [
+        {
+          "id": "d0bb6539-82eb-44aa-ad35-a132a25b48f0",
+          "type": "TASK",
+          "sequenceNumber": 1
+        }
+      ]
+    },
+    {
+      "id": "b1b60ba7-5e40-492f-a77b-4c6ba3dd9582",
+      "lessonId": "26007733-9029-4bae-8f8b-7c79fbe2ea74",
+      "activityType": "REFLECT",
+      "title": "Trying to Be Unique",
+      "directions": [
+        {
+          "sequenceNumber": 1,
+          "type": "DIRECTION_LINE",
+          "text": "Create your own function. Describe certain characteristics of the function and see whether your partner can sketch it. Then, sketch your partner's function based on characteristics provided."
+        }
+      ],
+      "tasks": [
+        {
+          "id": "fca036ca-3b5b-4bfe-8a0c-c173046ff983",
+          "type": "TASK",
+          "sequenceNumber": 1
+        },
+        {
+          "id": "00edcc0a-9ff5-4d5d-bc26-364092911d45",
+          "type": "TASK",
+          "sequenceNumber": 2
+        }
+      ]
+    },
+    {
+      "id": "c1ec68d9-6548-4461-a239-aacb4eef0d19",
+      "lessonId": "26007733-9029-4bae-8f8b-7c79fbe2ea74",
+      "activityType": "PRACTICE_QUESTIONS",
+      "title": "Interactive Assignment",
+      "directions": [
+        {
+          "sequenceNumber": 1,
+          "type": "DIRECTION_LINE",
+          "text": "Function Families for 200, Alex with LiveHint"
+        }
+      ]
+    },
+    {
+      "id": "689bc11f-3674-44b1-83a4-077215e85950",
+      "lessonId": "26007733-9029-4bae-8f8b-7c79fbe2ea74",
+      "activityType": "PRACTICE_QUESTIONS",
+      "title": "Interactive Skills Practice",
+      "directions": [
+        {
+          "sequenceNumber": 1,
+          "type": "DIRECTION_LINE",
+          "text": "Recognizing Function Families"
+        },
+        {
+          "sequenceNumber": 2,
+          "type": "DIRECTION_LINE",
+          "text": "Identifying Function Characteristics"
+        }
+      ]
+    },
+    {
+      "id": "e65997ef-eefb-413d-95b8-0c0513bac46d",
+      "lessonId": "26007733-9029-4bae-8f8b-7c79fbe2ea74",
+      "activityType": "PRACTICE_QUESTIONS",
+      "title": "Independent Practice",
+      "directions": [
+        {
+          "sequenceNumber": 1,
+          "type": "DIRECTION_LINE",
+          "text": "Sketch the graph using the set of given characteristics."
+        }
+      ],
+      "tasks": [
+        {
+          "id": "a38ccba1-411f-43ba-adf3-65ac95ebd103",
+          "type": "TASK",
+          "sequenceNumber": 1
+        },
+        {
+          "id": "859dc7fb-6e36-41a5-b0af-07500226c147",
+          "type": "TASK",
+          "sequenceNumber": 2
+        },
+        {
+          "id": "31a26ba5-3975-4cc6-9a4e-8d551afe9d64",
+          "type": "TASK",
+          "sequenceNumber": 3
+        },
+        {
+          "id": "511643c6-3c86-4f20-9673-72a8596364ff",
+          "type": "TASK",
+          "sequenceNumber": 4
+        },
+        {
+          "id": "f28e1825-75e2-48fc-af93-d93dbd20aff3",
+          "type": "TASK",
+          "sequenceNumber": 5
+        },
+        {
+          "id": "b6e1c91d-e9ca-437d-aa86-a53ca9ec9b95",
+          "type": "TASK",
+          "sequenceNumber": 6
+        },
+        {
+          "id": "d347c636-f790-4930-b13a-20b5185c63e0",
+          "type": "TASK",
+          "sequenceNumber": 7
+        },
+        {
+          "id": "8bc4384c-49b2-4c07-8055-f235c3f0b9a9",
+          "type": "TASK",
+          "sequenceNumber": 8
+        }
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "e7ee9a64-e467-495b-a9d6-561ad79fb910",
+      "activityId": "003cc452-e054-46ac-9f1d-35099955c5d5",
+      "taskNumber": "1",
+      "taskType": "OPEN_ENDED",
+      "stems": [
+        {
+          "id": "13c99dea-8718-469c-82af-ab5df37899ea",
+          "type": "STEM",
+          "sequenceNumber": 1
+        }
+      ]
+    },
+    {
+      "id": "d0bb6539-82eb-44aa-ad35-a132a25b48f0",
+      "activityId": "e68f0041-3e13-4699-a03f-e65a911ca4d4",
+      "taskNumber": "1",
+      "taskType": "OPEN_ENDED",
+      "stems": [
+        {
+          "id": "22048db3-4cbe-4e50-91e2-2c165bda61f7",
+          "type": "STEM",
+          "sequenceNumber": 1
+        }
+      ]
+    },
+    {
+      "id": "fca036ca-3b5b-4bfe-8a0c-c173046ff983",
+      "activityId": "b1b60ba7-5e40-492f-a77b-4c6ba3dd9582",
+      "taskNumber": "1",
+      "taskType": "OPEN_ENDED",
+      "stems": [
+        {
+          "id": "a1fc6e41-94ec-4291-8c28-cfd025e8f1d2",
+          "type": "STEM",
+          "sequenceNumber": 1
+        }
+      ]
+    },
+    {
+      "id": "00edcc0a-9ff5-4d5d-bc26-364092911d45",
+      "activityId": "b1b60ba7-5e40-492f-a77b-4c6ba3dd9582",
+      "taskNumber": "2",
+      "taskType": "OPEN_ENDED",
+      "stems": [
+        {
+          "id": "931331e7-e03f-4aa7-9cd1-b1d695e29bfe",
+          "type": "STEM",
+          "sequenceNumber": 1
+        }
+      ]
+    },
+    {
+      "id": "a38ccba1-411f-43ba-adf3-65ac95ebd103",
+      "activityId": "e65997ef-eefb-413d-95b8-0c0513bac46d",
+      "taskNumber": "1",
+      "taskType": "OPEN_ENDED",
+      "stems": [
+        {
+          "id": "776326b1-45e4-47eb-b35b-98dc6a1229d0",
+          "type": "STEM",
+          "sequenceNumber": 1
+        }
+      ]
+    },
+    {
+      "id": "859dc7fb-6e36-41a5-b0af-07500226c147",
+      "activityId": "e65997ef-eefb-413d-95b8-0c0513bac46d",
+      "taskNumber": "2",
+      "taskType": "OPEN_ENDED",
+      "stems": [
+        {
+          "id": "ce94a71a-8f26-42c4-a174-8a4ffa560c03",
+          "type": "STEM",
+          "sequenceNumber": 1
+        }
+      ]
+    },
+    {
+      "id": "31a26ba5-3975-4cc6-9a4e-8d551afe9d64",
+      "activityId": "e65997ef-eefb-413d-95b8-0c0513bac46d",
+      "taskNumber": "3",
+      "taskType": "OPEN_ENDED",
+      "stems": [
+        {
+          "id": "606a2809-685d-40f0-a5f6-e5164ab5e73a",
+          "type": "STEM",
+          "sequenceNumber": 1
+        }
+      ]
+    },
+    {
+      "id": "511643c6-3c86-4f20-9673-72a8596364ff",
+      "activityId": "e65997ef-eefb-413d-95b8-0c0513bac46d",
+      "taskNumber": "4",
+      "taskType": "OPEN_ENDED",
+      "stems": [
+        {
+          "id": "0a0ba629-9ef0-46e9-b050-945af4597550",
+          "type": "STEM",
+          "sequenceNumber": 1
+        }
+      ]
+    },
+    {
+      "id": "f28e1825-75e2-48fc-af93-d93dbd20aff3",
+      "activityId": "e65997ef-eefb-413d-95b8-0c0513bac46d",
+      "taskNumber": "5",
+      "taskType": "OPEN_ENDED",
+      "stems": [
+        {
+          "id": "ec117822-8dfa-4cad-9dcf-1bc81ad5e0df",
+          "type": "STEM",
+          "sequenceNumber": 1
+        }
+      ]
+    },
+    {
+      "id": "b6e1c91d-e9ca-437d-aa86-a53ca9ec9b95",
+      "activityId": "e65997ef-eefb-413d-95b8-0c0513bac46d",
+      "taskNumber": "6",
+      "taskType": "OPEN_ENDED",
+      "stems": [
+        {
+          "id": "fce806a8-31a0-490b-a6c4-ff02fbaa3a65",
+          "type": "STEM",
+          "sequenceNumber": 1
+        }
+      ]
+    },
+    {
+      "id": "d347c636-f790-4930-b13a-20b5185c63e0",
+      "activityId": "e65997ef-eefb-413d-95b8-0c0513bac46d",
+      "taskNumber": "7",
+      "taskType": "OPEN_ENDED",
+      "stems": [
+        {
+          "id": "b7d78f32-5b36-4bfc-bbc7-d0f57bf8307f",
+          "type": "STEM",
+          "sequenceNumber": 1
+        }
+      ]
+    },
+    {
+      "id": "8bc4384c-49b2-4c07-8055-f235c3f0b9a9",
+      "activityId": "e65997ef-eefb-413d-95b8-0c0513bac46d",
+      "taskNumber": "8",
+      "taskType": "OPEN_ENDED",
+      "stems": [
+        {
+          "id": "250a682a-af20-441d-bc10-b7deee832293",
+          "type": "STEM",
+          "sequenceNumber": 1
+        }
+      ]
+    }
+  ],
+  "stems": [
+    {
+      "id": "13c99dea-8718-469c-82af-ab5df37899ea",
+      "taskId": "e7ee9a64-e467-495b-a9d6-561ad79fb910",
+      "stemType": "TEXT_WITH_RESPONSE_AREA",
+      "stemText": "Describe how each situation represents a function.",
+      "responseArea": "702d86ae-346d-45e3-becf-035706e33d45"
+    },
+    {
+      "id": "22048db3-4cbe-4e50-91e2-2c165bda61f7",
+      "taskId": "d0bb6539-82eb-44aa-ad35-a132a25b48f0",
+      "stemType": "TEXT_WITH_RESPONSE_AREA",
+      "stemText": "Create an equation and sketch a graph with these characteristics: a function; exponential; continuous; decreasing.",
+      "responseArea": "d80511ff-8c19-4a6f-92fd-4a66c1566f1c"
+    },
+    {
+      "id": "a1fc6e41-94ec-4291-8c28-cfd025e8f1d2",
+      "taskId": "fca036ca-3b5b-4bfe-8a0c-c173046ff983",
+      "stemType": "TEXT_WITH_RESPONSE_AREA",
+      "stemText": "Your Function: describe characteristics for your partner to sketch, then sketch your own function.",
+      "responseArea": "0d7826c9-43f9-4ebc-af9d-8883be50f02b"
+    },
+    {
+      "id": "931331e7-e03f-4aa7-9cd1-b1d695e29bfe",
+      "taskId": "00edcc0a-9ff5-4d5d-bc26-364092911d45",
+      "stemType": "TEXT_WITH_RESPONSE_AREA",
+      "stemText": "Your Partner's Function: sketch based on characteristics provided.",
+      "responseArea": "c1f5b9c0-c4e7-4bc6-81e2-d6edb713028a"
+    },
+    {
+      "id": "776326b1-45e4-47eb-b35b-98dc6a1229d0",
+      "taskId": "a38ccba1-411f-43ba-adf3-65ac95ebd103",
+      "stemType": "TEXT_WITH_RESPONSE_AREA",
+      "stemText": "Graph is: discrete, has a maximum, and is quadratic",
+      "responseArea": "03ead2d0-36be-4814-b6bf-73403566cb5d"
+    },
+    {
+      "id": "ce94a71a-8f26-42c4-a174-8a4ffa560c03",
+      "taskId": "859dc7fb-6e36-41a5-b0af-07500226c147",
+      "stemType": "TEXT_WITH_RESPONSE_AREA",
+      "stemText": "Graph is: linear, continuous, and increasing across the entire domain",
+      "responseArea": "62c5a2f3-2bf6-46a1-9f8e-a7bd020d1c42"
+    },
+    {
+      "id": "606a2809-685d-40f0-a5f6-e5164ab5e73a",
+      "taskId": "31a26ba5-3975-4cc6-9a4e-8d551afe9d64",
+      "stemType": "TEXT_WITH_RESPONSE_AREA",
+      "stemText": "Graph is: a linear absolute value function, has a minimum, and is continuous",
+      "responseArea": "a4b99450-31cf-438c-ab6a-8e4458a9d6ad"
+    },
+    {
+      "id": "0a0ba629-9ef0-46e9-b050-945af4597550",
+      "taskId": "511643c6-3c86-4f20-9673-72a8596364ff",
+      "stemType": "TEXT_WITH_RESPONSE_AREA",
+      "stemText": "Graph is: a smooth curve, decreasing across the entire domain, and is exponential",
+      "responseArea": "db5d9e1e-3dd2-4700-8d61-68610c21c80b"
+    },
+    {
+      "id": "ec117822-8dfa-4cad-9dcf-1bc81ad5e0df",
+      "taskId": "f28e1825-75e2-48fc-af93-d93dbd20aff3",
+      "stemType": "TEXT_WITH_RESPONSE_AREA",
+      "stemText": "Graph is: a linear piecewise function, and is continuous",
+      "responseArea": "c54d9637-c294-49b8-9b20-09a144a07d2e"
+    },
+    {
+      "id": "fce806a8-31a0-490b-a6c4-ff02fbaa3a65",
+      "taskId": "b6e1c91d-e9ca-437d-aa86-a53ca9ec9b95",
+      "stemType": "TEXT_WITH_RESPONSE_AREA",
+      "stemText": "Graph is: linear, discrete, and does not pass through the origin",
+      "responseArea": "e6583fdf-70e1-4284-ab63-a724003b26e4"
+    },
+    {
+      "id": "b7d78f32-5b36-4bfc-bbc7-d0f57bf8307f",
+      "taskId": "d347c636-f790-4930-b13a-20b5185c63e0",
+      "stemType": "TEXT_WITH_RESPONSE_AREA",
+      "stemText": "Graph is: continuous, passes through the origin, and is quadratic",
+      "responseArea": "ee465a41-bffd-4aed-a9f6-1677769522e6"
+    },
+    {
+      "id": "250a682a-af20-441d-bc10-b7deee832293",
+      "taskId": "8bc4384c-49b2-4c07-8055-f235c3f0b9a9",
+      "stemType": "TEXT_WITH_RESPONSE_AREA",
+      "stemText": "Graph is: discrete, increasing across the entire domain, and is exponential",
+      "responseArea": "39bb48eb-72db-4a56-9b56-6a3e19470da4"
+    }
+  ],
+  "responseAreas": [
+    {
+      "id": "702d86ae-346d-45e3-becf-035706e33d45",
+      "type": "OPEN_ENDED",
+      "description": "Describe each situation"
+    },
+    {
+      "id": "d80511ff-8c19-4a6f-92fd-4a66c1566f1c",
+      "type": "OPEN_ENDED",
+      "description": "Equation input"
+    },
+    {
+      "id": "2de71880-1c66-41b9-b67e-c36fc410044e",
+      "type": "GRID",
+      "description": "Graph grid"
+    },
+    {
+      "id": "d8a44fed-e0a2-46af-8146-b42f40dc60a0",
+      "type": "GRID",
+      "description": "Graph grid for student-created function"
+    },
+    {
+      "id": "0d7826c9-43f9-4ebc-af9d-8883be50f02b",
+      "type": "OPEN_ENDED",
+      "description": "Describe characteristics for partner to sketch"
+    },
+    {
+      "id": "94f1c4b5-1b9c-48d4-8391-1cf47c8602a0",
+      "type": "GRID",
+      "description": "Graph grid for partner's function"
+    },
+    {
+      "id": "c1f5b9c0-c4e7-4bc6-81e2-d6edb713028a",
+      "type": "OPEN_ENDED",
+      "description": "Partner characteristics input"
+    },
+    {
+      "id": "03ead2d0-36be-4814-b6bf-73403566cb5d",
+      "type": "GRID",
+      "description": "Graph sketch area"
+    },
+    {
+      "id": "62c5a2f3-2bf6-46a1-9f8e-a7bd020d1c42",
+      "type": "GRID",
+      "description": "Graph sketch area"
+    },
+    {
+      "id": "a4b99450-31cf-438c-ab6a-8e4458a9d6ad",
+      "type": "GRID",
+      "description": "Graph sketch area"
+    },
+    {
+      "id": "db5d9e1e-3dd2-4700-8d61-68610c21c80b",
+      "type": "GRID",
+      "description": "Graph sketch area"
+    },
+    {
+      "id": "c54d9637-c294-49b8-9b20-09a144a07d2e",
+      "type": "GRID",
+      "description": "Graph sketch area"
+    },
+    {
+      "id": "e6583fdf-70e1-4284-ab63-a724003b26e4",
+      "type": "GRID",
+      "description": "Graph sketch area"
+    },
+    {
+      "id": "ee465a41-bffd-4aed-a9f6-1677769522e6",
+      "type": "GRID",
+      "description": "Graph sketch area"
+    },
+    {
+      "id": "39bb48eb-72db-4a56-9b56-6a3e19470da4",
+      "type": "GRID",
+      "description": "Graph sketch area"
+    }
+  ],
+  "practiceSections": [
+    {
+      "id": "8bf153f7-a3a5-4e26-9111-8dba729ded7f",
+      "parentId": "26007733-9029-4bae-8f8b-7c79fbe2ea74",
+      "practiceSectionType": "LESSON_PRACTICE",
+      "title": "Quick Check: Function Families for 200, Alex"
+    },
+    {
+      "id": "ee6f3150-d522-4acb-8516-82d087ec78e6",
+      "parentId": "26007733-9029-4bae-8f8b-7c79fbe2ea74",
+      "practiceSectionType": "LESSON_PRACTICE",
+      "title": "Practice and Apply: Function Families for 200, Alex",
+      "activities": [
+        {
+          "id": "c1ec68d9-6548-4461-a239-aacb4eef0d19",
+          "type": "ACTIVITY",
+          "sequenceNumber": 1
+        },
+        {
+          "id": "689bc11f-3674-44b1-83a4-077215e85950",
+          "type": "ACTIVITY",
+          "sequenceNumber": 2
+        },
+        {
+          "id": "e65997ef-eefb-413d-95b8-0c0513bac46d",
+          "type": "ACTIVITY",
+          "sequenceNumber": 3
+        }
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "id": "f6587377-937b-4096-8bc4-f4841fb54650",
+      "resourceId": "8b52eeda-7420-46e4-a130-cce3ad45ef39",
+      "pageNumber": 31,
+      "pageType": "SRB_LESSON_INTRODUCTION_ACTIVATE",
+      "contentBlocks": [
+        {
+          "id": "26007733-9029-4bae-8f8b-7c79fbe2ea74",
+          "type": "LESSON"
+        },
+        {
+          "id": "2a6fb0cb-9dbd-4879-850f-89625073fe88",
+          "type": "ACTIVITY"
+        },
+        {
+          "id": "904fb4dc-0604-4ada-951c-6fc377e138ce",
+          "type": "INSTRUCTIONAL_PROMPT"
+        },
+        {
+          "id": "e274fc67-1a51-4b7d-964e-d9d295c20091",
+          "type": "INSTRUCTIONAL_PROMPT"
+        },
+        {
+          "id": "9da3bf1c-b57d-40f6-ae5d-a77109048e4f",
+          "type": "STANDARDS_BLOCK"
+        },
+        {
+          "id": "218a69dd-b8a1-4a5c-9ae4-4c4e87731aaa",
+          "type": "IMAGE"
+        },
+        {
+          "id": "c7f501c3-1a12-460f-98cd-52fae6ceb96a",
+          "type": "IMAGE"
+        }
+      ]
+    },
+    {
+      "id": "d376ffb7-3cb4-472b-9a99-ee743ebb8fa3",
+      "resourceId": "8b52eeda-7420-46e4-a130-cce3ad45ef39",
+      "pageNumber": 32,
+      "pageType": "SRB_LESSON_EXPLORE",
+      "contentBlocks": [
+        {
+          "id": "2a6fb0cb-9dbd-4879-850f-89625073fe88",
+          "type": "ACTIVITY"
+        },
+        {
+          "id": "003cc452-e054-46ac-9f1d-35099955c5d5",
+          "type": "ACTIVITY"
+        },
+        {
+          "id": "e7ee9a64-e467-495b-a9d6-561ad79fb910",
+          "type": "TASK"
+        },
+        {
+          "id": "13c99dea-8718-469c-82af-ab5df37899ea",
+          "type": "STEM"
+        },
+        {
+          "id": "702d86ae-346d-45e3-becf-035706e33d45",
+          "type": "STEM"
+        },
+        {
+          "id": "b2ea9bcc-f507-4027-b83e-fb780b77c078",
+          "type": "INSTRUCTIONAL_PROMPT"
+        },
+        {
+          "id": "08295faf-1274-4bb2-8f95-e8cbe3fbee75",
+          "type": "INSTRUCTIONAL_PROMPT"
+        },
+        {
+          "id": "69aa8b7d-3669-48a7-b9d0-b07f4851180a",
+          "type": "INSTRUCTIONAL_SEGMENT"
+        },
+        {
+          "id": "3595a5b6-50fa-4f44-857f-bd83690d4d50",
+          "type": "INSTRUCTIONAL_SEGMENT"
+        }
+      ]
+    },
+    {
+      "id": "d3de9262-8bc6-4d5c-9091-8896663b8fa6",
+      "resourceId": "8b52eeda-7420-46e4-a130-cce3ad45ef39",
+      "pageNumber": 33,
+      "pageType": "SRB_LESSON_EXPLORE_CONTINUED",
+      "contentBlocks": [
+        {
+          "id": "e68f0041-3e13-4699-a03f-e65a911ca4d4",
+          "type": "ACTIVITY"
+        },
+        {
+          "id": "d0bb6539-82eb-44aa-ad35-a132a25b48f0",
+          "type": "TASK"
+        },
+        {
+          "id": "22048db3-4cbe-4e50-91e2-2c165bda61f7",
+          "type": "STEM"
+        },
+        {
+          "id": "d80511ff-8c19-4a6f-92fd-4a66c1566f1c",
+          "type": "STEM"
+        },
+        {
+          "id": "2de71880-1c66-41b9-b67e-c36fc410044e",
+          "type": "STEM"
+        },
+        {
+          "id": "717c3b67-0562-47be-8526-7537c0c395c0",
+          "type": "INSTRUCTIONAL_PROMPT"
+        },
+        {
+          "id": "d627ebfa-5342-4988-9ba9-411afbc70660",
+          "type": "INSTRUCTIONAL_PROMPT"
+        }
+      ]
+    },
+    {
+      "id": "b6d602dc-4f1e-4b2b-be34-5baadbf12b36",
+      "resourceId": "8b52eeda-7420-46e4-a130-cce3ad45ef39",
+      "pageNumber": 34,
+      "pageType": "SRB_LESSON_REFLECT",
+      "contentBlocks": [
+        {
+          "id": "b1b60ba7-5e40-492f-a77b-4c6ba3dd9582",
+          "type": "ACTIVITY"
+        },
+        {
+          "id": "fca036ca-3b5b-4bfe-8a0c-c173046ff983",
+          "type": "TASK"
+        },
+        {
+          "id": "00edcc0a-9ff5-4d5d-bc26-364092911d45",
+          "type": "TASK"
+        },
+        {
+          "id": "8bf153f7-a3a5-4e26-9111-8dba729ded7f",
+          "type": "PAGES"
+        }
+      ]
+    },
+    {
+      "id": "fcd045cd-168e-456e-98f6-5a3d4d861b3a",
+      "resourceId": "8b52eeda-7420-46e4-a130-cce3ad45ef39",
+      "pageNumber": 35,
+      "pageType": "SPB_LESSON_PRACTICE",
+      "contentBlocks": [
+        {
+          "id": "ee6f3150-d522-4acb-8516-82d087ec78e6",
+          "type": "PAGES"
+        },
+        {
+          "id": "c1ec68d9-6548-4461-a239-aacb4eef0d19",
+          "type": "ACTIVITY"
+        },
+        {
+          "id": "689bc11f-3674-44b1-83a4-077215e85950",
+          "type": "ACTIVITY"
+        },
+        {
+          "id": "e65997ef-eefb-413d-95b8-0c0513bac46d",
+          "type": "ACTIVITY"
+        },
+        {
+          "id": "2828c5c8-6f86-4e06-a459-ce71a30e4989",
+          "type": "IMAGE"
+        }
+      ]
+    }
+  ]
+}

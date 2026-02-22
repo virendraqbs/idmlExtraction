@@ -1,0 +1,61 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "schemas/content/task.json",
+  "title": "Task",
+  "description": "A task within an activity",
+  "type": "object",
+  "properties": {
+    "id": {
+      "$ref": "../common/primitives.json#/definitions/UUID"
+    },
+    "activityId": {
+      "$ref": "../common/primitives.json#/definitions/UUID",
+      "description": "Reference to the parent activity"
+    },
+    "taskNumber": {
+      "type": "string",
+      "description": "Task number or part within the activity"
+    },
+    "taskType": {
+      "$ref": "../common/enums.json#/definitions/TaskType",
+      "description": "Type of task (COMPLETION, CALCULATION, WORD_PROBLEM, etc.)"
+    },
+    "stems": {
+      "type": "array",
+      "items": {
+        "allOf": [
+          { "$ref": "../common/primitives.json#/definitions/Reference" },
+          {
+            "type": "object",
+            "properties": {
+              "sequenceNumber": { 
+                "type": "integer", 
+                "minimum": 1,
+                "description": "Order of the stems within the task"
+              }
+            },
+            "required": ["sequenceNumber"]
+          }
+        ]
+      },
+      "description": "Stems used in this specific task"
+    },
+    "scaffolding": {
+      "type": "array",
+      "items": {
+        "$ref": "../common/primitives.json#/definitions/Reference"
+      },
+      "description": "References to scaffolding supports"
+    },
+    "teacherGuidance": {
+      "type": "object",
+      "description": "Teacher-specific guidance (only in teacher guides)",
+      "properties": {
+        "linkedStudentTask": {
+          "$ref": "../common/metadata.json#/definitions/TeacherStudentLink"
+        }
+      }
+    }
+  },
+  "required": ["id", "taskNumber", "taskType", "activityId", "stem"]
+}

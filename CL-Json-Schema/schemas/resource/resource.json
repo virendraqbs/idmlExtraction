@@ -1,0 +1,141 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "schemas/content/resource.json",
+  "title": "Resource",
+  "description": "A resource (student book, practice book, or teacher guide) that contains pages",
+  "type": "object",
+  "properties": {
+    "id": {
+      "$ref": "../common/primitives.json#/definitions/UUID"
+    },
+    "gradeLevel": {
+      "type": "string",
+      "description": "Grade level (e.g., 'K', '1', '2', '3', '4', '5')"
+    },
+    "resourceType": {
+      "$ref": "../common/enums.json#/definitions/ResourceType",
+      "description": "Type of resource (STUDENT_RESOURCE_BOOK, STUDENT_PRACTICE_BOOK, TEACHER_IMPLEMENTATION_GUIDE)"
+    },
+    "title": {
+      "type": "string",
+      "description": "Resource title"
+    },
+    "subtitle": {
+      "type": "string",
+      "description": "Resource subtitle"
+    },
+    "series": {
+      "type": "string",
+      "description": "Series name (e.g., 'Math Expressions')"
+    },
+    "edition": {
+      "type": "string",
+      "description": "Edition (e.g., '2024', 'First Edition')"
+    },
+    "publisher": {
+      "type": "string",
+      "description": "Publisher name"
+    },
+    "isbn": {
+      "$ref": "../common/metadata.json#/definitions/ISBN",
+      "description": "ISBN information"
+    },
+    "pages": {
+      "type": "array",
+      "items": {
+        "$ref": "../common/primitives.json#/definitions/Reference"
+      },
+      "description": "References to pages in this resource"
+    },
+    "modules": {
+      "type": "array",
+      "items": {
+        "$ref": "../common/primitives.json#/definitions/Reference"
+      },
+      "description": "References to modules covered in this resource"
+    },
+    "standards": {
+      "type": "array",
+      "items": {
+        "$ref": "../common/primitives.json#/definitions/Reference"
+      },
+      "description": "References to standards covered in this resource"
+    },
+    "teacherGuidance": {
+      "type": "object",
+      "description": "Teacher-specific guidance (only for teacher guides)",
+      "properties": {
+        "linkedStudentResource": {
+          "$ref": "../common/metadata.json#/definitions/TeacherStudentLink",
+          "description": "Link to corresponding student resource"
+        },
+        "scopeAndSequence": {
+          "type": "string",
+          "description": "Overview of scope and sequence"
+        },
+        "pacing": {
+          "type": "string",
+          "description": "Pacing guidance"
+        }
+      }
+    },
+    "presentation": {
+      "type": "object",
+      "description": "Physical presentation properties",
+      "properties": {
+        "pageSize": {
+          "type": "string",
+          "enum": ["LETTER", "A4", "CUSTOM"],
+          "description": "Physical page size"
+        },
+        "orientation": {
+          "type": "string",
+          "enum": ["PORTRAIT", "LANDSCAPE"]
+        },
+        "binding": {
+          "type": "string",
+          "enum": ["LEFT", "RIGHT", "TOP", "SPIRAL"]
+        },
+        "coverColor": {
+          "type": "string",
+          "description": "Hex color code for cover"
+        },
+        "theme": {
+          "type": "string",
+          "enum": ["STANDARD", "HIGH_CONTRAST", "COLORFUL"],
+          "description": "Visual theme"
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "publishingMetadata": {
+          "$ref": "../common/metadata.json#/definitions/PublishingMetadata"
+        },
+        "copyrightInfo": {
+          "$ref": "../common/metadata.json#/definitions/CopyrightInfo"
+        },
+        "localizationInfo": {
+          "$ref": "../common/metadata.json#/definitions/LocalizationInfo"
+        },
+        "totalPages": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Total number of pages"
+        },
+        "subjects": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Subject areas (e.g., ['Mathematics'])"
+        },
+        "keywords": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Keywords for searchability"
+        }
+      }
+    }
+  },
+  "required": ["id", "resourceType", "title", "gradeLevel"]
+}

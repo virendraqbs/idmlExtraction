@@ -1,0 +1,320 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "schemas/core/metadata.json",
+  "title": "Metadata Structures",
+  "description": "Reusable metadata object definitions used across multiple schemas",
+  "definitions": {
+    
+    "PageNumberRepresentations": {
+      "type": "object",
+      "description": "Different representations of a page number (educational feature)",
+      "properties": {
+        "numeric": { 
+          "type": "integer", 
+          "minimum": 1,
+          "description": "Standard numeric page number"
+        },
+        "romanNumeral": { 
+          "type": "string",
+          "description": "Roman numeral representation (e.g., 'CLXV')"
+        },
+        "wordForm": { 
+          "type": "string",
+          "description": "Written out in words (e.g., 'one hundred sixty-five')"
+        },
+        "primeFactorization": { 
+          "type": "string",
+          "description": "Prime factorization (e.g., '3 × 5 × 11')"
+        }
+      },
+      "required": ["numeric"]
+    },
+    
+    "LessonContext": {
+      "type": "object",
+      "description": "Contextual information about lesson placement within curriculum",
+      "properties": {
+        "moduleNumber": { "type": "integer", "minimum": 1 },
+        "moduleTitle": { "type": "string" },
+        "topicNumber": { "type": "integer", "minimum": 1 },
+        "topicTitle": { "type": "string" },
+        "lessonNumber": { "type": "integer", "minimum": 1 },
+        "lessonTitle": { "type": "string" }
+      }
+    },
+    
+    "PacingEstimate": {
+      "type": "object",
+      "description": "Estimated time for completion",
+      "properties": {
+        "value": { 
+          "type": "integer", 
+          "minimum": 0,
+          "description": "Numeric time value in minutes"
+        },
+        "range": {
+          "type": "object",
+          "description": "Time range (min-max)",
+          "properties": {
+            "min": { "type": "integer", "minimum": 0 },
+            "max": { "type": "integer", "minimum": 0 }
+          }
+        }
+      },
+      "required": ["value"]
+    },
+    
+    "ISBN": {
+      "type": "object",
+      "description": "International Standard Book Number",
+      "properties": {
+        "isbn13": { 
+          "type": "string",
+          "pattern": "^(978|979)-?\\d{1,5}-?\\d{1,7}-?\\d{1,7}-?\\d$",
+          "description": "13-digit ISBN (with or without hyphens)"
+        },
+        "isbn10": { 
+          "type": "string",
+          "pattern": "^\\d{9}[\\dX]$",
+          "description": "10-digit ISBN (deprecated but sometimes used)"
+        }
+      }
+    },
+    
+    "CopyrightInfo": {
+      "type": "object",
+      "description": "Copyright and publishing information",
+      "properties": {
+        "year": { 
+          "type": "integer",
+          "minimum": 1900,
+          "maximum": 2100,
+          "description": "Copyright year"
+        },
+        "holder": { 
+          "type": "string",
+          "description": "Copyright holder name"
+        },
+        "statement": { 
+          "type": "string",
+          "description": "Full copyright statement"
+        },
+        "license": { 
+          "type": "string",
+          "description": "License type (e.g., 'All Rights Reserved', 'CC-BY-SA')"
+        },
+        "permissions": {
+          "type": "object",
+          "properties": {
+            "canCopy": { "type": "boolean" },
+            "canModify": { "type": "boolean" },
+            "canDistribute": { "type": "boolean" },
+            "commercialUse": { "type": "boolean" }
+          }
+        }
+      },
+      "required": ["year", "holder"]
+    },
+    
+    "TeacherStudentLink": {
+      "type": "object",
+      "description": "Links teacher content to corresponding student content",
+      "properties": {
+        "studentPublicationId": { 
+          "type": "string",
+          "description": "UUID of student publication"
+        },
+        "studentPageId": { 
+          "type": "string",
+          "description": "UUID of student page"
+        },
+        "studentActivityId": { 
+          "type": "string",
+          "description": "UUID of student activity"
+        },
+        "studentTaskId": { 
+          "type": "string",
+          "description": "UUID of student task"
+        },
+        "linkType": {
+          "$ref": "./enums.json#/definitions/RelationshipType",
+          "description": "Type of relationship between teacher and student content"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Additional notes about the relationship"
+        }
+      },
+      "required": ["linkType"]
+    },
+    
+    "AccessibilityInfo": {
+      "type": "object",
+      "description": "Accessibility features and accommodations",
+      "properties": {
+        "altTextProvided": { 
+          "type": "boolean",
+          "description": "All images have alt text"
+        },
+        "closedCaptionsAvailable": { 
+          "type": "boolean",
+          "description": "Videos have closed captions"
+        },
+        "transcriptAvailable": { 
+          "type": "boolean",
+          "description": "Audio has text transcript"
+        },
+        "readingLevel": { 
+          "type": "string",
+          "description": "Reading level (e.g., 'Grade 4', '650L')"
+        },
+        "screenReaderCompatible": { 
+          "type": "boolean",
+          "description": "Compatible with screen readers"
+        },
+        "colorContrastRatio": { 
+          "type": "string",
+          "description": "WCAG color contrast ratio (e.g., '4.5:1')"
+        },
+        "keyboardNavigable": {
+          "type": "boolean",
+          "description": "Can be navigated with keyboard only"
+        }
+      }
+    },
+    
+    "LocalizationInfo": {
+      "type": "object",
+      "description": "Localization and translation information",
+      "properties": {
+        "language": { 
+          "$ref": "./enums.json#/definitions/Language",
+          "description": "ISO 639-1 language code (e.g., 'en', 'es', 'fr')"
+        },
+        "locale": { 
+          "$ref": "./enums.json#/definitions/Locale",
+          "description": "Full locale code (e.g., 'en-US', 'es-US')"
+        },
+        "state": {
+          "$ref": "./enums.json#/definitions/State",
+          "description": "State code if applicable (e.g., 'CA', 'TX')"
+        },
+        "translationStatus": {
+          "$ref": "./enums.json#/definitions/Status",
+          "description": "Current translation status"
+        },
+        "translatedBy": { 
+          "type": "string",
+          "description": "Name of translator or translation service"
+        },
+        "translatedDate": { 
+          "type": "string", 
+          "format": "date",
+          "description": "Date of translation"
+        },
+        "reviewedBy": {
+          "type": "string",
+          "description": "Name of reviewer"
+        },
+        "reviewedDate": {
+          "type": "string",
+          "format": "date",
+          "description": "Date of review"
+        },
+        "culturalAdaptations": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Cultural adaptations made (e.g., 'Changed currency to euros')"
+        }
+      },
+      "required": ["language"]
+    },
+    
+    "DifferentiationStrategies": {
+      "type": "object",
+      "description": "Differentiation strategies for different learner levels",
+      "properties": {
+        "advanced": {
+          "type": "string",
+          "description": "Extensions for advanced students"
+        },
+        "ell": {
+          "type": "string",
+          "description": "Supports for English Language Learners"
+        }
+      }
+    },
+    
+    "MaterialsList": {
+      "type": "object",
+      "description": "List of materials needed for an activity or lesson",
+      "properties": {
+        "required": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Materials that are required"
+        },
+        "optional": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Materials that are optional but recommended"
+        },
+        "digital": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Digital tools or resources needed"
+        },
+        "prepTime": {
+          "$ref": "#/definitions/TimeEstimate",
+          "description": "Time needed to prepare materials in minutes"
+        }
+      }
+    },
+    
+    "PublishingMetadata": {
+      "type": "object",
+      "description": "Publishing and version control metadata",
+      "properties": {
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "description": "Semantic version (e.g., '1.0.0')"
+        },
+        "edition": {
+          "type": "string",
+          "description": "Edition (e.g., '2024', 'First Edition')"
+        },
+        "publishedDate": {
+          "type": "string",
+          "format": "date",
+          "description": "Date of publication"
+        },
+        "lastModifiedDate": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last modification timestamp"
+        },
+        "lastModifiedBy": {
+          "type": "string",
+          "description": "User who last modified the content"
+        },
+        "status": {
+          "$ref": "./enums.json#/definitions/Status",
+          "description": "Publication status"
+        },
+        "reviewers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "role": { "type": "string" },
+              "date": { "type": "string", "format": "date" },
+              "approved": { "type": "boolean" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

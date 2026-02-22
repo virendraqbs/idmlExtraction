@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "schemas/instructional/instructional-prompt.json",
+  "title": "Instructional Prompt",
+  "description": "An instructional guide prompt or support element such as language goals, teacher stories, habits of mind, etc.",
+  "type": "object",
+  "properties": {
+    "id": {
+      "$ref": "../common/primitives.json#/definitions/UUID"
+    },
+    "studentContentReferenceId": {
+      "$ref": "../common/primitives.json#/definitions/UUID",
+      "description": "Reference to the associated student content element such as a lesson, module, or topic"
+    },
+    "instructionalPromptType": {
+      "$ref": "../common/enums.json#/definitions/InstructionalPromptType",
+      "description": "Type of instructional guide prompt"
+    },
+    "title": {
+      "type": "string",
+      "description": "Optional title for the prompt"
+    },
+    "content": {
+      "type": "string",
+      "description": "The prompt content or text if not in bullet form"
+    },
+    "contentItems": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List items if the prompt contains a list"
+    },
+    "images": {
+      "type": "array",
+      "items": {
+        "$ref": "../common/primitives.json#/definitions/Image"
+      },
+      "description": "Images associated with this prompt (e.g., character support images)"
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "displayStyle": {
+          "$ref": "../common/enums.json#/definitions/PromptDisplayStyle",
+          "description": "How this prompt should be displayed"
+        }
+      }
+    }
+  },
+  "required": ["id", "instructionalPromptType"]
+}

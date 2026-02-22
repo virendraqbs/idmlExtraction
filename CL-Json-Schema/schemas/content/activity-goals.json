@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "schemas/content/activity-goals.json",
+  "title": "Goals",
+  "description": "Learning goals associated with an activity, usually specific to state or national standards (e.g., habits of mind, common core learning goals, NGSS performance expectations)",
+  "type": "object",
+  "properties": {
+    "id": {
+      "$ref": "../common/primitives.json#/definitions/UUID"
+    },
+    "activityId": {
+      "$ref": "../common/primitives.json#/definitions/UUID",
+      "description": "Reference to the parent activity"
+    },
+    "goalType": {
+      "$ref": "../common/enums.json#/definitions/GoalType",
+      "description": "Type of goal (e.g., HABITS_OF_MIND, COMMON_CORE_LEARNING_GOAL, NGSS_PERFORMANCE_EXPECTATION)"
+    },
+    "goalItems": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Individual goals items or statements"
+    },
+    "standards": {
+      "type": "array",
+      "items": {
+        "$ref": "../common/primitives.json#/definitions/Reference"
+      },
+      "description": "Standards associated with this goal"
+    }
+  },
+  "required": ["id", "goalType", "activityId"]
+}

@@ -1,0 +1,75 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "schemas/content/lesson.json",
+  "title": "Lesson",
+  "description": "A lesson containing multiple activities",
+  "type": "object",
+  "properties": {
+    "id": {
+      "$ref": "../common/primitives.json#/definitions/UUID"
+    },
+    "topicId": {
+      "$ref": "../common/primitives.json#/definitions/UUID",
+      "description": "Reference to the parent topic"
+    },
+    "lessonNumber": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Lesson number within the topic"
+    },
+    "title": {
+      "type": "string",
+      "description": "Lesson title"
+    },
+    "lessonSummary": {
+      "type": "string",
+      "description": "Lesson summary"
+    },
+    "images": {
+      "type": "array",
+      "items": {
+        "$ref": "../common/primitives.json#/definitions/Reference"
+      },
+      "description": "Images used in this lesson not directly tied to a specific activity"
+    },
+    "learningGoals": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Learning goals for this lesson"
+    },
+    "standardsBlock": {
+      "$ref": "../common/primitives.json#/definitions/UUID",
+      "description": "References to the standards covered in this lesson, custom dependent on standards body"
+    },
+    "activities": {
+      "type": "array",
+      "items": {
+        "allOf": [
+          { "$ref": "../common/primitives.json#/definitions/Reference" },
+          {
+            "type": "object",
+            "properties": {
+              "sequenceNumber": { 
+                "type": "integer", 
+                "minimum": 1,
+                "description": "Order of the activity within the lesson"
+              }
+            },
+            "required": ["sequenceNumber"]
+          }
+        ]
+      },
+      "description": "References to activities in this lesson (activate, explore, reflect)"
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "pacingEstimate": {
+          "$ref": "../common/metadata.json#/definitions/PacingEstimate",
+          "description": "Estimated time for the lesson in minutes"
+        }
+      }
+    }
+  },
+  "required": ["id", "lessonNumber", "title", "topicId"]
+}

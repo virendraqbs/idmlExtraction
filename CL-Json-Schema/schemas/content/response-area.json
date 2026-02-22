@@ -1,0 +1,81 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "schemas/response/response-area.json",
+  "title": "Response Area",
+  "description": "A response area where students provide answers",
+  "type": "object",
+  "properties": {
+    "id": {
+      "$ref": "../common/primitives.json#/definitions/UUID"
+    },
+    "type": {
+      "$ref": "../common/enums.json#/definitions/ResponseAreaType",
+      "description": "Type of response area (OPEN_ENDED, CROSS_NUMBER_PUZZLE, etc.)"
+    },
+    "description": {
+      "type": "string",
+      "description": "Description of the response area"
+    },
+    "specifications": {
+      "type": "object",
+      "description": "Type-specific specifications",
+        "properties": {
+            "grid": {
+            "type": "object",
+            "description": "For GRID or CROSS_NUMBER_PUZZLE types",
+            "properties": {
+                "gridDimensions": {
+                "type": "object",
+                "properties": {
+                    "rows": { "type": "integer", "minimum": 1 },
+                    "columns": { "type": "integer", "minimum": 1 }
+                }
+                },
+                "gridStructure": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                    "row": { "type": "integer" },
+                    "col": { "type": "integer" },
+                    "editable": { "type": "boolean" },
+                    "expectedValue": { "type": "string" },
+                    "displayValue": { "type": "string" },
+                    "style": { "type": "string" }
+                    }
+                }
+                }
+            }
+            },
+        "numberLineRange": {
+          "type": "object",
+          "description": "For NUMBER_LINE type",
+          "properties": {
+            "min": { "type": "number" },
+            "max": { "type": "number" },
+            "increment": { "type": "number" }
+          }
+        },
+        "textAreaLines": {
+          "type": "integer",
+          "description": "For OPEN_ENDED type, number of lines",
+          "minimum": 1
+        },
+        "algorithmType": {
+          "type": "string",
+          "enum": ["ADDITION", "SUBTRACTION", "MULTIPLICATION", "DIVISION", "LONG_DIVISION"],
+          "description": "For ALGORITHM_WORKSPACE type"
+        },
+        "allowedTools": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["CALCULATOR", "RULER", "PROTRACTOR", "COMPASS", "MANIPULATIVES"]
+          },
+          "description": "Tools students can use"
+        }
+      }
+    }
+  },
+  "required": ["id", "type"]
+}

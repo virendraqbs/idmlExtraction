@@ -1,0 +1,76 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "schemas/content/module.json",
+  "title": "Module",
+  "description": "A module containing multiple topics",
+  "type": "object",
+  "properties": {
+    "id": {
+      "$ref": "../common/primitives.json#/definitions/UUID"
+    },
+    "resourceId": {
+      "$ref": "../common/primitives.json#/definitions/UUID",
+      "description": "Reference to the parent resource"
+    },
+    "standardsBody": {
+      "$ref": "../common/enums.json#/definitions/StandardsBody",
+      "description": "Standards body applicable to this module (e.g., 'CCSS', 'NGSS')"
+    },
+    "moduleNumber": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Module number (e.g., 1, 2, 3)"
+    },
+    "title": {
+      "type": "string",
+      "description": "Module title"
+    },
+    "moduleSummary": {
+      "type": "string",
+      "description": "Module summary"
+    },
+    "images": {
+      "type": "array",
+      "items": {
+        "$ref": "../common/primitives.json#/definitions/Reference"
+      },
+      "description": "Images used in this module not directly tied to a specific topic"
+    },
+    "gradeLevel": {
+      "type": "string",
+      "description": "Grade level (e.g., 'K', '1', '2', '3', '4', '5')"
+    },
+    "topics": {
+      "type": "array",
+      "items": {
+        "allOf": [
+          { "$ref": "../common/primitives.json#/definitions/Reference" },
+          {
+            "type": "object",
+            "properties": {
+              "sequenceNumber": { 
+                "type": "integer", 
+                "minimum": 1,
+                "description": "Order of the topics within the module"
+              }
+            },
+            "required": ["sequenceNumber"]
+          }
+        ]
+      },
+      "description": "References to topics in this module"
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "pacingEstimate": {
+          "$ref": "../common/metadata.json#/definitions/PacingEstimate"
+        },
+        "localizationInfo": {
+          "$ref": "../common/metadata.json#/definitions/LocalizationInfo"
+        }
+      }
+    }
+  },
+  "required": ["id", "moduleNumber", "title", "gradeLevel"]
+}

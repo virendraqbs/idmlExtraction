@@ -1,0 +1,90 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "schemas/content/instructional-segment.json",
+  "title": "Instructional Segment",
+  "description": "Instructional guide segment for module, lesson, or topic",
+  "type": "object",
+  "properties": {
+    "id": {
+      "$ref": "../common/primitives.json#/definitions/UUID"
+    },
+    "studentContentReferenceId": {
+      "$ref": "../common/primitives.json#/definitions/UUID",
+      "description": "Reference to the associated student content element"
+    },
+    "instructionalSegmentType": {
+      "$ref": "../common/enums.json#/definitions/InstructionalSegmentType",
+      "description": "Type of instructional segment (e.g., TASK, INTRODUCTION, etc.)"
+    },
+    "directions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "sequenceNumber": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "text": {
+            "type": "string",
+            "description": "The direction/instruction text"
+          },
+          "studentQuestions": {
+            "type": "array",
+            "description": "Questions to ask students (optional)",
+            "items": {
+              "type": "object",
+              "properties": {
+                "questionText": { 
+                  "type": "string",
+                  "description": "The question to ask students"
+                },
+                "sampleAnswers": {
+                  "type": "string",
+                  "description": "Sample/expected answers"
+                  }
+                }
+              },
+              "required": ["questionText"]
+            }
+          }
+        },
+
+        "required": ["sequenceNumber", "text"]
+      }
+    },
+    "images": {
+      "type": "array",
+      "items": {
+        "$ref": "../common/primitives.json#/definitions/Reference"
+      },
+      "description": "Images used in this instructional segment"
+    },
+    "allOf": [
+    {
+      "if": {
+        "properties": {
+          "instructionalSegmentType": {
+            "enum": ["TASK", "SETTING_THE_STAGE", "CLOSING", "DIFFERENTIATION_STRATEGY"]
+          }
+        }
+      },
+      "then": {
+        "required": ["directions"]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "instructionalSegmentType": {
+            "enum": ["INTRODUCTION", "ABOUT_THE_MATH", "LESSON_STRUCTURE_AND_PACING"]
+          }
+        }
+      },
+      "then": {
+        "required": ["contentItems"]
+      }
+    }
+  ],
+  "required": ["id", "instructionalSegmentType"]
+}
