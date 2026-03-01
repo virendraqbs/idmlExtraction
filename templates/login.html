@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CL Pipeline — Admin Login</title>
+<link rel="stylesheet" href="/static/css/theme.css">
+<style>
+  html, body { height: 100%; overflow: hidden; }
+  body { display: flex; align-items: center; justify-content: center; background: var(--bg); }
+  .login-wrapper { width: 100%; max-width: 420px; padding: 24px; }
+  .auth-card {
+    padding: 48px 40px;
+    position: relative;
+    animation: slideUp 0.5s ease-out both;
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .brand-logo-area { margin-bottom: 32px; }
+  .brand-logo-area h4 { font-size: 22px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+  .brand-logo-area .sub { font-size: 14px; color: var(--muted); }
+  .brand-logo-area .brand { font-size: 28px; font-weight: 700; color: var(--text); }
+  .brand-logo-area .brand span { color: var(--primary); }
+  .field { margin-bottom: 20px; }
+  label {
+    display: block;
+    font-size: 12px;
+    color: var(--muted);
+    font-weight: 500;
+    margin-bottom: 8px;
+  }
+  .btn-login { width: 100%; margin-top: 8px; padding: 14px; font-size: 14px; }
+  .error-banner {
+    background: rgba(254, 124, 150, 0.12);
+    border: 1px solid rgba(254, 124, 150, 0.35);
+    border-left: 4px solid var(--danger);
+    color: var(--danger);
+    font-size: 13px;
+    padding: 12px 16px;
+    margin-bottom: 24px;
+    border-radius: 4px;
+  }
+  .version-badge { position: absolute; bottom: 20px; right: 24px; font-size: 11px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="login-wrapper">
+  <div class="auth-card card-panel">
+    <div class="brand-logo-area">
+      <div class="brand">CL <span>Pipeline</span></div>
+      <h4>Hello! Let's get started</h4>
+      <p class="sub">Sign in to continue.</p>
+    </div>
+
+    {% if error %}
+    <div class="error-banner">&#9888; {{ error }}</div>
+    {% endif %}
+
+    <form method="POST" action="/login">
+      <div class="field">
+        <label>Username</label>
+        <input type="text" name="username" placeholder="Username" autocomplete="username" required>
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" name="password" placeholder="Password" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="btn-login btn-primary">SIGN IN</button>
+    </form>
+
+    <div class="version-badge">Gemini 2.5 · v1.0</div>
+  </div>
+</div>
+</body>
+</html>

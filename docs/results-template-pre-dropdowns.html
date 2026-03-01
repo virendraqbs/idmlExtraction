@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CL Pipeline — Results</title>
+<link rel="stylesheet" href="/static/css/theme.css">
+<!-- Full template snapshot before Module → Resource → Lesson → Page dropdown flow.
+     See IMPLEMENTATION.md for API and flow description. -->
+<style>
+  body { display: flex; flex-direction: column; }
+  nav { padding: 0 32px; height: 64px; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+  .nav-brand { font-size: 20px; font-weight: 700; color: var(--text); }
+  .nav-right { display: flex; align-items: center; gap: 16px; }
+  .view-mode-strip { display: flex; align-items: center; gap: 20px; margin-bottom: 0; flex-wrap: wrap; }
+  .view-mode-btn { padding: 8px 20px; font-size: 13px; font-weight: 500; background: var(--surface); color: var(--muted); border: none; cursor: pointer; }
+  .view-mode-btn.active { background: var(--primary); color: #fff; }
+  .view-panel { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+  .view-panel.active { display: flex; }
+  .editor-content { flex: 1; overflow: auto; padding: 32px 40px; max-width: 900px; margin: 0 auto; }
+  .editor-section { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 24px; margin-bottom: 24px; position: relative; }
+  .editor-section .schema-tag { position: absolute; top: 12px; right: 12px; font-size: 11px; font-weight: 500; color: var(--primary); background: rgba(182, 109, 255, 0.12); padding: 4px 10px; border-radius: 4px; }
+  .editor-loading, .editor-error { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--muted); padding: 40px; }
+  .editor-error { color: var(--danger); }
+</style>
+</head>
+<body>
+<!-- Snapshot: Editor showed flat lesson content (goals, standards, prompts, activities) without hierarchy dropdowns. -->
+<!-- API: GET /api/results/{job_id}/editor returned: lesson, standards, standardsBlocks, instructionalPrompts, activities. -->
+</body>
+</html>

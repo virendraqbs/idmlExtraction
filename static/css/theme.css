@@ -1,0 +1,162 @@
+/**
+ * Purple-free theme (theme/purple-free)
+ * Palette and styling aligned with Purple Admin template.
+ */
+:root {
+  /* Primary & gradients */
+  --primary: #b66dff;
+  --primary-dark: #9a4ddf;
+  --primary-rgb: 182, 109, 255;
+  --accent: #b66dff;
+  --accent2: #d4b5ff;
+
+  /* Semantic */
+  --success: #1bcfb4;
+  --info: #198ae3;
+  --warning: #fed713;
+  --danger: #fe7c96;
+
+  /* Light theme backgrounds (purple-free) */
+  --bg: #f8f9fa;
+  --surface: #ffffff;
+  --surface2: #f1f3f4;
+  --border: #ebedf2;
+  --border-light: #e9ecef;
+
+  /* Text */
+  --text: #343a40;
+  --muted: #6c757d;
+  --text-inverse: #ffffff;
+
+  /* Typography */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "Roboto Mono", "SF Mono", Consolas, monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  min-height: 100vh;
+  line-height: 1.5;
+}
+
+/* Cards (auth-form-light style) */
+.auth-card, .card-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.06);
+}
+
+/* Primary button (btn-gradient-primary) */
+.btn-primary, .btn-login {
+  background: linear-gradient(to right, var(--primary), var(--primary-dark));
+  color: var(--text-inverse) !important;
+  border: none;
+  font-weight: 500;
+  padding: 12px 24px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.1s;
+}
+.btn-primary:hover, .btn-login:hover { opacity: 0.92; }
+.btn-primary:active, .btn-login:active { transform: scale(0.98); }
+
+/* Form controls */
+input[type="text"], input[type="password"], input[type="email"],
+.form-control {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 14px;
+  padding: 12px 16px;
+  border-radius: 4px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+input:focus, .form-control:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.15);
+}
+
+/* Navbar (default-layout style) */
+.navbar-theme {
+  background: var(--surface) !important;
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+.nav-brand span { color: var(--primary); }
+.nav-link.primary {
+  background: linear-gradient(to right, var(--primary), var(--primary-dark));
+  color: var(--text-inverse) !important;
+  border: none;
+}
+.nav-link.primary:hover {
+  opacity: 0.9;
+  color: var(--text-inverse) !important;
+}
+
+/* Stat cards / gradient cards */
+.stat-card.total::before { background: var(--primary); }
+.stat-card.done::before { background: var(--success); }
+.stat-card.running::before { background: var(--warning); }
+.stat-card.error::before { background: var(--danger); }
+
+/* Badges */
+.badge.done { color: var(--success); }
+.badge.done .badge-dot { background: var(--success); }
+.badge.extracting .badge-dot, .badge.rendering .badge-dot,
+.badge.assembling .badge-dot, .badge.health_check .badge-dot { background: var(--warning); }
+.badge.error { color: var(--danger); }
+.badge.error .badge-dot { background: var(--danger); }
+.badge.queued .badge-dot { background: var(--muted); }
+
+/* Action links */
+.action-link {
+  display: inline-block;
+  color: var(--primary);
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 6px 12px;
+  border: 1px solid rgba(var(--primary-rgb), 0.35);
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+.action-link:hover { background: rgba(var(--primary-rgb), 0.08); border-color: var(--primary); }
+
+/* Progress bar fill */
+.progress-fill {
+  background: linear-gradient(90deg, var(--primary), var(--accent2));
+}
+
+/* Stage / chip active state */
+.stage-item.active .stage-num { border-color: var(--primary); color: var(--primary); }
+.stage-item.active .stage-name { color: var(--primary); }
+.page-chip.active { border-color: var(--primary); color: var(--primary); background: rgba(var(--primary-rgb), 0.1); }
+
+/* Tab active */
+.tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+.tab.active .tab-num { background: rgba(var(--primary-rgb), 0.2); color: var(--primary); }
+
+/* Error banner */
+.error-banner {
+  background: rgba(254, 124, 150, 0.1);
+  border-color: rgba(254, 124, 150, 0.35);
+  color: var(--danger);
+}
+
+/* Log / terminal accent */
+.log-terminal { border-top-color: var(--primary); }
+.log-line.info { color: var(--primary); }
+
+/* Download button */
+.dl-btn:hover { border-color: var(--primary); color: var(--primary); }
+
+/* Breadcrumb / links */
+.page-header .breadcrumb a { color: var(--primary); }
+.auth-link.text-primary { color: var(--primary); }
