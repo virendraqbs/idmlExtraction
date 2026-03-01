@@ -29,15 +29,52 @@ You receive ONE page image. Extract EVERYTHING visible — text, math, images, g
 - Math expressions: wrap ALL inline math in $...$ and display math in $$...$$.
 - Preserve EXACT wording. For multi-line text join with \\n.
 
-═══ IMAGE & GRAPH EXTRACTION ═══
-For EVERY image, graph, chart, diagram, icon on the page:
-1. imageType: LESSON_COVER | INSTRUCTIONAL | TECHNICAL_ART | DECORATIVE | ICON | CHARACTER_SUPPORT
-2. If coordinate plane / number line / grid: containsGraph: true
-3. Describe ALL visible labels, axis values, plotted points precisely in description.
-4. Student response areas (blank planes, grids, lines for writing): isResponseArea: true
-   responseAreaType: COORDINATE_PLANE | GRID | NUMBER_LINE | TABLE | OPEN_LINE | BOX
-5. position: TOP_LEFT | TOP_CENTER | TOP_RIGHT | MIDDLE_LEFT | MIDDLE_CENTER | MIDDLE_RIGHT
-             | BOTTOM_LEFT | BOTTOM_CENTER | BOTTOM_RIGHT | LEFT_SIDEBAR | RIGHT_SIDEBAR | FULL_WIDTH
+═══ STANDARDS PAGE DETECTION ═══
+A page is a STANDARDS_PAGE if it shows educational standards for a state or national body.
+Indicators: a bold header like "California High School", "Texas", a state flag/seal image,
+sections titled "Big Ideas", "Standards", "Interpreting Functions", numbered standard items, etc.
+
+For STANDARDS_PAGE pages you MUST fully populate the standards_block object:
+- title: the main heading (e.g. "California High School")
+- standards_body: one of CCSS | CA_CCSS | TEKS | BEST  (infer from context)
+- grade_level: e.g. "HS", "K", "3" — infer from the header
+- subtitle: sub-heading under title if present (e.g. "Functions Standards")
+- conceptual_overlay_subtitle: heading above Big Ideas if present
+- big_ideas: array of strings — each "Big Idea" bullet (e.g. ["Function Investigations", "Features of Functions"])
+- standards: array of standard items found on the page. Each standard has:
+    code: the standard code (e.g. "HSF-IF.A.1", "F-IF.1")
+         If no explicit code is visible, synthesize one from the domain+cluster+number.
+    full_text: the complete text of the standard — preserve EXACT wording including italics markers
+    domain: the domain heading (e.g. "Interpreting Functions")
+    cluster: the cluster heading if present (e.g. "Understand the concept of a function")
+    has_modeling_symbol: true if a star ★ symbol appears next to the standard
+
+═══ IMAGE EXTRACTION (CL-Json-Schema media/image) ═══
+For EVERY image, graph, chart, diagram, icon on the page output an object with:
+
+Required / inferred:
+- id: ""
+- image_type: one of MODULE_COVER | TOPIC_COVER | LESSON_COVER | INSTRUCTIONAL | DECORATIVE | TECHNICAL_ART | CHARACTER_SUPPORT | MANIPULATIVE | ICON
+- filename: "" (leave empty; no file from PDF extraction)
+- alt_text: alternative text for accessibility; use "" only if image_type is DECORATIVE
+- description: full visual description (labels, axis values, plotted points for graphs)
+
+When image_type is TECHNICAL_ART, set technical_art_type to one of:
+  NUMBER_LINES | BAR_GRAPHS | WOLS | SHAPES_OUTLINED | SHAPES_FILLED | SHAPES_3D | TABLES | CLOCKS | SHAPES_GRID | PLACE_VALUE | CROSS_NUMBER_PUZZLES | BAR_AND_LINE_GRAPHS | COUNTING_CHART | SPINNER_CHARTS | SHAPES_GRIDS_AND_COUNTERS | SHAPES_ANGLE_MEASUREMENTS
+
+Optional (extract when visible):
+- title: image title or name if shown
+- caption: caption text below the image
+- dimensions: { "width": null, "height": null, "unit": "PIXELS" } or null; estimate if size is obvious
+- format: null or one of PNG | JPG | JPEG | SVG | GIF | WEBP if inferable
+- accessibility: { "is_decorative": false, "long_description": null } — set long_description to extended description for complex diagrams; is_decorative true only for purely decorative images
+
+Graph/response-area (keep):
+- contains_graph: true if coordinate plane / number line / grid
+- is_response_area: true for blank planes, grids, lines for student writing
+- response_area_type: COORDINATE_PLANE | GRID | NUMBER_LINE | TABLE | OPEN_LINE | BOX when applicable
+- position: TOP_LEFT | TOP_CENTER | TOP_RIGHT | MIDDLE_LEFT | MIDDLE_CENTER | MIDDLE_RIGHT | BOTTOM_LEFT | BOTTOM_CENTER | BOTTOM_RIGHT | LEFT_SIDEBAR | RIGHT_SIDEBAR | FULL_WIDTH
+- graph_details: { "x_axis_label": null, "x_axis_range": null, "y_axis_label": null, "y_axis_range": null, "plotted_elements": [], "grid_type": null }; fill when contains_graph is true
 
 ═══ RETURN EXACTLY THIS JSON ═══
 {
@@ -65,13 +102,13 @@ For EVERY image, graph, chart, diagram, icon on the page:
     }]
   }],
   "images": [{
-    "id": "", "sequence_on_page": 1, "image_type": "", "position": "",
-    "alt_text": "", "description": "",
-    "contains_graph": false, "is_decorative": false,
-    "is_response_area": false, "response_area_type": null,
+    "id": "", "sequence_on_page": 1, "image_type": "", "filename": "",
+    "technical_art_type": null, "alt_text": "", "caption": null, "title": null,
+    "description": "", "dimensions": null, "format": null,
+    "accessibility": { "is_decorative": false, "long_description": null },
+    "position": "", "contains_graph": false, "is_response_area": false, "response_area_type": null,
     "graph_details": {
-      "x_axis_label": null, "x_axis_range": null,
-      "y_axis_label": null, "y_axis_range": null,
+      "x_axis_label": null, "x_axis_range": null, "y_axis_label": null, "y_axis_range": null,
       "plotted_elements": [], "grid_type": null
     }
   }],

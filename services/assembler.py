@@ -39,6 +39,7 @@ def assemble_schemas(
     pages: list[dict],
     out_dir: Path,
     source_filename: str,
+    image_manifest: dict | None = None,
 ) -> list[str]:
     """
     Build and write all 15 CL-Json-Schema JSON files.
@@ -47,6 +48,8 @@ def assemble_schemas(
         pages:           Raw per-page dicts from GeminiService.extract_page()
         out_dir:         Directory to write output files into
         source_filename: Original PDF filename (used as resource title)
+        image_manifest:  Output from extract_images_from_pdf() — maps pages to
+                         extracted image file paths.
 
     Returns:
         List of filenames written (15 items).
@@ -71,17 +74,23 @@ def assemble_schemas(
                         std_block_id=std_block_id,
                         standards=standards,
                         lesson_meta=lesson_meta,
+                        pages=pages,
                     )
 
     # Activities (also populates tasks + stems as side-effects)
-    all_raw_activities = [act for page in pages for act in (page.get("activities") or [])]
+    all_raw_activities = []
+    for page in pages:
+        pn = page.get("page_number")
+        for act in page.get("activities") or []:
+            act["_source_page"] = pn
+            all_raw_activities.append(act)
     activities, tasks, stems = build_activities_chunk(
         lesson_id=lesson_id,
         raw_activities=all_raw_activities,
     )
 
     # Images, pages, prompts
-    images   = build_images_chunk(pages=pages)
+    images   = build_images_chunk(pages=pages, image_manifest=image_manifest)
     pg_list  = build_pages_chunk(pages=pages, resource_id=resource_id)
     prompts  = build_instructional_prompts_chunk(pages=pages, lesson_id=lesson_id)
     segments = build_instructional_segments(lesson_id=lesson_id, activities=activities)

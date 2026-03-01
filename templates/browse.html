@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CL Pipeline — Browse Outputs</title>
+<title>CL Pipeline — All Extractions</title>
 <link rel="stylesheet" href="/static/css/theme.css">
 <style>
   nav { padding: 0 32px; height: 64px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
@@ -13,41 +13,44 @@
   .nav-link:hover { border-color: var(--primary); color: var(--primary); }
   .nav-link.primary { background: linear-gradient(to right, var(--primary), var(--primary-dark)); color: #fff !important; border: none; }
 
-  .page { max-width: 900px; margin: 0 auto; padding: 40px 32px; }
-
+  .page { max-width: 1100px; margin: 0 auto; padding: 40px 32px; }
   .page-header { margin-bottom: 28px; }
   .page-header .breadcrumb { font-size: 12px; color: var(--muted); margin-bottom: 12px; }
   .page-header .breadcrumb a { color: var(--primary); text-decoration: none; }
   .page-header h1 { font-size: 28px; font-weight: 700; color: var(--text); }
   .page-header p { color: var(--muted); font-size: 14px; margin-top: 6px; }
 
-  .outputs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
-  .output-card {
-    display: flex; align-items: center; gap: 16px;
-    padding: 18px 22px; background: var(--surface);
-    border: 1px solid var(--border); border-radius: 8px;
-    text-decoration: none; color: var(--text); transition: all 0.2s;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-  }
-  .output-card:hover { border-color: var(--primary); box-shadow: 0 3px 12px rgba(var(--primary-rgb),0.12); transform: translateY(-1px); }
-  .output-icon { font-size: 28px; flex-shrink: 0; }
-  .output-info { flex: 1; min-width: 0; }
-  .output-id { font-size: 13px; font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .output-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
-  .output-arrow { color: var(--primary); font-size: 18px; flex-shrink: 0; opacity: 0; transition: opacity 0.2s; }
-  .output-card:hover .output-arrow { opacity: 1; }
-
   .count-badge {
     display: inline-flex; align-items: center; gap: 6px;
-    font-size: 13px; font-weight: 500; color: var(--muted);
-    margin-bottom: 20px;
+    font-size: 13px; font-weight: 500; color: var(--muted); margin-bottom: 20px;
   }
   .count-badge strong { color: var(--text); font-size: 16px; }
 
+  .grid-table { width: 100%; border-collapse: collapse; background: var(--surface); border-radius: 8px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+  .grid-table th {
+    font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;
+    color: var(--muted); text-align: left; padding: 14px 20px; border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+  }
+  .grid-table td { padding: 14px 20px; border-bottom: 1px solid var(--border-light); color: var(--text); font-size: 13px; }
+  .grid-table tr:last-child td { border-bottom: none; }
+  .grid-table tr:hover td { background: rgba(182, 109, 255, 0.03); }
+
+  .mono-id { font-family: monospace; font-size: 12px; font-weight: 500; }
+  .num-cell { text-align: center; font-weight: 600; }
+  .num-cell .num-val { font-size: 16px; color: var(--text); }
+  .num-cell .num-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .view-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 16px; font-size: 12px; font-weight: 600;
+    color: var(--primary); border: 1px solid rgba(var(--primary-rgb), 0.3);
+    border-radius: 4px; text-decoration: none; transition: all 0.2s;
+  }
+  .view-btn:hover { background: rgba(var(--primary-rgb), 0.08); border-color: var(--primary); }
+
   .empty-state {
     text-align: center; padding: 64px 24px; border-radius: 8px;
-    border: 2px dashed var(--border); color: var(--muted); font-size: 14px;
-    background: var(--surface);
+    border: 2px dashed var(--border); color: var(--muted); font-size: 14px; background: var(--surface);
   }
   .empty-state strong { display: block; font-size: 20px; color: var(--text); margin-bottom: 8px; }
   .empty-cta {
@@ -63,30 +66,40 @@
   <div class="nav-brand">CL <span>Pipeline</span></div>
   <div class="nav-right">
     <a href="/dashboard" class="nav-link">&#8592; Dashboard</a>
-    <a href="/upload" class="nav-link primary">+ New Job</a>
+    <a href="/dashboard" class="nav-link primary">+ New Job</a>
   </div>
 </nav>
 <div class="page">
   <div class="page-header">
-    <div class="breadcrumb"><a href="/dashboard">Dashboard</a> / Browse Outputs</div>
-    <h1>Output Folders</h1>
-    <p>Select an extraction to view in Editor, Source JSON, or PDF viewer.</p>
+    <div class="breadcrumb"><a href="/dashboard">Dashboard</a> / All Extractions</div>
+    <h1>All Extractions</h1>
+    <p>Complete list of extraction results. Click View to open Editor, Source JSON, or PDF viewer.</p>
   </div>
 
   {% if folders %}
   <div class="count-badge"><strong>{{ folders|length }}</strong> extraction{{ 's' if folders|length != 1 else '' }} found</div>
-  <div class="outputs-grid">
-    {% for f in folders %}
-    <a class="output-card" href="/results/{{ f.id }}">
-      <div class="output-icon">&#128230;</div>
-      <div class="output-info">
-        <div class="output-id">{{ f.id }}</div>
-        <div class="output-sub">16 JSON files &middot; Editor / Source / PDF</div>
-      </div>
-      <div class="output-arrow">&#8594;</div>
-    </a>
-    {% endfor %}
-  </div>
+  <table class="grid-table">
+    <thead>
+      <tr>
+        <th style="width:50%">Job ID</th>
+        <th style="text-align:center">Pages</th>
+        <th style="text-align:center">Images</th>
+        <th style="text-align:center">Files</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for f in folders %}
+      <tr>
+        <td><span class="mono-id">{{ f.id }}</span></td>
+        <td class="num-cell"><span class="num-val">{{ f.pages }}</span></td>
+        <td class="num-cell"><span class="num-val">{{ f.images }}</span></td>
+        <td class="num-cell"><span class="num-val">{{ f.files }}</span></td>
+        <td><a href="/results/{{ f.id }}" class="view-btn">View &#8594;</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
   {% else %}
   <div class="empty-state">
     <strong>No output folders found</strong>

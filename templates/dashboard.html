@@ -157,19 +157,30 @@
     background: var(--surface);
   }
 
+  /* ── View All link ── */
+  .view-all-link {
+    font-size: 12px; font-weight: 600; color: var(--primary);
+    text-decoration: none; white-space: nowrap;
+  }
+  .view-all-link:hover { text-decoration: underline; }
+
   /* ── Recent Outputs ── */
-  .recent-outputs { margin-top: 32px; }
-  .outputs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+  .outputs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
   .output-item {
-    display: flex; align-items: center; gap: 14px; padding: 14px 18px;
+    display: flex; align-items: center; gap: 14px; padding: 16px 20px;
     background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
     text-decoration: none; color: var(--text); transition: all 0.2s;
   }
-  .output-item:hover { border-color: var(--primary); box-shadow: 0 2px 8px rgba(var(--primary-rgb),0.1); }
-  .output-item-icon { font-size: 24px; flex-shrink: 0; }
-  .output-item-id { font-size: 13px; font-weight: 500; word-break: break-all; }
-  .output-item-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
-  .output-item-arrow { margin-left: auto; color: var(--muted); font-size: 16px; flex-shrink: 0; }
+  .output-item:hover { border-color: var(--primary); box-shadow: 0 2px 8px rgba(var(--primary-rgb),0.1); transform: translateY(-1px); }
+  .output-item-left { flex: 1; min-width: 0; }
+  .output-item-id { font-size: 13px; font-weight: 600; color: var(--text); font-family: monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .output-item-meta { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+  .meta-chip {
+    font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 4px;
+    background: var(--surface2); color: var(--muted); border: 1px solid var(--border-light);
+  }
+  .output-item-arrow { margin-left: auto; color: var(--muted); font-size: 18px; flex-shrink: 0; transition: color 0.2s; }
+  .output-item:hover .output-item-arrow { color: var(--primary); }
 
   .error-banner {
     background: rgba(254,124,150,0.12); border: 1px solid rgba(254,124,150,0.35);
@@ -232,66 +243,49 @@
   </div>
 
   <!-- ── Stats ── -->
-  {% set total_jobs = jobs|length %}
-  {% set done_jobs = jobs|selectattr('status','eq','done')|list|length %}
-  {% set running_jobs = jobs|rejectattr('status','in',['done','error','queued'])|list|length %}
-  {% set error_jobs = jobs|selectattr('status','eq','error')|list|length %}
+  {% set running_jobs_list = jobs|rejectattr('status','in',['done','error','queued'])|list %}
+  {% set error_jobs_list = jobs|selectattr('status','eq','error')|list %}
+  {% set total_count = folders|length %}
+  {% set running_count = running_jobs_list|length %}
+  {% set error_count = error_jobs_list|length %}
 
   <div class="stats-row">
     <div class="stat-card total">
-      <div class="stat-num">{{ total_jobs }}</div>
-      <div class="stat-label">Total Jobs</div>
+      <div class="stat-num">{{ total_count }}</div>
+      <div class="stat-label">Total Outputs</div>
     </div>
     <div class="stat-card done">
-      <div class="stat-num">{{ done_jobs }}</div>
+      <div class="stat-num">{{ total_count }}</div>
       <div class="stat-label">Completed</div>
     </div>
     <div class="stat-card running">
-      <div class="stat-num">{{ running_jobs }}</div>
+      <div class="stat-num">{{ running_count }}</div>
       <div class="stat-label">In Progress</div>
     </div>
     <div class="stat-card error">
-      <div class="stat-num">{{ error_jobs }}</div>
+      <div class="stat-num">{{ error_count }}</div>
       <div class="stat-label">Failed</div>
     </div>
   </div>
 
-  <!-- ── Jobs Table ── -->
-  {% if jobs %}
+  <!-- ── Active Jobs (in-progress / error) ── -->
+  {% if running_jobs_list or error_jobs_list %}
   <div class="section-header">
-    <div class="section-title">Extraction Jobs</div>
+    <div class="section-title">Active Jobs</div>
   </div>
   <table class="jobs-table">
     <thead>
-      <tr>
-        <th>File</th>
-        <th>Job ID</th>
-        <th>Status</th>
-        <th>Progress</th>
-        <th>Action</th>
-      </tr>
+      <tr><th>File</th><th>Job ID</th><th>Status</th><th>Progress</th><th>Action</th></tr>
     </thead>
     <tbody>
-      {% for job in jobs %}
+      {% for job in running_jobs_list + error_jobs_list %}
       <tr>
         <td><div class="job-filename">{{ job.filename }}</div></td>
         <td><div class="job-id">{{ job.id[:12] }}&#8230;</div></td>
+        <td><span class="badge {{ job.status }}"><span class="badge-dot"></span> {{ job.status }}</span></td>
+        <td><span style="font-size:13px;color:var(--muted)">{{ job.progress }}% {% if job.total %}({{ job.pages_done|length }}/{{ job.total }} pages){% endif %}</span></td>
         <td>
-          <span class="badge {{ job.status }}">
-            <span class="badge-dot"></span>
-            {{ job.status }}
-          </span>
-        </td>
-        <td>
-          <span style="font-size:13px;color:var(--muted)">
-            {{ job.progress }}%
-            {% if job.total %}({{ job.pages_done|length }}/{{ job.total }} pages){% endif %}
-          </span>
-        </td>
-        <td>
-          {% if job.status == 'done' %}
-            <a href="/results/{{ job.id }}" class="action-link">View Results &#8594;</a>
-          {% elif job.status == 'error' %}
+          {% if job.status == 'error' %}
             <a href="/job/{{ job.id }}" class="action-link" style="color:var(--danger);border-color:rgba(254,124,150,0.4)">View Error &#8594;</a>
           {% else %}
             <a href="/job/{{ job.id }}" class="action-link">Monitor &#8594;</a>
@@ -301,34 +295,34 @@
       {% endfor %}
     </tbody>
   </table>
-  {% else %}
-  <div class="section-header">
-    <div class="section-title">Extraction Jobs</div>
-  </div>
-  <div class="empty-jobs">
-    No extraction jobs yet. Upload a PDF above to get started.
-  </div>
   {% endif %}
 
-  <!-- ── Recent Outputs (browse) ── -->
-  {% if folders and folders|length > 0 %}
-  <div class="recent-outputs">
-    <div class="section-header">
-      <div class="section-title">Recent Outputs</div>
-    </div>
-    <div class="outputs-grid">
-      {% for f in folders[:6] %}
-      <a class="output-item" href="/results/{{ f.id }}">
-        <div class="output-item-icon">&#128230;</div>
-        <div>
-          <div class="output-item-id">{{ f.id[:20] }}&#8230;</div>
-          <div class="output-item-sub">16 JSON files</div>
-        </div>
-        <div class="output-item-arrow">&#8594;</div>
-      </a>
-      {% endfor %}
-    </div>
+  <!-- ── Completed Extractions ── -->
+  <div class="section-header" style="margin-top:32px;">
+    <div class="section-title">Recent Extractions</div>
+    {% if folders|length > 6 %}
+    <a href="/browse" class="view-all-link">View All ({{ folders|length }}) &#8594;</a>
+    {% endif %}
   </div>
+
+  {% if folders|length > 0 %}
+  <div class="outputs-grid">
+    {% for f in folders[:6] %}
+    <a class="output-item" href="/results/{{ f.id }}">
+      <div class="output-item-left">
+        <div class="output-item-id">{{ f.id[:16] }}&#8230;</div>
+        <div class="output-item-meta">
+          <span class="meta-chip">{{ f.pages }} pages</span>
+          <span class="meta-chip">{{ f.images }} images</span>
+          <span class="meta-chip">{{ f.files }} files</span>
+        </div>
+      </div>
+      <div class="output-item-arrow">&#8594;</div>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-jobs">No extractions yet. Upload a PDF above to get started.</div>
   {% endif %}
 </div>
 

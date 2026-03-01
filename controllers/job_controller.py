@@ -89,14 +89,38 @@ def _resolve_output_and_pdf(job_id: str) -> tuple[Path | None, Path | None]:
 
 # ── Dashboard ─────────────────────────────────────────────────────────────────
 
-@jobs_router.get("/dashboard", response_class=HTMLResponse)
-async def dashboard(request: Request, _=Depends(require_login)):
-    jobs = [j.to_dict(include_logs=False) for j in job_repo.all()]
-    folders = []
+def _enrich_folder(p: Path) -> dict:
+    """Read page/image counts from a completed output folder."""
+    info: dict = {"id": p.name, "path": str(p), "pages": 0, "images": 0, "files": 0}
+    try:
+        info["files"] = sum(1 for f in p.iterdir() if f.suffix == ".json")
+        pages_file = p / "13_pages.json"
+        if pages_file.exists():
+            with open(pages_file, encoding="utf-8") as f:
+                info["pages"] = json.load(f).get("count", 0)
+        images_file = p / "12_images.json"
+        if images_file.exists():
+            with open(images_file, encoding="utf-8") as f:
+                info["images"] = json.load(f).get("count", 0)
+    except Exception:
+        pass
+    return info
+
+
+def _scan_output_folders() -> list[dict]:
+    """Scan the output directory and return enriched folder info, newest first."""
+    folders: list[dict] = []
     if config.OUTPUT_DIR.exists():
         for p in sorted(config.OUTPUT_DIR.iterdir(), key=lambda x: x.stat().st_mtime, reverse=True):
             if p.is_dir() and (p / "06_lesson.json").exists():
-                folders.append({"id": p.name, "path": str(p)})
+                folders.append(_enrich_folder(p))
+    return folders
+
+
+@jobs_router.get("/dashboard", response_class=HTMLResponse)
+async def dashboard(request: Request, _=Depends(require_login)):
+    jobs = [j.to_dict(include_logs=False) for j in job_repo.all()]
+    folders = _scan_output_folders()
     return templates.TemplateResponse(
         "dashboard.html",
         {"request": request, "session": request.session, "jobs": jobs, "folders": folders, "error": None},
@@ -105,12 +129,8 @@ async def dashboard(request: Request, _=Depends(require_login)):
 
 @jobs_router.get("/browse", response_class=HTMLResponse)
 async def browse_outputs(request: Request, _=Depends(require_login)):
-    """List output folders so admin can open any extraction in Editor/Source/PDF view."""
-    folders = []
-    if config.OUTPUT_DIR.exists():
-        for p in sorted(config.OUTPUT_DIR.iterdir(), key=lambda x: x.stat().st_mtime, reverse=True):
-            if p.is_dir() and (p / "06_lesson.json").exists():
-                folders.append({"id": p.name, "path": str(p)})
+    """List all output folders in a full grid view."""
+    folders = _scan_output_folders()
     return templates.TemplateResponse(
         "browse.html",
         {"request": request, "folders": folders},
@@ -460,6 +480,34 @@ async def api_result_file(
         raise HTTPException(status_code=404, detail="file not found")
     with open(fpath, encoding="utf-8") as fh:
         return json.load(fh)
+
+
+@jobs_router.get("/outputs/{job_id}/page_images/{page_num}.png")
+async def serve_page_image(
+    request: Request, job_id: str, page_num: int, _=Depends(require_login)
+):
+    """Render a single PDF page as PNG, cache it inside outputs/{job_id}/page_images/."""
+    out_dir, pdf_path = _resolve_output_and_pdf(job_id)
+    if not out_dir or not out_dir.exists():
+        raise HTTPException(status_code=404, detail="Output directory not found")
+    cache_dir = out_dir / "page_images"
+    cache_dir.mkdir(exist_ok=True)
+    cached = cache_dir / f"page_{page_num}.png"
+    if not cached.exists():
+        if not pdf_path or not pdf_path.exists():
+            raise HTTPException(status_code=404, detail="PDF not found")
+        from pdf2image import convert_from_path
+
+        imgs = convert_from_path(
+            str(pdf_path), dpi=150, first_page=page_num, last_page=page_num, fmt="PNG",
+        )
+        if not imgs:
+            raise HTTPException(status_code=404, detail="Page not found")
+        imgs[0].save(str(cached), "PNG")
+    return FileResponse(
+        path=str(cached), media_type="image/png",
+        filename=f"page_{page_num}.png",
+    )
 
 
 # PDF must be declared before the generic outputs route so /outputs/{id}/pdf is matched

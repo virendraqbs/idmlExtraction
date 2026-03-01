@@ -18,6 +18,7 @@ env/
 uploads/
 outputs/
 output/
+page_images/
 
 # Project-specific exclusions
 CL-Json-Schema/

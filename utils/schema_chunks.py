@@ -224,7 +224,10 @@ def build_activities_chunk(
 
     for seq, raw_act in enumerate(raw_activities, 1):
         act_id    = gen_id()
-        task_refs = _build_tasks_for_activity(act_id, raw_act.get("tasks") or [], tasks, stems)
+        src_page  = raw_act.get("_source_page")
+        task_refs = _build_tasks_for_activity(
+            act_id, raw_act.get("tasks") or [], tasks, stems, src_page,
+        )
 
         activities.append({
             "id":             act_id,
@@ -236,6 +239,7 @@ def build_activities_chunk(
             "habitsOfMind":   raw_act.get("habits_of_mind", []),
             "directionLines": raw_act.get("direction_lines", []),
             "tasks":          task_refs,
+            "sourcePage":     src_page,
         })
 
     return activities, tasks, stems
@@ -246,6 +250,7 @@ def _build_tasks_for_activity(
     raw_tasks: list[dict],
     tasks_acc: list[dict],
     stems_acc: list[dict],
+    source_page: Any = None,
 ) -> list[dict]:
     """Build task + stem entities for one activity; append to accumulators."""
     task_refs: list[dict] = []
@@ -253,18 +258,19 @@ def _build_tasks_for_activity(
     for raw_task in raw_tasks:
         task_id  = gen_id()
         stem_id  = gen_id()
-        has_resp = raw_task.get("has_response_area", False)
 
         stems_acc.append(build_stem(
             stem_id=stem_id,
             task_id=task_id,
             raw_task=raw_task,
+            source_page=source_page,
         ))
         tasks_acc.append(build_task(
             task_id=task_id,
             act_id=act_id,
             stem_id=stem_id,
             raw_task=raw_task,
+            source_page=source_page,
         ))
         task_refs.append({
             "id":             task_id,
@@ -283,10 +289,10 @@ def build_task(
     act_id: str,
     stem_id: str,
     raw_task: dict,
+    source_page: Any = None,
 ) -> dict:
     """
     08_tasks.json  (single task entity — called inside build_activities_chunk)
-    Separated so it can be unit-tested or called independently.
     """
     has_resp = raw_task.get("has_response_area", False)
     return {
@@ -295,6 +301,7 @@ def build_task(
         "taskNumber": raw_task.get("task_number", ""),
         "taskType":   "OPEN_ENDED" if has_resp else "SHORT_ANSWER",
         "stems":      [{"id": stem_id, "type": "STEM", "sequenceNumber": 1}],
+        "sourcePage": source_page,
     }
 
 
@@ -305,10 +312,10 @@ def build_stem(
     stem_id: str,
     task_id: str,
     raw_task: dict,
+    source_page: Any = None,
 ) -> dict:
     """
     09_stems.json  (single stem entity — called inside build_activities_chunk)
-    Math is already wrapped in $...$ / $$...$$ by the Gemini prompt.
     """
     has_resp = raw_task.get("has_response_area", False)
     return {
@@ -320,6 +327,7 @@ def build_stem(
         "responseAreaType": raw_task.get("response_area_type"),
         "hasGraph":         raw_task.get("has_graph", False),
         "subTasks":         raw_task.get("sub_tasks", []),
+        "sourcePage":       source_page,
     }
 
 
@@ -353,10 +361,42 @@ def build_standards_chunk(
                 "fullText":         std.get("full_text", ""),
                 "domain":           std.get("domain"),
                 "cluster":          std.get("cluster"),
+                "description":      std.get("full_text", ""),
                 "hasModelingSymbol": std.get("has_modeling_symbol", False),
             })
 
     return standards
+
+
+def _collect_standards_block_meta(pages: list[dict]) -> dict:
+    """Collect aggregated standards block metadata from all pages with standards_block."""
+    meta: dict[str, Any] = {
+        "title": None,
+        "body": "CA_CCSS",
+        "gradeLevel": "HS",
+        "subtitle": None,
+        "conceptualOverlaySubtitle": None,
+        "bigIdeas": [],
+        "conceptualOverlays": [],
+    }
+    for page in pages:
+        sb = page.get("standards_block")
+        if not (sb and isinstance(sb, dict)):
+            continue
+        if sb.get("title") and not meta["title"]:
+            meta["title"] = sb["title"]
+        if sb.get("standards_body"):
+            meta["body"] = sb["standards_body"]
+        if sb.get("grade_level"):
+            meta["gradeLevel"] = sb["grade_level"]
+        if sb.get("subtitle") and not meta["subtitle"]:
+            meta["subtitle"] = sb["subtitle"]
+        if sb.get("conceptual_overlay_subtitle") and not meta["conceptualOverlaySubtitle"]:
+            meta["conceptualOverlaySubtitle"] = sb["conceptual_overlay_subtitle"]
+        for idea in sb.get("big_ideas") or []:
+            if idea and idea not in meta["bigIdeas"]:
+                meta["bigIdeas"].append(idea)
+    return meta
 
 
 # ── 11 — Standards Blocks ─────────────────────────────────────────────────────
@@ -366,45 +406,104 @@ def build_standards_blocks(
     std_block_id: str,
     standards: list[dict],
     lesson_meta: dict,
+    pages: list[dict],
 ) -> list[dict]:
     """
     11_standards_blocks.json
-    One block per extraction run (aggregated from all standards pages).
+    One block per extraction run with full metadata from the standards pages.
     """
     if not standards:
         return []
-    return [{
+    sb_meta = _collect_standards_block_meta(pages)
+    seq = 1
+    std_refs = []
+    for s in standards:
+        std_refs.append({"id": s["id"], "code": s["code"], "sequenceNumber": seq})
+        seq += 1
+
+    block: dict[str, Any] = {
         "id":         std_block_id,
-        "body":       "CA_CCSS",
-        "gradeLevel": lesson_meta.get("grade_level", "HS"),
-        "standards":  [{"id": s["id"], "code": s["code"]} for s in standards],
-    }]
+        "body":       sb_meta["body"],
+        "gradeLevel": sb_meta["gradeLevel"] or lesson_meta.get("grade_level", "HS"),
+        "title":      sb_meta["title"],
+        "standardsSubtitle": sb_meta["subtitle"],
+        "conceptualOverlaySubtitle": sb_meta["conceptualOverlaySubtitle"],
+        "standards":  std_refs,
+    }
+    if sb_meta["bigIdeas"]:
+        block["conceptualOverlays"] = [
+            {"sequenceNumber": i + 1, "text": t}
+            for i, t in enumerate(sb_meta["bigIdeas"])
+        ]
+    return [block]
 
 
-# ── 12 — Images ───────────────────────────────────────────────────────────────
+# ── 12 — Images (CL-Json-Schema schemas/media/image.json) ─────────────────────
 
-def build_images_chunk(*, pages: list[dict]) -> list[dict]:
+def build_images_chunk(
+    *,
+    pages: list[dict],
+    image_manifest: dict | None = None,
+) -> list[dict]:
     """
-    12_images.json
-    All image entities, preserving graph_details and response-area flags.
+    12_images.json — aligned with CL-Json-Schema media/image.json.
+
+    When image_manifest is provided (from utils/image_extractor), each image
+    entity gets an ``imagePath`` pointing to the actual extracted image file
+    (e.g. "images/page_3_img_0.jpeg").  ``pageImagePath`` still points to
+    the full page render for fallback.
     """
+    extracted = (image_manifest or {}).get("extracted", {})
+
     images: list[dict] = []
+    # Track how many Gemini images we've seen per PDF page to map to extracted index
+    page_img_counter: dict[int, int] = {}
+
     for page in pages:
         page_num = page.get("page_number")
+        # _pdf_page_index is the 1-based PDF page; it's what the extractor uses
+        pdf_idx = page.get("_pdf_page_index")
+
         for raw_img in page.get("images") or []:
-            images.append({
-                "id":              gen_id(),
-                "imageType":       raw_img.get("image_type", "INSTRUCTIONAL"),
-                "position":        raw_img.get("position"),
-                "altText":         raw_img.get("alt_text", ""),
-                "description":     raw_img.get("description", ""),
-                "containsGraph":   raw_img.get("contains_graph", False),
-                "isDecorative":    raw_img.get("is_decorative", False),
-                "isResponseArea":  raw_img.get("is_response_area", False),
+            acc = raw_img.get("accessibility") or {}
+            page_num_val = page_num if page_num is not None else ""
+
+            # Match Gemini-detected image with an extracted file via PDF page index
+            image_path = None
+            lookup_key = pdf_idx if pdf_idx is not None else page_num
+            if lookup_key is not None and lookup_key in extracted:
+                idx = page_img_counter.get(lookup_key, 0)
+                page_extracted = extracted[lookup_key]
+                if idx < len(page_extracted):
+                    image_path = page_extracted[idx]["path"]
+                page_img_counter[lookup_key] = idx + 1
+
+            img = {
+                "id":               gen_id(),
+                "imageType":        raw_img.get("image_type", "INSTRUCTIONAL"),
+                "filename":         raw_img.get("filename", ""),
+                "technicalArtType": raw_img.get("technical_art_type"),
+                "altText":          raw_img.get("alt_text", ""),
+                "caption":          raw_img.get("caption"),
+                "title":            raw_img.get("title"),
+                "description":      raw_img.get("description", ""),
+                "dimensions":       raw_img.get("dimensions"),
+                "format":           raw_img.get("format"),
+                "accessibility":    {
+                    "isDecorative":    acc.get("is_decorative", raw_img.get("is_decorative", False)),
+                    "longDescription": acc.get("long_description"),
+                },
+                "position":         raw_img.get("position"),
+                "containsGraph":    raw_img.get("contains_graph", False),
+                "isResponseArea":   raw_img.get("is_response_area", False),
                 "responseAreaType": raw_img.get("response_area_type"),
-                "graphDetails":    raw_img.get("graph_details"),
-                "sourcePage":      page_num,
-            })
+                "graphDetails":     raw_img.get("graph_details"),
+                "sourcePage":       page_num,
+                "pdfPageIndex":     pdf_idx,
+                "imagePath":        image_path,
+                "pageImagePath":    f"page_images/{pdf_idx}.png" if pdf_idx else (f"page_images/{page_num_val}.png" if page_num_val else None),
+            }
+            images.append(img)
     return images
 
 
@@ -414,14 +513,16 @@ def build_pages_chunk(*, pages: list[dict], resource_id: str) -> list[dict]:
     """
     13_pages.json
     Page entities with layout metadata and content-order array.
+    pdfPageIndex is the 1-based page index within the PDF file itself.
     """
     return [
         {
-            "id":         gen_id(),
-            "resourceId": resource_id,
-            "pageNumber": page.get("page_number"),
-            "pageType":   page.get("page_type", "UNKNOWN"),
-            "layout":     page.get("page_layout"),
+            "id":           gen_id(),
+            "resourceId":   resource_id,
+            "pageNumber":   page.get("page_number"),
+            "pdfPageIndex": page.get("_pdf_page_index"),
+            "pageType":     page.get("page_type", "UNKNOWN"),
+            "layout":       page.get("page_layout"),
         }
         for page in pages
     ]
@@ -440,6 +541,7 @@ def build_instructional_prompts_chunk(
     """
     prompts: list[dict] = []
     for page in pages:
+        page_num = page.get("page_number")
         for ip in page.get("instructional_prompts") or []:
             prompts.append({
                 "id":                         gen_id(),
@@ -449,6 +551,7 @@ def build_instructional_prompts_chunk(
                 "title":                      ip.get("title"),
                 "content":                    ip.get("content"),
                 "contentItems":               ip.get("content_items", []),
+                "sourcePage":                 page_num,
             })
     return prompts
 

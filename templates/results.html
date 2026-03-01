@@ -95,17 +95,24 @@ window.MathJax = {
   }
   .editor-divider:hover, .editor-divider.dragging { background: var(--primary); }
   .editor-right {
-    flex: 1; overflow: hidden; display: flex; flex-direction: column; min-width: 0;
-    background: #525659; width: 50%;
+    flex: 1; overflow: auto; display: flex; flex-direction: column; min-width: 0;
+    background: var(--surface2); width: 50%;
   }
   .editor-left { width: 50%; }
-  .editor-pdf-header {
+  .editor-page-header {
     flex-shrink: 0; padding: 8px 16px; background: var(--surface2);
     border-bottom: 1px solid var(--border);
     display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--muted);
   }
-  .editor-pdf-header strong { color: var(--text); font-weight: 600; }
-  .editor-right iframe { flex: 1; border: none; width: 100%; }
+  .editor-page-header strong { color: var(--text); font-weight: 600; }
+  .editor-right .page-img-wrap {
+    flex: 1; overflow: auto; display: flex; align-items: flex-start; justify-content: center;
+    padding: 16px;
+  }
+  .editor-right .page-img-wrap img {
+    max-width: 100%; height: auto; border-radius: 6px;
+    border: 1px solid var(--border); box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  }
   .editor-section {
     background: var(--surface); border: 1px solid var(--border);
     border-radius: 6px; padding: 24px; margin-bottom: 24px;
@@ -143,97 +150,108 @@ window.MathJax = {
   }
   .editor-error { color: var(--danger); }
 
-  /* Source view — existing JSON tabs */
-  .tab-bar { display: flex; gap: 0; overflow-x: auto; scrollbar-width: thin; }
-  .tab-bar::-webkit-scrollbar { height: 4px; }
-  .tab-bar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-  .tab {
-    flex-shrink: 0; padding: 12px 16px; font-size: 12px; font-weight: 500;
-    color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent;
-    white-space: nowrap; transition: all 0.15s; user-select: none;
-    display: flex; align-items: center; gap: 8px;
+  /* Source view — JSON tabs (reference theme) */
+  #view-source { flex-direction: column; overflow: hidden; flex: 1; min-height: 0; }
+  .source-tabs-row { flex-shrink: 0; background: var(--surface); border-bottom: 1px solid var(--border); }
+  #view-source .tab-bar {
+    display: flex; gap: 0; overflow-x: auto; scrollbar-width: thin; flex-shrink: 0;
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 0 8px;
   }
-  .tab:hover { color: var(--text); background: var(--surface2); }
-  .tab.active { color: var(--primary); border-bottom-color: var(--primary); background: rgba(182, 109, 255, 0.06); }
-  .tab-num {
+  #view-source .tab-bar::-webkit-scrollbar { height: 4px; }
+  #view-source .tab-bar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  #view-source .tab {
+    flex-shrink: 0; padding: 10px 14px; font-size: 12px; font-weight: 500;
+    color: var(--muted); cursor: pointer; white-space: nowrap;
+    transition: all 0.15s; user-select: none; display: flex; align-items: center; gap: 6px;
+    border: none; background: none; border-bottom: 3px solid transparent;
+  }
+  #view-source .tab:hover { color: var(--text); background: var(--surface2); }
+  #view-source .tab.active {
+    color: var(--primary); background: rgba(182, 109, 255, 0.12);
+    border-bottom-color: var(--primary);
+  }
+  #view-source .tab-num {
     background: var(--border-light); color: var(--muted);
-    font-size: 10px; padding: 2px 6px; border-radius: 2px; font-weight: 600;
+    font-size: 10px; padding: 2px 6px; border-radius: 3px; font-weight: 600;
   }
-  .tab.active .tab-num { background: rgba(182, 109, 255, 0.2); color: var(--primary); }
+  #view-source .tab.active .tab-num {
+    background: var(--primary); color: #fff;
+  }
 
-  .tab-content { flex: 1; display: flex; overflow: hidden; }
-  .tab-panel { display: none; flex: 1; overflow: hidden; flex-direction: column; }
+  .tab-content { flex: 1; display: flex; overflow: hidden; min-height: 0; }
+  .tab-panel { display: none; flex: 1; overflow: hidden; flex-direction: column; min-height: 0; }
   .tab-panel.active { display: flex; }
 
-  .panel-layout { display: grid; grid-template-columns: 300px 1fr; height: 100%; overflow: hidden; }
+  .panel-layout { display: grid; grid-template-columns: 280px 1fr; height: 100%; overflow: hidden; min-height: 0; }
   .panel-sidebar {
     border-right: 1px solid var(--border); background: var(--surface2);
-    overflow-y: auto; padding: 24px;
+    overflow-y: auto; padding: 20px 24px;
   }
-  .panel-sidebar h3 { font-size: 14px; font-weight: 700; margin-bottom: 4px; color: var(--text); }
+  .panel-sidebar h3 { font-size: 15px; font-weight: 700; margin-bottom: 6px; color: var(--primary); }
   .panel-sidebar .file-desc { font-size: 12px; color: var(--muted); line-height: 1.5; margin-bottom: 20px; }
-  .meta-row { margin-bottom: 14px; }
-  .meta-key { font-size: 10px; font-weight: 600; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; }
-  .meta-val { font-size: 13px; color: var(--text); word-break: break-all; }
-  .meta-val.accent { color: var(--primary); }
-  .meta-val.success { color: var(--success); }
+  .panel-sidebar .meta-row { margin-bottom: 16px; }
+  .panel-sidebar .meta-key {
+    font-size: 10px; font-weight: 700; color: var(--muted);
+    letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 4px;
+  }
+  .panel-sidebar .meta-val { font-size: 13px; color: var(--text); word-break: break-all; }
+  .panel-sidebar .meta-val.accent { color: var(--primary); font-weight: 500; }
+  .panel-sidebar .meta-val.success { color: var(--success); }
 
   .dl-btn {
     display: block; text-align: center; text-decoration: none;
     background: var(--surface); border: 1px solid var(--border);
     color: var(--text); font-size: 11px; font-weight: 600;
     letter-spacing: 0.5px; text-transform: uppercase;
-    padding: 10px; border-radius: 4px; margin-top: 16px;
+    padding: 10px 16px; border-radius: 4px; margin-top: 20px;
     transition: all 0.2s;
   }
-  .dl-btn:hover { border-color: var(--primary); color: var(--primary); }
+  .dl-btn:hover { border-color: var(--primary); color: var(--primary); background: rgba(182, 109, 255, 0.06); }
 
-  .json-viewer-wrap { display: flex; flex-direction: column; overflow: hidden; }
+  .json-viewer-wrap { display: flex; flex-direction: column; overflow: hidden; min-height: 0; background: #1a1b26; }
   .viewer-toolbar {
-    padding: 10px 20px; background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 12px 20px; background: #24283b; border-bottom: 1px solid #3b4261;
     display: flex; align-items: center; gap: 16px; flex-shrink: 0;
   }
-  .viewer-toolbar .toolbar-label { font-size: 12px; color: var(--muted); flex: 1; }
-  .toolbar-btn {
-    font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;
-    color: var(--muted); background: none; border: 1px solid var(--border);
+  .viewer-toolbar .toolbar-label { font-size: 13px; font-weight: 600; color: #a9b1d6; flex: 1; }
+  .viewer-toolbar .toolbar-btn {
+    font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
+    color: #7982a9; background: #1a1b26; border: 1px solid #3b4261;
     padding: 6px 12px; border-radius: 4px; cursor: pointer;
     transition: all 0.2s;
   }
-  .toolbar-btn:hover { border-color: var(--primary); color: var(--primary); }
-  .search-input {
-    background: var(--surface); border: 1px solid var(--border);
-    color: var(--text); font-size: 12px; padding: 6px 12px;
-    outline: none; width: 200px; border-radius: 4px;
-    transition: border-color 0.2s;
+  .viewer-toolbar .toolbar-btn:hover { border-color: var(--primary); color: var(--primary); }
+  .viewer-toolbar .search-input {
+    background: #1a1b26; border: 1px solid #3b4261; color: #a9b1d6;
+    font-size: 12px; padding: 6px 12px; outline: none; width: 220px; border-radius: 4px;
   }
-  .search-input:focus { border-color: var(--primary); }
-  .search-input::placeholder { color: var(--muted); }
+  .viewer-toolbar .search-input:focus { border-color: var(--primary); }
+  .viewer-toolbar .search-input::placeholder { color: #565f89; }
 
   .json-body {
-    flex: 1; overflow: auto; padding: 20px; background: #1e1e2e;
-    font-size: 12.5px; line-height: 1.7; font-family: ui-monospace, monospace;
+    flex: 1; overflow: auto; padding: 24px; background: #1a1b26;
+    font-size: 13px; line-height: 1.65; font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+    white-space: pre-wrap; word-break: break-word;
   }
-  .j-key { color: #8be9fd; }
-  .j-str { color: #f1fa8c; }
-  .j-num { color: #bd93f9; }
-  .j-bool { color: #ff79c6; }
-  .j-null { color: var(--muted); }
-  .j-brace { color: #6272a4; }
+  .j-key { color: #7dcfff; }
+  .j-str { color: #9ece6a; }
+  .j-num { color: #ff9e64; }
+  .j-bool { color: #ff9e64; }
+  .j-null { color: #565f89; }
+  .highlight { background: rgba(255, 193, 7, 0.25); border-radius: 2px; }
 
   .loading-state {
     flex: 1; display: flex; flex-direction: column; align-items: center;
-    justify-content: center; gap: 16px; color: var(--muted); font-size: 13px;
+    justify-content: center; gap: 16px; color: #7982a9; font-size: 13px;
   }
+  .json-body .loading-state .loader { border-color: #3b4261; border-top-color: var(--primary); }
   .loader {
     width: 40px; height: 40px; border: 2px solid var(--border);
     border-top-color: var(--primary); border-radius: 50%;
     animation: spin 0.8s linear infinite;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
-
-  .tab-divider { flex-shrink: 0; width: 1px; background: var(--border); align-self: stretch; margin: 8px 0; }
-  .highlight { background: rgba(254, 215, 19, 0.25); border-radius: 2px; }
 
   /* PDF view */
   .pdf-view-wrap { flex: 1; display: flex; overflow: hidden; }
@@ -246,7 +264,7 @@ window.MathJax = {
   <div class="nav-right">
     <span class="nav-badge">&#9989; {{ job.output_files|length }} Files Ready</span>
     <a href="/dashboard" class="nav-link">&#8592; Dashboard</a>
-    <a href="/upload" class="nav-link primary">+ New Job</a>
+    <a href="/dashboard" class="nav-link primary">+ New Job</a>
   </div>
 </nav>
 
@@ -294,19 +312,21 @@ window.MathJax = {
         </div>
         <div class="editor-divider" id="editor-divider" title="Drag to resize"></div>
         <div class="editor-right" id="editor-right">
-          <div class="editor-pdf-header">
-            <strong>PDF Preview</strong>
-            <span id="editor-pdf-page-label">—</span>
+          <div class="editor-page-header">
+            <strong>Page Image</strong>
+            <span id="editor-page-label">—</span>
           </div>
-          <iframe id="editor-pdf-iframe" src="about:blank"></iframe>
+          <div class="page-img-wrap">
+            <img id="editor-page-img" src="about:blank" alt="Page preview" style="display:none">
+          </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Source view (JSON tabs) -->
+  <!-- Source view (JSON tabs — reference theme) -->
   <div class="view-panel" id="view-source">
-    <div class="results-header" style="padding-top:8px; padding-bottom:0;">
+    <div class="source-tabs-row">
       <div class="tab-bar" id="tab-bar">
         {% set file_infos = [
           ('merged.json',                   '★ Merged',          'Full nested hierarchy',   'merged'),
@@ -327,11 +347,6 @@ window.MathJax = {
           ('15_instructional_segments.json','Inst. Segments',     'Instructional segments',  'segment'),
         ] %}
         {% for fname, label, desc, key in file_infos %}
-          {% if loop.index == 2 %}<div class="tab-divider"></div>{% endif %}
-          {% if loop.index == 4 %}<div class="tab-divider"></div>{% endif %}
-          {% if loop.index == 8 %}<div class="tab-divider"></div>{% endif %}
-          {% if loop.index == 11 %}<div class="tab-divider"></div>{% endif %}
-          {% if loop.index == 13 %}<div class="tab-divider"></div>{% endif %}
           <div class="tab {{ 'active' if loop.first else '' }}"
                data-file="{{ fname }}" data-panel="{{ key }}"
                onclick="switchTab(this)">
@@ -349,27 +364,27 @@ window.MathJax = {
             <h3>{{ label }}</h3>
             <div class="file-desc">{{ desc }}</div>
             <div class="meta-row">
-              <div class="meta-key">Filename</div>
+              <div class="meta-key">FILENAME</div>
               <div class="meta-val">{{ fname }}</div>
             </div>
             <div class="meta-row" id="meta-size-{{ key }}">
-              <div class="meta-key">Size</div>
+              <div class="meta-key">SIZE</div>
               <div class="meta-val accent" id="size-{{ key }}">Loading&#8230;</div>
             </div>
             <div class="meta-row" id="meta-count-{{ key }}">
-              <div class="meta-key">Items</div>
+              <div class="meta-key">ITEMS</div>
               <div class="meta-val success" id="count-{{ key }}">—</div>
             </div>
-            <a href="/outputs/{{ job.id }}/{{ fname }}" class="dl-btn" download>&#8595; Download JSON</a>
+            <a href="/outputs/{{ job.id }}/{{ fname }}" class="dl-btn" download>&#8595; DOWNLOAD JSON</a>
           </div>
           <div class="json-viewer-wrap">
             <div class="viewer-toolbar">
               <span class="toolbar-label">{{ fname }}</span>
               <input class="search-input" placeholder="Search JSON&#8230;"
                      oninput="searchJSON(this, '{{ key }}')" id="search-{{ key }}">
-              <button class="toolbar-btn" onclick="collapseAll('{{ key }}')">Collapse</button>
-              <button class="toolbar-btn" onclick="expandAll('{{ key }}')">Expand</button>
-              <button class="toolbar-btn" onclick="copyJSON('{{ key }}')">Copy</button>
+              <button type="button" class="toolbar-btn" onclick="collapseAll('{{ key }}')">COLLAPSE</button>
+              <button type="button" class="toolbar-btn" onclick="expandAll('{{ key }}')">EXPAND</button>
+              <button type="button" class="toolbar-btn" onclick="copyJSON('{{ key }}')">COPY</button>
             </div>
             <div class="json-body" id="json-{{ key }}">
               <div class="loading-state">
@@ -494,51 +509,56 @@ function renderActivityHtml(a) {
 
 function renderPageWebView(page, data) {
   const contentEl = document.getElementById('editor-content');
+  const pn = page ? page.pageNumber : null;
 
   const merged = data.merged || {};
   const res = merged.resource || data.resource || {};
   const mod = (res.modules && res.modules[0]) || data.module || {};
   const topic = (mod.topics && mod.topics[0]) || data.topic || {};
   const lesson = (topic.lessons && topic.lessons[0]) || data.lesson || {};
-  const activities = lesson.activities || data.activities || [];
-  const standards = lesson.standards || data.standards || [];
-  const prompts = lesson.instructionalPrompts || data.instructionalPrompts || [];
+
+  const allActivities = lesson.activities || data.activities || [];
+  const allImages     = merged.images || data.images || [];
+  const allPrompts    = lesson.instructionalPrompts || data.instructionalPrompts || [];
+  const standards     = lesson.standards || data.standards || [];
+
+  const pageActivities = pn ? allActivities.filter(a => a.sourcePage === pn) : allActivities;
+  const pageImages     = pn ? allImages.filter(i => i.sourcePage === pn)     : allImages;
+  const pagePrompts    = pn ? allPrompts.filter(p => p.sourcePage === pn)    : allPrompts;
 
   let html = '';
 
-  html += `<div class="editor-section">
-    <span class="schema-tag">resource</span>
-    <h3>${escapeHtml(res.resourceType || 'Resource')}</h3>
-    <div class="editor-section-meta">
-      ${res.title ? `<p><strong>Title:</strong> ${escapeHtml(res.title)}</p>` : ''}
-      ${res.gradeLevel ? `<p><strong>Grade:</strong> ${escapeHtml(res.gradeLevel)}</p>` : ''}
-      ${res.id ? `<p><strong>ID:</strong> <code class="editor-id">${escapeHtml(res.id)}</code></p>` : ''}
-    </div>
-  </div>`;
-
-  html += `<div class="editor-section">
-    <span class="schema-tag">module</span>
-    <h3>Module ${mod.moduleNumber || ''}</h3>
-    <div class="editor-section-meta">
-      ${mod.title ? `<p><strong>Title:</strong> ${escapeHtml(mod.title)}</p>` : ''}
-      ${mod.id ? `<p><strong>ID:</strong> <code class="editor-id">${escapeHtml(mod.id)}</code></p>` : ''}
-    </div>
-  </div>`;
-
-  if (topic.id) {
+  if (page) {
     html += `<div class="editor-section">
-      <span class="schema-tag">topic</span>
-      <h3>Topic ${topic.topicNumber || ''} — ${escapeHtml(topic.title || '')}</h3>
-      ${topic.id ? `<p><code class="editor-id">${escapeHtml(topic.id)}</code></p>` : ''}
+      <span class="schema-tag">page ${pn}</span>
+      <h3>Page ${escapeHtml(String(pn))} — ${escapeHtml(page.pageType || 'Content')}</h3>
     </div>`;
   }
 
-  if (page) {
-    html += `<div class="editor-section">
-      <span class="schema-tag">page</span>
-      <h3>Page ${escapeHtml(String(page.pageNumber))} — ${escapeHtml(page.pageType || 'Content')}</h3>
-      <p class="editor-page-meta">Viewing lesson content for this page.</p>
-    </div>`;
+  if (page && page.pageType === 'STANDARDS_PAGE') {
+    const stdBlocks = lesson.standardsBlocks || data.standardsBlocks || [];
+    const stdBlock = stdBlocks[0] || {};
+    if (stdBlock.title || stdBlock.conceptualOverlays || standards.length) {
+      let stdHtml = `<div class="editor-section">
+        <span class="schema-tag">standards</span>`;
+      stdHtml += `<h3>${escapeHtml(stdBlock.title || 'Standards')}</h3>`;
+      if (stdBlock.conceptualOverlays && stdBlock.conceptualOverlays.length) {
+        stdHtml += `<div style="margin-bottom:14px"><strong style="font-size:13px;color:var(--muted)">${escapeHtml(stdBlock.conceptualOverlaySubtitle || 'Big Ideas')}</strong>`;
+        stdHtml += `<ul style="margin:4px 0 0">`;
+        stdBlock.conceptualOverlays.forEach(o => { stdHtml += `<li>${escapeHtml(o.text)}</li>`; });
+        stdHtml += `</ul></div>`;
+      }
+      if (stdBlock.standardsSubtitle) {
+        stdHtml += `<h4 style="font-size:14px;margin:12px 0 8px;color:var(--text)">${escapeHtml(stdBlock.standardsSubtitle)}</h4>`;
+      }
+      standards.forEach(s => {
+        const star = s.hasModelingSymbol ? ' <span title="Modeling" style="color:#d4380d">★</span>' : '';
+        const domain = s.domain ? `<span style="font-size:11px;color:var(--primary);font-weight:600">${escapeHtml(s.domain)}</span><br>` : '';
+        stdHtml += `<div class="std-item">${domain}<strong>${escapeHtml(s.code || '')}${star}</strong><p style="margin:4px 0 0">${nl2br(s.fullText || '')}</p></div>`;
+      });
+      stdHtml += `</div>`;
+      html += stdHtml;
+    }
   }
 
   if (lesson.title || lesson.lessonSummary) {
@@ -560,15 +580,7 @@ function renderPageWebView(page, data) {
     </div>`;
   }
 
-  if (standards.length) {
-    html += `<div class="editor-section">
-      <span class="schema-tag">standards</span>
-      <h3>Standards</h3>
-      ${standards.map(s => `<div class="std-item"><strong>${escapeHtml(s.code || '')}</strong><br>${nl2br(s.fullText || '')}</div>`).join('')}
-    </div>`;
-  }
-
-  prompts.forEach(p => {
+  pagePrompts.forEach(p => {
     const title = p.title || promptLabel(p.instructionalPromptType);
     let content = p.content || '';
     if (!content && p.contentItems && p.contentItems.length) {
@@ -583,29 +595,47 @@ function renderPageWebView(page, data) {
     </div>`;
   });
 
-  if (activities.length) {
+  if (pageActivities.length) {
     html += `<div class="editor-section">
       <span class="schema-tag">activities → tasks → stems</span>
-      <h3>Activities (${activities.length})</h3>
-      ${activities.map(a => renderActivityHtml(a)).join('')}
+      <h3>Activities (${pageActivities.length})</h3>
+      ${pageActivities.map(a => renderActivityHtml(a)).join('')}
     </div>`;
   }
 
-  const images = merged.images || data.images || [];
-  if (images.length) {
-    html += `<div class="editor-section">
-      <span class="schema-tag">images</span>
-      <h3>Images (${images.length})</h3>
-      ${images.map(img => `<div style="margin-bottom:10px;padding:10px 12px;background:var(--surface2);border-radius:4px;font-size:13px">
-        <span class="activity-label">${escapeHtml(img.imageType || 'IMAGE')}</span>
-        <strong>${escapeHtml(img.altText || 'No alt text')}</strong>
-        ${img.sourcePage ? `<span style="font-size:11px;color:var(--muted);margin-left:6px">p.${img.sourcePage}</span>` : ''}
-        ${img.description ? `<p style="margin:4px 0 0;font-size:12px;color:var(--muted)">${escapeHtml(img.description.substring(0, 120))}${img.description.length > 120 ? '…' : ''}</p>` : ''}
-      </div>`).join('')}
-    </div>`;
+  if (pageImages.length) {
+    html += '<div class="editor-section"><span class="schema-tag">images</span>';
+    html += '<h3>Images (' + pageImages.length + ')</h3>';
+    pageImages.forEach(img => {
+      const imgUrl = img.imagePath ? '/outputs/' + jobId + '/' + img.imagePath : null;
+      const pgIdx = img.pdfPageIndex || img.sourcePage;
+      const pageUrl = pgIdx != null ? '/outputs/' + jobId + '/page_images/' + pgIdx + '.png' : (img.pageImagePath ? '/outputs/' + jobId + '/' + img.pageImagePath : null);
+      const thumbUrl = imgUrl || pageUrl;
+      let card = '<div style="margin-bottom:14px;padding:12px;background:var(--surface2);border-radius:6px;font-size:13px;display:flex;gap:12px;align-items:flex-start">';
+      if (thumbUrl) {
+        card += '<a href="' + (imgUrl || pageUrl) + '" target="_blank" rel="noopener" style="flex-shrink:0">';
+        card += '<img src="' + thumbUrl + '" alt="' + escapeHtml(img.altText || 'Image') + '" style="width:120px;height:auto;border-radius:4px;border:1px solid var(--border)" loading="lazy">';
+        card += '</a>';
+      }
+      card += '<div style="flex:1;min-width:0">';
+      card += '<span class="activity-label">' + escapeHtml(img.imageType || 'IMAGE') + '</span> ';
+      card += '<strong>' + escapeHtml(img.altText || 'No alt text') + '</strong>';
+      if (img.sourcePage != null) card += ' <span style="font-size:11px;color:var(--muted)">p.' + img.sourcePage + '</span>';
+      if (img.imagePath) card += '<span style="display:inline-block;margin-left:6px;padding:1px 6px;font-size:10px;background:#4caf50;color:#fff;border-radius:3px">extracted</span>';
+      if (img.description) {
+        const desc = img.description.length > 200 ? img.description.substring(0, 200) + '…' : img.description;
+        card += '<p style="margin:4px 0 0;font-size:12px;color:var(--muted)">' + escapeHtml(desc) + '</p>';
+      }
+      card += '<div style="margin-top:6px;display:flex;gap:10px">';
+      if (imgUrl) card += '<a href="' + imgUrl + '" target="_blank" rel="noopener" style="font-size:11px">View extracted image →</a>';
+      if (pageUrl) card += '<a href="' + pageUrl + '" target="_blank" rel="noopener" style="font-size:11px;color:var(--muted)">View full page →</a>';
+      card += '</div></div></div>';
+      html += card;
+    });
+    html += '</div>';
   }
 
-  if (!html) html = '<div class="editor-section"><p>No content found. Run extraction to populate.</p></div>';
+  if (!html) html = '<div class="editor-section"><p>No content found for this page.</p></div>';
   contentEl.innerHTML = html;
   if (window.MathJax && MathJax.typesetPromise) {
     MathJax.typesetClear([contentEl]);
@@ -614,17 +644,19 @@ function renderPageWebView(page, data) {
 }
 
 function updateEditorPdf(page) {
-  const iframe = document.getElementById('editor-pdf-iframe');
-  const label = document.getElementById('editor-pdf-page-label');
-  if (!iframe) return;
-  const pdfBase = `/outputs/${jobId}/pdf`;
-  const pageNum = page ? (page.pageNumber || null) : null;
-  if (pageNum) {
-    iframe.src = pdfBase + '#page=' + pageNum;
-    label.textContent = 'Page ' + pageNum;
+  const img = document.getElementById('editor-page-img');
+  const label = document.getElementById('editor-page-label');
+  if (!img) return;
+  const pdfIdx = page ? (page.pdfPageIndex || page.pageNumber || null) : null;
+  const displayNum = page ? (page.pageNumber || pdfIdx) : null;
+  if (pdfIdx) {
+    img.src = '/outputs/' + jobId + '/page_images/' + pdfIdx + '.png';
+    img.alt = 'Page ' + displayNum;
+    img.style.display = '';
+    label.textContent = 'Page ' + displayNum;
   } else {
-    iframe.src = pdfBase;
-    label.textContent = 'Full document';
+    img.style.display = 'none';
+    label.textContent = '—';
   }
 }
 
@@ -635,14 +667,12 @@ function updateEditorPdf(page) {
   const right = document.getElementById('editor-right');
   if (!divider || !split) return;
   let dragging = false;
-  const pdfIframe = document.getElementById('editor-pdf-iframe');
   divider.addEventListener('mousedown', (e) => {
     e.preventDefault();
     dragging = true;
     divider.classList.add('dragging');
     document.body.style.cursor = 'col-resize';
     document.body.style.userSelect = 'none';
-    if (pdfIframe) pdfIframe.style.pointerEvents = 'none';
   });
   document.addEventListener('mousemove', (e) => {
     if (!dragging) return;
@@ -660,7 +690,6 @@ function updateEditorPdf(page) {
     divider.classList.remove('dragging');
     document.body.style.cursor = '';
     document.body.style.userSelect = '';
-    if (pdfIframe) pdfIframe.style.pointerEvents = '';
   });
 })();
 
