@@ -5,328 +5,231 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CL Pipeline — Dashboard</title>
 <link rel="stylesheet" href="/static/css/theme.css">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css" rel="stylesheet">
 <style>
-  nav {
-    padding: 0 32px; height: 64px;
-    display: flex; align-items: center; justify-content: space-between;
-    position: sticky; top: 0; z-index: 100;
-  }
-  .nav-brand { font-size: 20px; font-weight: 700; color: var(--text); }
-  .nav-right { display: flex; align-items: center; gap: 16px; }
-  .nav-user { font-size: 13px; color: var(--muted); }
-  .nav-link {
-    font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;
-    color: var(--text); text-decoration: none;
-    padding: 8px 16px; border: 1px solid var(--border); border-radius: 4px;
-    transition: border-color 0.2s, color 0.2s;
-  }
-  .nav-link:hover { border-color: var(--primary); color: var(--primary); }
+  :root { --primary: #7c3aed; --primary-rgb: 124,58,237; }
+  body { background: #f8f9fc; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
 
-  .page { max-width: 1200px; margin: 0 auto; padding: 32px; }
+  .navbar-custom { background: #fff; border-bottom: 1px solid #e5e7eb; }
+  .navbar-custom .navbar-brand { font-weight: 700; font-size: 20px; }
+  .navbar-custom .navbar-brand span { color: var(--primary); }
 
-  /* ── Hero: Upload ── */
-  .hero {
-    margin-bottom: 36px;
-  }
+  .page { max-width: 1260px; margin: 0 auto; padding: 28px 24px; }
 
+  /* Upload Card */
   .upload-card {
-    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
-    padding: 28px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-    display: flex; flex-direction: column;
+    background: #fff; border: 1px solid #e5e7eb; border-radius: 10px;
+    padding: 24px 28px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); margin-bottom: 28px;
   }
-  .upload-card h2 {
-    font-size: 20px; font-weight: 700; color: var(--text); margin-bottom: 6px;
-  }
-  .upload-card .subtitle {
-    font-size: 13px; color: var(--muted); margin-bottom: 20px; line-height: 1.5;
-  }
+  .upload-card h5 { font-weight: 700; margin-bottom: 4px; }
+  .upload-card .text-muted { font-size: 13px; }
 
   .drop-zone {
-    flex: 1; border: 2px dashed var(--border); border-radius: 8px;
-    padding: 36px 24px; text-align: center; cursor: pointer;
-    transition: all 0.25s; position: relative;
-    background: var(--bg); min-height: 180px;
+    border: 2px dashed #d1d5db; border-radius: 8px; padding: 32px 20px;
+    text-align: center; cursor: pointer; transition: all 0.2s; position: relative;
+    background: #fafbfc; min-height: 140px;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
   }
-  .drop-zone:hover, .drop-zone.dragover {
-    border-color: var(--primary); background: rgba(182,109,255,0.04);
-  }
-  .drop-zone input[type="file"] {
-    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
-  }
-  .drop-icon { font-size: 48px; margin-bottom: 12px; opacity: 0.5; line-height: 1; }
-  .drop-zone:hover .drop-icon { opacity: 0.8; }
-  .drop-title { font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
-  .drop-sub { font-size: 12px; color: var(--muted); }
-  .drop-or {
-    font-size: 12px; color: var(--muted); margin: 10px 0;
-    display: flex; align-items: center; gap: 10px;
-  }
-  .drop-or::before, .drop-or::after { content: ''; flex: 1; height: 1px; background: var(--border); }
-  .browse-btn {
-    display: inline-block; padding: 8px 20px; font-size: 13px; font-weight: 500;
-    color: var(--primary); border: 1px solid rgba(var(--primary-rgb),0.4);
-    border-radius: 4px; cursor: pointer; background: none;
-    transition: all 0.2s; position: relative; z-index: 2;
-  }
-  .browse-btn:hover { background: rgba(var(--primary-rgb),0.08); border-color: var(--primary); }
+  .drop-zone:hover, .drop-zone.dragover { border-color: var(--primary); background: rgba(124,58,237,0.03); }
+  .drop-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .drop-icon { font-size: 36px; opacity: 0.4; margin-bottom: 8px; }
+  .drop-zone:hover .drop-icon { opacity: 0.7; }
 
-  .file-preview {
-    display: none; margin-top: 16px; padding: 14px 18px; border-radius: 6px;
-    background: rgba(27,207,180,0.08); border: 1px solid rgba(27,207,180,0.3);
-    align-items: center; gap: 12px;
-  }
+  .file-preview { display: none; margin-top: 12px; padding: 10px 14px; border-radius: 6px; background: #f0fdf4; border: 1px solid #bbf7d0; align-items: center; gap: 10px; }
   .file-preview.visible { display: flex; }
-  .file-preview-icon { font-size: 28px; flex-shrink: 0; }
-  .file-preview-info { flex: 1; }
-  .file-preview-name { font-size: 14px; font-weight: 600; color: var(--text); word-break: break-all; }
-  .file-preview-size { font-size: 12px; color: var(--success); margin-top: 2px; }
-  .file-preview-remove {
-    font-size: 18px; color: var(--muted); cursor: pointer; border: none; background: none;
-    padding: 4px 8px; border-radius: 4px; transition: color 0.2s;
-  }
-  .file-preview-remove:hover { color: var(--danger); }
+  .file-preview-name { font-size: 13px; font-weight: 600; flex: 1; word-break: break-all; }
+  .file-preview-size { font-size: 12px; color: #16a34a; }
+  .file-preview-remove { border: none; background: none; color: #9ca3af; font-size: 18px; cursor: pointer; }
+  .file-preview-remove:hover { color: #ef4444; }
 
-  .submit-row { display: none; margin-top: 16px; }
+  .submit-row { display: none; margin-top: 12px; }
   .submit-row.visible { display: block; }
-  .btn-submit {
-    background: linear-gradient(to right, var(--primary), var(--primary-dark));
-    color: #fff !important; border: none; font-size: 14px; font-weight: 600;
-    text-transform: uppercase; letter-spacing: 0.5px;
-    padding: 14px 28px; cursor: pointer; border-radius: 6px; width: 100%;
-    transition: opacity 0.2s, transform 0.1s;
-    display: flex; align-items: center; justify-content: center; gap: 8px;
-  }
-  .btn-submit:hover { opacity: 0.92; }
-  .btn-submit:active { transform: scale(0.99); }
-  .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
 
-  /* ── Stats Row ── */
-  .stats-row {
-    display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
-    margin-bottom: 32px;
-  }
-  @media (max-width: 640px) { .stats-row { grid-template-columns: repeat(2, 1fr); } }
-  .stat-card {
-    background: var(--surface); border: 1px solid var(--border);
-    padding: 20px 18px; border-radius: 8px;
-    position: relative; overflow: hidden;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-  }
-  .stat-card::before {
-    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
-  }
-  .stat-num { font-size: 32px; font-weight: 700; line-height: 1; color: var(--text); }
-  .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; }
+  /* Stats */
+  .stat-card { border-radius: 10px; border: 1px solid #e5e7eb; background: #fff; text-align: center; padding: 18px 12px; }
+  .stat-num { font-size: 28px; font-weight: 700; }
+  .stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #6b7280; margin-top: 2px; }
 
-  /* ── Jobs Section ── */
-  .section-header {
-    display: flex; align-items: center; justify-content: space-between;
-    margin-bottom: 16px;
-  }
-  .section-title {
-    font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px;
-    display: flex; align-items: center; gap: 12px;
-  }
-  .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); min-width: 40px; }
+  /* DataTable overrides */
+  .dataTables_wrapper .dataTables_filter input { border-radius: 6px; border: 1px solid #d1d5db; padding: 6px 12px; font-size: 13px; }
+  .dataTables_wrapper .dataTables_length select { border-radius: 6px; border: 1px solid #d1d5db; padding: 4px 8px; font-size: 13px; }
+  table.dataTable thead th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: #6b7280; font-weight: 600; }
+  table.dataTable tbody td { font-size: 13px; vertical-align: middle; }
+  .mono-id { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; color: #374151; }
 
-  .jobs-table { width: 100%; border-collapse: collapse; background: var(--surface); border-radius: 8px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
-  .jobs-table th {
-    font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;
-    color: var(--muted); text-align: left; padding: 14px 20px; border-bottom: 1px solid var(--border);
-    background: var(--surface2);
-  }
-  .jobs-table td { padding: 14px 20px; border-bottom: 1px solid var(--border-light); color: var(--text); }
-  .jobs-table tr:last-child td { border-bottom: none; }
-  .jobs-table tr:hover td { background: rgba(182, 109, 255, 0.03); }
-  .job-filename { font-size: 14px; font-weight: 500; }
-  .job-id { font-size: 12px; color: var(--muted); }
-  .badge {
-    display: inline-flex; align-items: center; gap: 6px;
-    font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;
-    padding: 4px 10px; border-radius: 4px;
-  }
-  .badge-dot { width: 6px; height: 6px; border-radius: 50%; }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
-  .badge.extracting .badge-dot, .badge.rendering .badge-dot,
-  .badge.assembling .badge-dot, .badge.health_check .badge-dot { animation: pulse 1.2s ease-in-out infinite; }
+  /* Status badges */
+  .badge-status { font-size: 11px; font-weight: 500; padding: 4px 10px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.3px; }
+  .badge-done { background: #dcfce7; color: #166534; }
+  .badge-extracting, .badge-rendering, .badge-assembling, .badge-health_check { background: #ede9fe; color: #5b21b6; }
+  .badge-error { background: #fee2e2; color: #991b1b; }
+  .badge-queued { background: #f3f4f6; color: #6b7280; }
 
-  .empty-jobs {
-    text-align: center; padding: 40px 24px; border-radius: 8px;
-    border: 1px solid var(--border); color: var(--muted); font-size: 14px;
-    background: var(--surface);
-  }
+  /* Progress bar in table */
+  .progress-sm { height: 6px; border-radius: 3px; }
 
-  /* ── View All link ── */
-  .view-all-link {
-    font-size: 12px; font-weight: 600; color: var(--primary);
-    text-decoration: none; white-space: nowrap;
-  }
-  .view-all-link:hover { text-decoration: underline; }
+  /* Toast */
+  .toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; }
 
-  /* ── Recent Outputs ── */
-  .outputs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
-  .output-item {
-    display: flex; align-items: center; gap: 14px; padding: 16px 20px;
-    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
-    text-decoration: none; color: var(--text); transition: all 0.2s;
+  /* Active job cards */
+  .active-job-card {
+    background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px 20px;
+    border-left: 4px solid var(--primary); margin-bottom: 10px;
   }
-  .output-item:hover { border-color: var(--primary); box-shadow: 0 2px 8px rgba(var(--primary-rgb),0.1); transform: translateY(-1px); }
-  .output-item-left { flex: 1; min-width: 0; }
-  .output-item-id { font-size: 13px; font-weight: 600; color: var(--text); font-family: monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .output-item-meta { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
-  .meta-chip {
-    font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 4px;
-    background: var(--surface2); color: var(--muted); border: 1px solid var(--border-light);
-  }
-  .output-item-arrow { margin-left: auto; color: var(--muted); font-size: 18px; flex-shrink: 0; transition: color 0.2s; }
-  .output-item:hover .output-item-arrow { color: var(--primary); }
-
-  .error-banner {
-    background: rgba(254,124,150,0.12); border: 1px solid rgba(254,124,150,0.35);
-    border-left: 4px solid var(--danger); color: var(--danger);
-    font-size: 13px; padding: 14px 16px; border-radius: 4px; margin-bottom: 20px;
-  }
+  .active-job-card .job-name { font-weight: 600; font-size: 14px; }
+  .active-job-card .job-meta { font-size: 12px; color: #6b7280; margin-top: 4px; }
 </style>
 </head>
 <body>
-<nav class="navbar-theme">
-  <div class="nav-brand">CL <span>Pipeline</span></div>
-  <div class="nav-right">
-    <span class="nav-user">{{ session.username }}</span>
-    <a href="/browse" class="nav-link">Browse Outputs</a>
-    <a href="/logout" class="nav-link">Sign Out</a>
+
+<nav class="navbar navbar-expand navbar-custom sticky-top">
+  <div class="container-fluid px-4">
+    <a class="navbar-brand" href="/dashboard">CL <span>Pipeline</span></a>
+    <div class="d-flex align-items-center gap-3">
+      <span class="text-muted" style="font-size:13px">{{ session.username }}</span>
+      <a href="/browse" class="btn btn-outline-secondary btn-sm">Browse All</a>
+      <a href="/logout" class="btn btn-outline-secondary btn-sm">Sign Out</a>
+    </div>
   </div>
 </nav>
 
+<!-- Toast container -->
+<div class="toast-container" id="toast-container"></div>
+
 <div class="page">
   {% if error %}
-  <div class="error-banner">{{ error }}</div>
+  <div class="alert alert-danger" role="alert">{{ error }}</div>
   {% endif %}
 
-  <!-- ── Hero: Upload + Pipeline Overview ── -->
-  <div class="hero">
-    <div class="upload-card">
-      <h2>Extract PDF</h2>
-      <div class="subtitle">Upload a PDF to extract structured JSON.</div>
-
-      <form method="POST" action="/upload" enctype="multipart/form-data" id="upload-form">
-        <div class="drop-zone" id="drop-zone">
-          <input type="file" name="pdf_file" id="pdf-input" accept=".pdf" required>
-          <div class="drop-icon">&#128196;</div>
-          <div class="drop-title">Drop your PDF here</div>
-          <div class="drop-sub">PDF only, up to 100 MB</div>
-          <div class="drop-or">or</div>
-          <button type="button" class="browse-btn" onclick="document.getElementById('pdf-input').click()">Browse Files</button>
-        </div>
-
-        <div class="file-preview" id="file-preview">
-          <div class="file-preview-icon">&#128203;</div>
-          <div class="file-preview-info">
-            <div class="file-preview-name" id="fp-name">—</div>
-            <div class="file-preview-size" id="fp-size">—</div>
-          </div>
-          <button type="button" class="file-preview-remove" id="fp-remove" title="Remove file">&times;</button>
-        </div>
-
-        <input type="hidden" name="api_key" value="">
-
-        <div class="submit-row" id="submit-row">
-          <button type="submit" class="btn-submit" id="submit-btn">
-            <span>Start Extraction</span>
-            <span>&#8594;</span>
-          </button>
-        </div>
-      </form>
-    </div>
-
-  </div>
-
-  <!-- ── Stats ── -->
-  {% set running_jobs_list = jobs|rejectattr('status','in',['done','error','queued'])|list %}
-  {% set error_jobs_list = jobs|selectattr('status','eq','error')|list %}
-  {% set total_count = folders|length %}
-  {% set running_count = running_jobs_list|length %}
-  {% set error_count = error_jobs_list|length %}
-
-  <div class="stats-row">
-    <div class="stat-card total">
-      <div class="stat-num">{{ total_count }}</div>
-      <div class="stat-label">Total Outputs</div>
-    </div>
-    <div class="stat-card done">
-      <div class="stat-num">{{ total_count }}</div>
-      <div class="stat-label">Completed</div>
-    </div>
-    <div class="stat-card running">
-      <div class="stat-num">{{ running_count }}</div>
-      <div class="stat-label">In Progress</div>
-    </div>
-    <div class="stat-card error">
-      <div class="stat-num">{{ error_count }}</div>
-      <div class="stat-label">Failed</div>
-    </div>
-  </div>
-
-  <!-- ── Active Jobs (in-progress / error) ── -->
-  {% if running_jobs_list or error_jobs_list %}
-  <div class="section-header">
-    <div class="section-title">Active Jobs</div>
-  </div>
-  <table class="jobs-table">
-    <thead>
-      <tr><th>File</th><th>Job ID</th><th>Status</th><th>Progress</th><th>Action</th></tr>
-    </thead>
-    <tbody>
-      {% for job in running_jobs_list + error_jobs_list %}
-      <tr>
-        <td><div class="job-filename">{{ job.filename }}</div></td>
-        <td><div class="job-id">{{ job.id[:12] }}&#8230;</div></td>
-        <td><span class="badge {{ job.status }}"><span class="badge-dot"></span> {{ job.status }}</span></td>
-        <td><span style="font-size:13px;color:var(--muted)">{{ job.progress }}% {% if job.total %}({{ job.pages_done|length }}/{{ job.total }} pages){% endif %}</span></td>
-        <td>
-          {% if job.status == 'error' %}
-            <a href="/job/{{ job.id }}" class="action-link" style="color:var(--danger);border-color:rgba(254,124,150,0.4)">View Error &#8594;</a>
-          {% else %}
-            <a href="/job/{{ job.id }}" class="action-link">Monitor &#8594;</a>
-          {% endif %}
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% endif %}
-
-  <!-- ── Completed Extractions ── -->
-  <div class="section-header" style="margin-top:32px;">
-    <div class="section-title">Recent Extractions</div>
-    {% if folders|length > 6 %}
-    <a href="/browse" class="view-all-link">View All ({{ folders|length }}) &#8594;</a>
-    {% endif %}
-  </div>
-
-  {% if folders|length > 0 %}
-  <div class="outputs-grid">
-    {% for f in folders[:6] %}
-    <a class="output-item" href="/results/{{ f.id }}">
-      <div class="output-item-left">
-        <div class="output-item-id">{{ f.id[:16] }}&#8230;</div>
-        <div class="output-item-meta">
-          <span class="meta-chip">{{ f.pages }} pages</span>
-          <span class="meta-chip">{{ f.images }} images</span>
-          <span class="meta-chip">{{ f.files }} files</span>
-        </div>
+  <!-- Upload -->
+  <div class="upload-card">
+    <div class="row align-items-center">
+      <div class="col-md-4">
+        <h5>Extract PDF</h5>
+        <p class="text-muted mb-0">Upload a PDF to extract structured JSON. The pipeline runs in the background.</p>
       </div>
-      <div class="output-item-arrow">&#8594;</div>
-    </a>
-    {% endfor %}
+      <div class="col-md-8">
+        <form method="POST" action="/upload" enctype="multipart/form-data" id="upload-form">
+          <div class="drop-zone" id="drop-zone">
+            <input type="file" name="pdf_file" id="pdf-input" accept=".pdf" required>
+            <div class="drop-icon">&#128196;</div>
+            <div style="font-size:14px;font-weight:600;color:#374151">Drop PDF here or click to browse</div>
+            <div style="font-size:12px;color:#9ca3af;margin-top:4px">PDF only, up to 100 MB</div>
+          </div>
+          <div class="file-preview" id="file-preview">
+            <span style="font-size:22px">&#128203;</span>
+            <span class="file-preview-name" id="fp-name"></span>
+            <span class="file-preview-size" id="fp-size"></span>
+            <button type="button" class="file-preview-remove" id="fp-remove">&times;</button>
+          </div>
+          <input type="hidden" name="api_key" value="">
+          <div class="submit-row" id="submit-row">
+            <button type="submit" class="btn btn-primary w-100" id="submit-btn" style="background:var(--primary);border-color:var(--primary)">
+              Start Extraction &#8594;
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
-  {% else %}
-  <div class="empty-jobs">No extractions yet. Upload a PDF above to get started.</div>
-  {% endif %}
+
+  <!-- Stats -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="stat-card">
+        <div class="stat-num" id="stat-total">{{ folders|length }}</div>
+        <div class="stat-label">Total Outputs</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-card">
+        <div class="stat-num text-success" id="stat-done">{{ folders|length }}</div>
+        <div class="stat-label">Completed</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-card">
+        <div class="stat-num text-primary" id="stat-running">{{ jobs|rejectattr('status','in',['done','error','queued'])|list|length }}</div>
+        <div class="stat-label">In Progress</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-card">
+        <div class="stat-num text-danger" id="stat-failed">{{ jobs|selectattr('status','eq','error')|list|length }}</div>
+        <div class="stat-label">Failed</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Active Jobs (polling updates) -->
+  <div id="active-jobs-section" style="display:none">
+    <h6 class="text-uppercase text-muted fw-bold mb-3" style="font-size:12px;letter-spacing:1px">Active Jobs</h6>
+    <div id="active-jobs-list"></div>
+  </div>
+
+  <!-- DataTable: All Extractions -->
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-white border-bottom d-flex align-items-center justify-content-between py-3">
+      <h6 class="mb-0 fw-bold">All Extractions</h6>
+      <a href="/browse" class="btn btn-sm btn-outline-primary" style="border-color:var(--primary);color:var(--primary)">View Grid</a>
+    </div>
+    <div class="card-body p-0">
+      <table id="extractions-table" class="table table-hover mb-0" style="width:100%">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Job ID</th>
+            <th>Status</th>
+            <th>Pages</th>
+            <th>Images</th>
+            <th>Files</th>
+            <th>Created</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for f in folders %}
+          <tr>
+            <td>{{ loop.index }}</td>
+            <td><span class="mono-id">{{ f.id }}</span></td>
+            <td><span class="badge badge-status bg-success">{{ f.status }}</span></td>
+            <td class="text-center">{{ f.pages }}</td>
+            <td class="text-center">{{ f.images }}</td>
+            <td class="text-center">{{ f.files }}</td>
+            <td>{{ f.created }}</td>
+            <td><a href="/results/{{ f.id }}" class="btn btn-sm btn-outline-primary" style="border-color:var(--primary);color:var(--primary)">View</a></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
 </div>
 
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
 <script>
+$(document).ready(function() {
+  dtTable = $('#extractions-table').DataTable({
+    order: [[0, 'desc']],
+    pageLength: 10,
+    lengthMenu: [10, 25, 50, 100],
+    language: {
+      search: '',
+      searchPlaceholder: 'Search extractions...',
+      emptyTable: 'No extractions yet. Upload a PDF above to get started.',
+    },
+    columnDefs: [
+      { targets: [2], className: 'text-center', orderable: false },
+      { targets: [3, 4, 5], className: 'text-center' },
+      { targets: [7], orderable: false, className: 'text-center' },
+    ],
+  });
+});
+
+/* ── Upload file preview ── */
 const dropZone = document.getElementById('drop-zone');
 const fileInput = document.getElementById('pdf-input');
 const filePreview = document.getElementById('file-preview');
@@ -340,37 +243,146 @@ function showFilePreview() {
   const file = fileInput.files[0];
   if (!file) return;
   fpName.textContent = file.name;
-  const mb = (file.size / 1024 / 1024).toFixed(1);
-  fpSize.textContent = mb + ' MB';
+  fpSize.textContent = (file.size / 1024 / 1024).toFixed(1) + ' MB';
   filePreview.classList.add('visible');
   submitRow.classList.add('visible');
   dropZone.style.display = 'none';
 }
-
 function clearFile() {
   fileInput.value = '';
   filePreview.classList.remove('visible');
   submitRow.classList.remove('visible');
   dropZone.style.display = 'flex';
 }
-
 fileInput.addEventListener('change', showFilePreview);
 fpRemove.addEventListener('click', clearFile);
-
 dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
 dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
 dropZone.addEventListener('drop', e => {
   e.preventDefault(); dropZone.classList.remove('dragover');
-  if (e.dataTransfer.files[0]) {
-    fileInput.files = e.dataTransfer.files;
-    showFilePreview();
-  }
+  if (e.dataTransfer.files[0]) { fileInput.files = e.dataTransfer.files; showFilePreview(); }
 });
-
 document.getElementById('upload-form').addEventListener('submit', () => {
-  submitBtn.innerHTML = '<span>Uploading&#8230;</span>';
+  submitBtn.innerHTML = 'Uploading&hellip;';
   submitBtn.disabled = true;
 });
+
+/* ── Background job polling + toast notifications ── */
+const completedSet = new Set();
+let pollTimer = null;
+
+function showToast(title, body, type) {
+  const id = 'toast-' + Date.now();
+  const bgClass = type === 'success' ? 'text-bg-success' : type === 'error' ? 'text-bg-danger' : 'text-bg-primary';
+  const html = '<div id="' + id + '" class="toast ' + bgClass + '" role="alert" data-bs-autohide="false">' +
+    '<div class="toast-header">' +
+      '<strong class="me-auto">' + title + '</strong>' +
+      '<button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>' +
+    '</div>' +
+    '<div class="toast-body">' + body + '</div>' +
+  '</div>';
+  document.getElementById('toast-container').insertAdjacentHTML('beforeend', html);
+  const el = document.getElementById(id);
+  new bootstrap.Toast(el, { autohide: false }).show();
+  el.addEventListener('hidden.bs.toast', () => el.remove());
+}
+
+function renderActiveJobs(jobs) {
+  var active = jobs.filter(function(j) { return j.status !== 'done' && j.status !== 'error'; });
+  var section = document.getElementById('active-jobs-section');
+  var list = document.getElementById('active-jobs-list');
+
+  document.getElementById('stat-running').textContent = active.length;
+  var errors = jobs.filter(function(j) { return j.status === 'error'; });
+  document.getElementById('stat-failed').textContent = errors.length;
+
+  if (active.length === 0) {
+    section.style.display = 'none';
+    return;
+  }
+  section.style.display = 'block';
+  var html = '';
+  active.forEach(function(j) {
+    var pct = j.progress || 0;
+    var pagesDone = j.pages_done ? j.pages_done.length : 0;
+    var pagesInfo = j.total ? pagesDone + '/' + j.total + ' pages' : 'Preparing…';
+    var lastLog = (j.logs && j.logs.length) ? j.logs[j.logs.length - 1] : '';
+    var statusLabel = j.status.replace(/_/g, ' ').toUpperCase();
+
+    html += '<div class="active-job-card">' +
+      '<div class="d-flex justify-content-between align-items-center">' +
+        '<div>' +
+          '<span class="job-name">' + (j.filename || j.id.substring(0, 12)) + '</span>' +
+          '<span class="badge badge-status badge-' + j.status + ' ms-2">' + statusLabel + '</span>' +
+          '<div class="job-meta mt-1">ID: ' + j.id.substring(0, 12) + '&hellip; &middot; ' + pagesInfo + '</div>' +
+        '</div>' +
+        '<span class="fw-bold" style="color:var(--primary);font-size:18px">' + pct + '%</span>' +
+      '</div>' +
+      '<div class="progress mt-2" style="height:8px;border-radius:4px">' +
+        '<div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" ' +
+          'style="width:' + pct + '%;background:var(--primary)"></div>' +
+      '</div>';
+    if (lastLog) {
+      html += '<div class="mt-2" style="font-size:12px;color:#6b7280;font-family:monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + lastLog.replace(/"/g, '&quot;') + '">' + lastLog + '</div>';
+    }
+    html += '</div>';
+  });
+  list.innerHTML = html;
+}
+
+var dtTable = null;
+
+function addCompletedRow(job) {
+  if (!dtTable) return;
+  var rowCount = dtTable.rows().count() + 1;
+  var shortId = job.id;
+  dtTable.row.add([
+    rowCount,
+    '<span class="mono-id">' + shortId + '</span>',
+    '<span class="badge badge-status bg-success">Completed</span>',
+    job.total || '—',
+    '—',
+    '—',
+    new Date().toISOString().slice(0, 16).replace('T', ' '),
+    '<a href="/results/' + job.id + '" class="btn btn-sm btn-outline-primary" style="border-color:var(--primary);color:var(--primary)">View</a>'
+  ]).draw(false);
+
+  var total = parseInt(document.getElementById('stat-total').textContent) + 1;
+  var done  = parseInt(document.getElementById('stat-done').textContent) + 1;
+  document.getElementById('stat-total').textContent = total;
+  document.getElementById('stat-done').textContent  = done;
+}
+
+function pollJobs() {
+  fetch('/api/jobs').then(r => r.json()).then(jobs => {
+    if (!Array.isArray(jobs)) return;
+    renderActiveJobs(jobs);
+
+    jobs.forEach(j => {
+      if (j.status === 'done' && !completedSet.has(j.id)) {
+        completedSet.add(j.id);
+        showToast('Extraction Complete',
+          (j.filename || j.id.substring(0, 12)) + ' finished successfully. ' +
+          '<a href="/results/' + j.id + '" class="text-white fw-bold text-decoration-underline">View Results</a>',
+          'success');
+        addCompletedRow(j);
+      }
+      if (j.status === 'error' && !completedSet.has(j.id)) {
+        completedSet.add(j.id);
+        showToast('Extraction Failed',
+          (j.filename || j.id.substring(0, 12)) + ' failed: ' + (j.error || 'Unknown error'),
+          'error');
+      }
+    });
+
+    var hasActive = jobs.some(j => j.status !== 'done' && j.status !== 'error');
+    pollTimer = setTimeout(pollJobs, hasActive ? 3000 : 10000);
+  }).catch(() => {
+    pollTimer = setTimeout(pollJobs, 10000);
+  });
+}
+
+pollJobs();
 </script>
 </body>
 </html>

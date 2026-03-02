@@ -16,6 +16,7 @@ from __future__ import annotations
 import json
 import re
 import shutil
+import time
 import unicodedata
 from pathlib import Path
 
@@ -91,9 +92,11 @@ def _resolve_output_and_pdf(job_id: str) -> tuple[Path | None, Path | None]:
 
 def _enrich_folder(p: Path) -> dict:
     """Read page/image counts from a completed output folder."""
-    info: dict = {"id": p.name, "path": str(p), "pages": 0, "images": 0, "files": 0}
+    info: dict = {"id": p.name, "path": str(p), "pages": 0, "images": 0, "files": 0,
+                  "status": "Completed", "created": ""}
     try:
         info["files"] = sum(1 for f in p.iterdir() if f.suffix == ".json")
+        info["created"] = time.strftime("%Y-%m-%d %H:%M", time.localtime(p.stat().st_mtime))
         pages_file = p / "13_pages.json"
         if pages_file.exists():
             with open(pages_file, encoding="utf-8") as f:
@@ -186,7 +189,7 @@ async def upload(
 
     PipelineService.start(job)
 
-    return RedirectResponse(url=f"/job/{job.id}", status_code=303)
+    return RedirectResponse(url="/dashboard", status_code=303)
 
 
 # ── Job monitor ───────────────────────────────────────────────────────────────
@@ -207,6 +210,12 @@ async def api_job(request: Request, job_id: str, _=Depends(require_login)):
     if not job:
         raise HTTPException(status_code=404, detail="not found")
     return job.to_api_dict()
+
+
+@jobs_router.get("/api/jobs")
+async def api_jobs(request: Request, _=Depends(require_login)):
+    """Return all in-memory jobs (active + recently completed) for dashboard polling."""
+    return [j.to_api_dict() | {"id": j.id} for j in job_repo.all()]
 
 
 # ── Results viewer ────────────────────────────────────────────────────────────

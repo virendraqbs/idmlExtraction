@@ -107,7 +107,10 @@ window.MathJax = {
   .editor-page-header strong { color: var(--text); font-weight: 600; }
   .editor-right .page-img-wrap {
     flex: 1; overflow: auto; display: flex; align-items: flex-start; justify-content: center;
-    padding: 16px;
+    padding: 16px; position: relative; min-height: 0;
+  }
+  .editor-right .page-img-wrap #editor-pdf-iframe {
+    flex: 1; width: 100%; min-height: 100%; border-radius: 6px;
   }
   .editor-right .page-img-wrap img {
     max-width: 100%; height: auto; border-radius: 6px;
@@ -121,21 +124,71 @@ window.MathJax = {
   }
   .editor-section .schema-tag {
     position: absolute; top: 12px; right: 12px;
-    font-size: 11px; font-weight: 500; color: var(--primary);
-    background: rgba(182, 109, 255, 0.12); padding: 4px 10px; border-radius: 4px;
+    font-size: 11px; font-weight: 600; color: #fff;
+    background: var(--primary); padding: 5px 12px 5px 28px; border-radius: 6px;
+    text-transform: lowercase; letter-spacing: 0.3px;
+  }
+  .editor-section .schema-tag::before {
+    content: ''; position: absolute; left: 8px; top: 50%; transform: translateY(-50%);
+    width: 12px; height: 12px; opacity: 0.95;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7'/%3E%3Cpath d='M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z'/%3E%3C/svg%3E") no-repeat center;
+    background-size: contain;
   }
   .editor-section h3 {
-    font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 12px; padding-right: 100px;
+    font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 12px; padding-right: 120px;
   }
   .editor-section ul { margin: 0; padding-left: 20px; color: var(--text); line-height: 1.7; }
   .editor-section p { margin: 0; color: var(--text); line-height: 1.7; }
   .editor-section .std-item { margin-bottom: 10px; padding-left: 12px; border-left: 3px solid var(--border); }
+  .editor-section .std-block-card { margin-bottom: 20px; }
+  .editor-section .std-block-card:last-child { margin-bottom: 0; }
+  .editor-section .std-block-header {
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+    margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border-light);
+  }
+  .editor-section .std-block-header h3 { margin: 0; padding-right: 0; }
+  .editor-section .std-block-tag {
+    font-size: 11px; font-weight: 600; color: #fff; background: var(--primary);
+    padding: 5px 12px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .editor-section .std-subtitle { font-size: 14px; font-weight: 600; color: var(--primary); margin: 14px 0 10px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .editor-section .std-subtitle-tag { font-size: 10px; font-weight: 600; color: #fff; background: var(--primary); padding: 3px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.3px; }
+  /* Standard item: each field (domain, code, fullText) = value left, field-name tag right */
+  .editor-section .std-field-row {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+    margin-bottom: 8px; position: relative; padding-right: 70px;
+  }
+  .editor-section .std-field-row:last-child { margin-bottom: 0; }
+  .editor-section .std-field-value { flex: 1; min-width: 0; }
+  .editor-section .std-field-label {
+    position: absolute; right: 0; top: 0;
+    font-size: 10px; font-weight: 600; font-style: italic; color: var(--muted);
+    text-transform: lowercase; letter-spacing: 0.3px;
+    background: rgba(0,0,0,0.06); padding: 2px 8px 2px 22px; border-radius: 4px;
+  }
+  .editor-section .std-field-label::before {
+    content: ''; position: absolute; left: 4px; top: 50%; transform: translateY(-50%);
+    width: 10px; height: 10px; opacity: 0.85;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7'/%3E%3Cpath d='M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z'/%3E%3C/svg%3E") no-repeat center;
+    background-size: contain;
+  }
+  .editor-section .std-domain .std-field-value { font-size: 12px; font-weight: 600; color: var(--primary); }
+  .editor-section .std-item-block { margin-bottom: 16px; padding: 12px 0; border-bottom: 1px solid var(--border-light); }
+  .editor-section .std-item-block:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+  .editor-section .std-item-block .std-code .std-field-value { font-size: 15px; font-weight: 700; color: var(--text); }
+  .editor-section .std-item-block .std-fulltext .std-field-value { margin: 0; line-height: 1.65; color: var(--text); }
   .editor-section .activity-item { margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--border-light); }
   .editor-section .activity-item:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
   .editor-section .task-item { margin: 10px 0 10px 16px; padding: 12px; background: var(--surface2); border-radius: 4px; border-left: 3px solid var(--primary); }
   .editor-section .stem-item { margin: 6px 0 6px 12px; padding: 8px 12px; background: var(--surface); border-radius: 3px; font-size: 13px; }
   .editor-section .sub-task-item { margin: 4px 0 4px 20px; font-size: 12px; color: var(--muted); }
-  .activity-label { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 3px; background: rgba(182,109,255,0.12); color: var(--primary); margin-right: 8px; }
+  .activity-label { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; padding: 2px 8px 2px 24px; border-radius: 3px; background: rgba(182,109,255,0.12); color: var(--primary); margin-right: 8px; position: relative; }
+  .activity-label::before {
+    content: ''; position: absolute; left: 5px; top: 50%; transform: translateY(-50%);
+    width: 10px; height: 10px; opacity: 0.9;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237c3aed' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7'/%3E%3Cpath d='M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z'/%3E%3C/svg%3E") no-repeat center;
+    background-size: contain;
+  }
   .task-type-badge { font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 3px; background: rgba(27,207,180,0.12); color: var(--success); margin-left: 6px; }
   .response-badge { font-size: 10px; font-weight: 500; padding: 2px 6px; border-radius: 3px; background: rgba(255,165,0,0.12); color: #e09000; margin-left: 6px; }
   .editor-section-meta { font-size: 13px; color: var(--text); margin-top: 8px; }
@@ -313,10 +366,11 @@ window.MathJax = {
         <div class="editor-divider" id="editor-divider" title="Drag to resize"></div>
         <div class="editor-right" id="editor-right">
           <div class="editor-page-header">
-            <strong>Page Image</strong>
+            <strong>PDF</strong>
             <span id="editor-page-label">—</span>
           </div>
-          <div class="page-img-wrap">
+          <div class="page-img-wrap" id="editor-right-content">
+            <iframe id="editor-pdf-iframe" title="PDF at page" style="display:none;width:100%;height:100%;min-height:400px;border:0;border-radius:6px"></iframe>
             <img id="editor-page-img" src="about:blank" alt="Page preview" style="display:none">
           </div>
         </div>
@@ -537,28 +591,60 @@ function renderPageWebView(page, data) {
 
   if (page && page.pageType === 'STANDARDS_PAGE') {
     const stdBlocks = lesson.standardsBlocks || data.standardsBlocks || [];
-    const stdBlock = stdBlocks[0] || {};
-    if (stdBlock.title || stdBlock.conceptualOverlays || standards.length) {
-      let stdHtml = `<div class="editor-section">
-        <span class="schema-tag">standards</span>`;
-      stdHtml += `<h3>${escapeHtml(stdBlock.title || 'Standards')}</h3>`;
+    const stdBlocksToShow = stdBlocks.length ? stdBlocks : (standards.length ? [{ title: 'Standards', standards: standards }] : []);
+    stdBlocksToShow.forEach(function(stdBlock) {
+      const blockStandards = stdBlock.standards || [];
+      const hasContent = stdBlock.title || (stdBlock.conceptualOverlays && stdBlock.conceptualOverlays.length) || blockStandards.length;
+      if (!hasContent) return;
+
+      const bodyGl = [stdBlock.body, stdBlock.gradeLevel].filter(function(x) { return x; });
+      const titleSuffix = bodyGl.length ? ' — ' + bodyGl.map(function(x) { return escapeHtml(x); }).join(' · ') : '';
+
+      /* Card 1: Block title with "standards" tag on the right */
+      html += '<div class="editor-section">';
+      html += '<span class="schema-tag">standards</span>';
+      html += '<h3>' + escapeHtml(stdBlock.title || 'Standards') + titleSuffix + '</h3>';
+      html += '</div>';
+
+      /* Card 2: Big Ideas — same pattern as My Learning Goals (title left, tag right, list below) */
       if (stdBlock.conceptualOverlays && stdBlock.conceptualOverlays.length) {
-        stdHtml += `<div style="margin-bottom:14px"><strong style="font-size:13px;color:var(--muted)">${escapeHtml(stdBlock.conceptualOverlaySubtitle || 'Big Ideas')}</strong>`;
-        stdHtml += `<ul style="margin:4px 0 0">`;
-        stdBlock.conceptualOverlays.forEach(o => { stdHtml += `<li>${escapeHtml(o.text)}</li>`; });
-        stdHtml += `</ul></div>`;
+        html += '<div class="editor-section">';
+        html += '<span class="schema-tag">big_ideas</span>';
+        html += '<h3>' + escapeHtml(stdBlock.conceptualOverlaySubtitle || 'Big Ideas') + '</h3>';
+        html += '<ul>';
+        stdBlock.conceptualOverlays.forEach(function(o) { html += '<li>' + escapeHtml(o.text) + '</li>'; });
+        html += '</ul></div>';
       }
-      if (stdBlock.standardsSubtitle) {
-        stdHtml += `<h4 style="font-size:14px;margin:12px 0 8px;color:var(--text)">${escapeHtml(stdBlock.standardsSubtitle)}</h4>`;
+
+      /* Card 3: Standards subtitle (e.g. Functions Standards) with "standards" tag, then standard items */
+      if (stdBlock.standardsSubtitle || blockStandards.length) {
+        html += '<div class="editor-section">';
+        html += '<span class="schema-tag">standards</span>';
+        html += '<h3>' + escapeHtml(stdBlock.standardsSubtitle || 'Standards') + '</h3>';
+        blockStandards.forEach(function(ref) {
+          const fullStd = standards.find(function(s) { return s.id === ref.id || s.code === ref.code; }) || ref;
+          const star = fullStd.hasModelingSymbol ? ' <span title="Modeling" style="color:#d4380d">★</span>' : '';
+          const codeVal = escapeHtml(ref.code || fullStd.code || '') + star;
+          const fullText = fullStd.fullText || fullStd.description || '';
+          html += '<div class="std-item-block">';
+          if (fullStd.domain) {
+            html += '<div class="std-domain std-field-row">';
+            html += '<span class="std-field-value">' + escapeHtml(fullStd.domain) + '</span>';
+            html += '<span class="std-field-label" data-tag="domain">domain</span></div>';
+          }
+          html += '<div class="std-code std-field-row">';
+          html += '<span class="std-field-value">' + codeVal + '</span>';
+          html += '<span class="std-field-label" data-tag="code">code</span></div>';
+          if (fullText) {
+            html += '<div class="std-fulltext std-field-row">';
+            html += '<div class="std-field-value">' + nl2br(fullText) + '</div>';
+            html += '<span class="std-field-label" data-tag="fullText">fullText</span></div>';
+          }
+          html += '</div>';
+        });
+        html += '</div>';
       }
-      standards.forEach(s => {
-        const star = s.hasModelingSymbol ? ' <span title="Modeling" style="color:#d4380d">★</span>' : '';
-        const domain = s.domain ? `<span style="font-size:11px;color:var(--primary);font-weight:600">${escapeHtml(s.domain)}</span><br>` : '';
-        stdHtml += `<div class="std-item">${domain}<strong>${escapeHtml(s.code || '')}${star}</strong><p style="margin:4px 0 0">${nl2br(s.fullText || '')}</p></div>`;
-      });
-      stdHtml += `</div>`;
-      html += stdHtml;
-    }
+    });
   }
 
   if (lesson.title || lesson.lessonSummary) {
@@ -608,13 +694,10 @@ function renderPageWebView(page, data) {
     html += '<h3>Images (' + pageImages.length + ')</h3>';
     pageImages.forEach(img => {
       const imgUrl = img.imagePath ? '/outputs/' + jobId + '/' + img.imagePath : null;
-      const pgIdx = img.pdfPageIndex || img.sourcePage;
-      const pageUrl = pgIdx != null ? '/outputs/' + jobId + '/page_images/' + pgIdx + '.png' : (img.pageImagePath ? '/outputs/' + jobId + '/' + img.pageImagePath : null);
-      const thumbUrl = imgUrl || pageUrl;
       let card = '<div style="margin-bottom:14px;padding:12px;background:var(--surface2);border-radius:6px;font-size:13px;display:flex;gap:12px;align-items:flex-start">';
-      if (thumbUrl) {
-        card += '<a href="' + (imgUrl || pageUrl) + '" target="_blank" rel="noopener" style="flex-shrink:0">';
-        card += '<img src="' + thumbUrl + '" alt="' + escapeHtml(img.altText || 'Image') + '" style="width:120px;height:auto;border-radius:4px;border:1px solid var(--border)" loading="lazy">';
+      if (imgUrl) {
+        card += '<a href="' + imgUrl + '" target="_blank" rel="noopener" style="flex-shrink:0">';
+        card += '<img src="' + imgUrl + '" alt="' + escapeHtml(img.altText || 'Image') + '" style="width:120px;height:auto;border-radius:4px;border:1px solid var(--border)" loading="lazy">';
         card += '</a>';
       }
       card += '<div style="flex:1;min-width:0">';
@@ -626,10 +709,10 @@ function renderPageWebView(page, data) {
         const desc = img.description.length > 200 ? img.description.substring(0, 200) + '…' : img.description;
         card += '<p style="margin:4px 0 0;font-size:12px;color:var(--muted)">' + escapeHtml(desc) + '</p>';
       }
-      card += '<div style="margin-top:6px;display:flex;gap:10px">';
-      if (imgUrl) card += '<a href="' + imgUrl + '" target="_blank" rel="noopener" style="font-size:11px">View extracted image →</a>';
-      if (pageUrl) card += '<a href="' + pageUrl + '" target="_blank" rel="noopener" style="font-size:11px;color:var(--muted)">View full page →</a>';
-      card += '</div></div></div>';
+      if (imgUrl) {
+        card += '<div style="margin-top:6px"><a href="' + imgUrl + '" target="_blank" rel="noopener" style="font-size:11px">View extracted image →</a></div>';
+      }
+      card += '</div></div>';
       html += card;
     });
     html += '</div>';
@@ -644,18 +727,29 @@ function renderPageWebView(page, data) {
 }
 
 function updateEditorPdf(page) {
+  const iframe = document.getElementById('editor-pdf-iframe');
   const img = document.getElementById('editor-page-img');
   const label = document.getElementById('editor-page-label');
-  if (!img) return;
+  if (!label) return;
   const pdfIdx = page ? (page.pdfPageIndex || page.pageNumber || null) : null;
   const displayNum = page ? (page.pageNumber || pdfIdx) : null;
   if (pdfIdx) {
-    img.src = '/outputs/' + jobId + '/page_images/' + pdfIdx + '.png';
-    img.alt = 'Page ' + displayNum;
-    img.style.display = '';
     label.textContent = 'Page ' + displayNum;
+    var pdfUrl = '/outputs/' + jobId + '/pdf#page=' + pdfIdx;
+    if (iframe) {
+      iframe.src = pdfUrl;
+      iframe.style.display = '';
+    }
+    if (img) {
+      img.style.display = 'none';
+      img.src = 'about:blank';
+    }
   } else {
-    img.style.display = 'none';
+    if (iframe) {
+      iframe.src = 'about:blank';
+      iframe.style.display = 'none';
+    }
+    if (img) img.style.display = 'none';
     label.textContent = '—';
   }
 }
