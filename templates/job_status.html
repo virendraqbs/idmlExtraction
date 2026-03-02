@@ -283,11 +283,22 @@ async function poll() {
 
     if (data.status === 'done' && !done) {
       done = true;
-      document.getElementById('done-banner').style.display = 'flex';
-      document.getElementById('done-sub').textContent = `${data.output_files.length} JSON files extracted from ${data.total} pages.`;
       document.getElementById('progress-fill').style.width = '100%';
       document.getElementById('progress-pct').textContent = '100%';
       Object.values(pageChips).forEach(c => { c.classList.remove('active'); c.classList.add('done'); });
+
+      const bannerKey = 'done-banner-shown-' + jobId;
+      if (!localStorage.getItem(bannerKey)) {
+        const banner = document.getElementById('done-banner');
+        banner.style.display = 'flex';
+        document.getElementById('done-sub').textContent = `${data.output_files.length} JSON files extracted from ${data.total} pages.`;
+        localStorage.setItem(bannerKey, '1');
+        setTimeout(function() {
+          banner.style.transition = 'opacity 0.5s ease';
+          banner.style.opacity = '0';
+          setTimeout(function() { banner.style.display = 'none'; }, 500);
+        }, 5000);
+      }
       return;
     }
 
