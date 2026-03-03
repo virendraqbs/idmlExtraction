@@ -219,6 +219,454 @@ async def api_jobs(request: Request, _=Depends(require_login)):
     return [j.to_api_dict() | {"id": j.id} for j in job_repo.all()]
 
 
+@jobs_router.delete("/api/results/{job_id}/images/{image_id}")
+async def delete_image(request: Request, job_id: str, image_id: str, _=Depends(require_login)):
+    """Delete an extracted image: remove from 12_images.json, merged.json, and disk."""
+    out_dir = _find_output_dir(job_id)
+    if not out_dir:
+        raise HTTPException(status_code=404, detail="Output folder not found")
+
+    images_file = out_dir / "12_images.json"
+    if not images_file.exists():
+        raise HTTPException(status_code=404, detail="Images file not found")
+
+    with open(images_file, encoding="utf-8") as fh:
+        images_data = json.load(fh)
+
+    img_list = images_data.get("images", [])
+    target = None
+    remaining = []
+    for img in img_list:
+        if img.get("id") == image_id:
+            target = img
+        else:
+            remaining.append(img)
+
+    if not target:
+        raise HTTPException(status_code=404, detail="Image not found")
+
+    # Remove image file from disk
+    img_path = target.get("imagePath")
+    if img_path:
+        abs_path = (out_dir / img_path).resolve()
+        try:
+            abs_path.relative_to(out_dir.resolve())
+            if abs_path.exists():
+                abs_path.unlink()
+        except (ValueError, OSError):
+            pass
+
+    # Update 12_images.json
+    images_data["images"] = remaining
+    images_data["count"] = len(remaining)
+    with open(images_file, "w", encoding="utf-8") as fh:
+        json.dump(images_data, fh, indent=2, ensure_ascii=False)
+
+    # Update merged.json if it exists
+    merged_file = out_dir / "merged.json"
+    if merged_file.exists():
+        try:
+            with open(merged_file, encoding="utf-8") as fh:
+                merged = json.load(fh)
+            if "images" in merged:
+                merged["images"] = [i for i in merged["images"] if i.get("id") != image_id]
+            with open(merged_file, "w", encoding="utf-8") as fh:
+                json.dump(merged, fh, indent=2, ensure_ascii=False)
+        except Exception:
+            pass
+
+    return {"status": "deleted", "imageId": image_id, "remaining": len(remaining)}
+
+
+@jobs_router.post("/api/results/{job_id}/images/map")
+async def map_image(request: Request, job_id: str, _=Depends(require_login)):
+    """Manually map an unmatched extracted image to a Gemini-described image.
+
+    Body: { "geminiImageId": "<id of image with no file>",
+            "extractedImageId": "<id of UNREVIEWED image with file>" }
+
+    Merges the extracted image's file path into the Gemini entry and removes
+    the UNREVIEWED entry.
+    """
+    out_dir = _find_output_dir(job_id)
+    if not out_dir:
+        raise HTTPException(status_code=404, detail="Output folder not found")
+
+    body = await request.json()
+    gemini_id = body.get("geminiImageId")
+    extracted_id = body.get("extractedImageId")
+    if not gemini_id or not extracted_id:
+        raise HTTPException(status_code=400, detail="Both geminiImageId and extractedImageId are required")
+
+    images_file = out_dir / "12_images.json"
+    if not images_file.exists():
+        raise HTTPException(status_code=404, detail="Images file not found")
+
+    with open(images_file, encoding="utf-8") as fh:
+        images_data = json.load(fh)
+
+    img_list = images_data.get("images", [])
+    gemini_entry = None
+    extracted_entry = None
+    for img in img_list:
+        if img.get("id") == gemini_id:
+            gemini_entry = img
+        if img.get("id") == extracted_id:
+            extracted_entry = img
+
+    if not gemini_entry:
+        raise HTTPException(status_code=404, detail="Gemini image not found")
+    if not extracted_entry:
+        raise HTTPException(status_code=404, detail="Extracted image not found")
+
+    gemini_entry["imagePath"] = extracted_entry.get("imagePath")
+    if extracted_entry.get("dimensions"):
+        gemini_entry["dimensions"] = extracted_entry["dimensions"]
+
+    remaining = [img for img in img_list if img.get("id") != extracted_id]
+    images_data["images"] = remaining
+    images_data["count"] = len(remaining)
+
+    with open(images_file, "w", encoding="utf-8") as fh:
+        json.dump(images_data, fh, indent=2, ensure_ascii=False)
+
+    merged_file = out_dir / "merged.json"
+    if merged_file.exists():
+        try:
+            merged = json.loads(merged_file.read_text(encoding="utf-8"))
+            if "images" in merged:
+                for mi in merged["images"]:
+                    if mi.get("id") == gemini_id:
+                        mi["imagePath"] = gemini_entry["imagePath"]
+                        if gemini_entry.get("dimensions"):
+                            mi["dimensions"] = gemini_entry["dimensions"]
+                merged["images"] = [i for i in merged["images"] if i.get("id") != extracted_id]
+            with open(merged_file, "w", encoding="utf-8") as fh:
+                json.dump(merged, fh, indent=2, ensure_ascii=False)
+        except Exception:
+            pass
+
+    return {
+        "status": "mapped",
+        "geminiImageId": gemini_id,
+        "extractedImageId": extracted_id,
+        "imagePath": gemini_entry["imagePath"],
+        "remaining": len(remaining),
+    }
+
+
+@jobs_router.post("/api/results/{job_id}/images/swap")
+async def swap_images(request: Request, job_id: str, _=Depends(require_login)):
+    """Swap imagePath + dimensions between two image entries.
+
+    Body: { "imageIdA": "<id>", "imageIdB": "<id>" }
+    """
+    out_dir = _find_output_dir(job_id)
+    if not out_dir:
+        raise HTTPException(status_code=404, detail="Output folder not found")
+
+    body = await request.json()
+    id_a = body.get("imageIdA")
+    id_b = body.get("imageIdB")
+    if not id_a or not id_b:
+        raise HTTPException(status_code=400, detail="Both imageIdA and imageIdB are required")
+
+    images_file = out_dir / "12_images.json"
+    if not images_file.exists():
+        raise HTTPException(status_code=404, detail="Images file not found")
+
+    with open(images_file, encoding="utf-8") as fh:
+        images_data = json.load(fh)
+
+    img_list = images_data.get("images", [])
+    entry_a = next((i for i in img_list if i.get("id") == id_a), None)
+    entry_b = next((i for i in img_list if i.get("id") == id_b), None)
+
+    if not entry_a:
+        raise HTTPException(status_code=404, detail=f"Image {id_a} not found")
+    if not entry_b:
+        raise HTTPException(status_code=404, detail=f"Image {id_b} not found")
+
+    # Swap imagePath and dimensions
+    entry_a["imagePath"], entry_b["imagePath"] = entry_b.get("imagePath"), entry_a.get("imagePath")
+    entry_a["dimensions"], entry_b["dimensions"] = entry_b.get("dimensions"), entry_a.get("dimensions")
+
+    with open(images_file, "w", encoding="utf-8") as fh:
+        json.dump(images_data, fh, indent=2, ensure_ascii=False)
+
+    # Update merged.json
+    merged_file = out_dir / "merged.json"
+    if merged_file.exists():
+        try:
+            merged = json.loads(merged_file.read_text(encoding="utf-8"))
+            if "images" in merged:
+                for mi in merged["images"]:
+                    if mi.get("id") == id_a:
+                        mi["imagePath"] = entry_a.get("imagePath")
+                        if entry_a.get("dimensions"):
+                            mi["dimensions"] = entry_a["dimensions"]
+                        else:
+                            mi.pop("dimensions", None)
+                    elif mi.get("id") == id_b:
+                        mi["imagePath"] = entry_b.get("imagePath")
+                        if entry_b.get("dimensions"):
+                            mi["dimensions"] = entry_b["dimensions"]
+                        else:
+                            mi.pop("dimensions", None)
+            with open(merged_file, "w", encoding="utf-8") as fh:
+                json.dump(merged, fh, indent=2, ensure_ascii=False)
+        except Exception:
+            pass
+
+    return {
+        "status": "swapped",
+        "imageIdA": id_a,
+        "imageIdB": id_b,
+        "imagePathA": entry_a.get("imagePath"),
+        "imagePathB": entry_b.get("imagePath"),
+    }
+
+
+@jobs_router.post("/api/results/{job_id}/images/unassign")
+async def unassign_image(request: Request, job_id: str, _=Depends(require_login)):
+    """Remove only the imagePath from an image entry, keeping all text metadata.
+
+    Body: { "imageId": "<id>" }
+    """
+    out_dir = _find_output_dir(job_id)
+    if not out_dir:
+        raise HTTPException(status_code=404, detail="Output folder not found")
+
+    body = await request.json()
+    image_id = body.get("imageId")
+    if not image_id:
+        raise HTTPException(status_code=400, detail="imageId is required")
+
+    images_file = out_dir / "12_images.json"
+    if not images_file.exists():
+        raise HTTPException(status_code=404, detail="Images file not found")
+
+    with open(images_file, encoding="utf-8") as fh:
+        images_data = json.load(fh)
+
+    entry = next((i for i in images_data.get("images", []) if i.get("id") == image_id), None)
+    if not entry:
+        raise HTTPException(status_code=404, detail="Image not found")
+
+    entry.pop("imagePath", None)
+    entry.pop("dimensions", None)
+
+    with open(images_file, "w", encoding="utf-8") as fh:
+        json.dump(images_data, fh, indent=2, ensure_ascii=False)
+
+    merged_file = out_dir / "merged.json"
+    if merged_file.exists():
+        try:
+            merged = json.loads(merged_file.read_text(encoding="utf-8"))
+            for mi in merged.get("images", []):
+                if mi.get("id") == image_id:
+                    mi.pop("imagePath", None)
+                    mi.pop("dimensions", None)
+            with open(merged_file, "w", encoding="utf-8") as fh:
+                json.dump(merged, fh, indent=2, ensure_ascii=False)
+        except Exception:
+            pass
+
+    return {"status": "unassigned", "imageId": image_id}
+
+
+@jobs_router.get("/api/s3/config")
+async def api_s3_config(request: Request, _=Depends(require_login)):
+    """Return whether S3 is configured (never exposes credentials)."""
+    return {"configured": config.s3_configured, "bucket": config.S3_BUCKET if config.s3_configured else ""}
+
+
+@jobs_router.post("/api/results/{job_id}/images/upload")
+async def upload_images_to_s3(request: Request, job_id: str, _=Depends(require_login)):
+    """Upload selected images to S3.
+
+    Body: { "imageIds": ["id1", "id2", ...] }
+
+    Returns: { "status": "completed",
+               "uploaded": [ { "imageId": "...", "s3Url": "...", "s3Key": "..." }, ... ],
+               "errors":   [ { "imageId": "...", "error": "..." }, ... ] }
+    """
+    if not config.s3_configured:
+        raise HTTPException(status_code=503, detail="S3 is not configured. Set AWS credentials and S3_BUCKET in .env.")
+
+    out_dir = _find_output_dir(job_id)
+    if not out_dir:
+        raise HTTPException(status_code=404, detail="Output folder not found")
+
+    body = await request.json()
+    image_ids: list[str] = body.get("imageIds", [])
+    if not image_ids:
+        raise HTTPException(status_code=400, detail="imageIds must be a non-empty list")
+
+    images_file = out_dir / "12_images.json"
+    if not images_file.exists():
+        raise HTTPException(status_code=404, detail="12_images.json not found")
+
+    with open(images_file, encoding="utf-8") as fh:
+        images_data = json.load(fh)
+
+    img_map = {img["id"]: img for img in images_data.get("images", [])}
+
+    # Build upload batch; skip images without a local file or already uploaded
+    batch: list[dict] = []
+    skipped: list[dict] = []
+    for img_id in image_ids:
+        img = img_map.get(img_id)
+        if not img:
+            skipped.append({"imageId": img_id, "error": "Image ID not found in 12_images.json"})
+            continue
+        img_path = img.get("imagePath")
+        if not img_path:
+            skipped.append({"imageId": img_id, "error": "No local file for this image"})
+            continue
+        if img.get("s3Url"):
+            # Already uploaded — skip re-upload
+            skipped.append({"imageId": img_id, "error": "Already uploaded", "s3Url": img["s3Url"]})
+            continue
+        local_path = str((out_dir / img_path).resolve())
+        filename = Path(img_path).name
+        s3_key = f"{job_id}/images/{filename}"
+        batch.append({"imageId": img_id, "localPath": local_path, "s3Key": s3_key, "imagePath": img_path})
+
+    from utils.s3_uploader import S3Uploader
+    uploader = S3Uploader()
+    uploaded, errors = uploader.upload_batch(batch)
+
+    # Update 12_images.json with s3Url / s3Key for successfully uploaded images
+    url_map = {r["imageId"]: r for r in uploaded}
+    for img in images_data.get("images", []):
+        if img["id"] in url_map:
+            img["s3Url"] = url_map[img["id"]]["s3Url"]
+            img["s3Key"] = url_map[img["id"]]["s3Key"]
+
+    with open(images_file, "w", encoding="utf-8") as fh:
+        json.dump(images_data, fh, indent=2, ensure_ascii=False)
+
+    # Update merged.json if it exists
+    merged_file = out_dir / "merged.json"
+    if merged_file.exists():
+        try:
+            merged = json.loads(merged_file.read_text(encoding="utf-8"))
+            if "images" in merged:
+                for mi in merged["images"]:
+                    if mi.get("id") in url_map:
+                        mi["s3Url"] = url_map[mi["id"]]["s3Url"]
+                        mi["s3Key"] = url_map[mi["id"]]["s3Key"]
+            with open(merged_file, "w", encoding="utf-8") as fh:
+                json.dump(merged, fh, indent=2, ensure_ascii=False)
+        except Exception:
+            pass
+
+    # Save s3_uploads.json manifest
+    import datetime
+    manifest = {
+        "jobId": job_id,
+        "uploadedAt": datetime.datetime.utcnow().isoformat() + "Z",
+        "bucket": config.S3_BUCKET,
+        "images": [
+            {
+                "imageId": r["imageId"],
+                "localPath": next((b["imagePath"] for b in batch if b["imageId"] == r["imageId"]), ""),
+                "s3Key": r["s3Key"],
+                "s3Url": r["s3Url"],
+            }
+            for r in uploaded
+        ],
+    }
+    existing_manifest_file = out_dir / "s3_uploads.json"
+    if existing_manifest_file.exists():
+        try:
+            existing = json.loads(existing_manifest_file.read_text(encoding="utf-8"))
+            existing_ids = {i["imageId"] for i in existing.get("images", [])}
+            existing.setdefault("images", []).extend(
+                [i for i in manifest["images"] if i["imageId"] not in existing_ids]
+            )
+            existing["uploadedAt"] = manifest["uploadedAt"]
+            manifest = existing
+        except Exception:
+            pass
+    with open(existing_manifest_file, "w", encoding="utf-8") as fh:
+        json.dump(manifest, fh, indent=2, ensure_ascii=False)
+
+    return {
+        "status": "completed",
+        "uploaded": uploaded,
+        "errors": errors + skipped,
+    }
+
+
+@jobs_router.post("/api/results/{job_id}/reextract-images")
+async def reextract_images(request: Request, job_id: str, _=Depends(require_login)):
+    """Re-run image extraction on an existing output using saved raw_extractions.json.
+
+    This re-extracts raster + vector images from the PDF, maps them to Gemini
+    alt-text via position matching, and rebuilds 12_images.json + merged.json.
+    No Gemini API calls are made.
+    """
+    out_dir, pdf_path = _resolve_output_and_pdf(job_id)
+    if not out_dir:
+        raise HTTPException(status_code=404, detail="Output folder not found")
+
+    raw_file = out_dir / "raw_extractions.json"
+    if not raw_file.exists():
+        raise HTTPException(status_code=404, detail="raw_extractions.json not found")
+    if not pdf_path or not pdf_path.exists():
+        raise HTTPException(status_code=404, detail="Original PDF not found")
+
+    import threading
+
+    def _run():
+        from utils.image_extractor import extract_images_from_pdf
+        from utils.schema_chunks import build_images_chunk, gen_id
+
+        raw_pages = json.loads(raw_file.read_text(encoding="utf-8"))
+
+        # Re-extract images with enhanced extractor + Gemini mapping
+        image_manifest = extract_images_from_pdf(
+            pdf_path, out_dir, gemini_pages=raw_pages,
+        )
+
+        # Rebuild 12_images.json
+        images = build_images_chunk(pages=raw_pages, image_manifest=image_manifest)
+        images_data = {"count": len(images), "images": images}
+        with open(out_dir / "12_images.json", "w", encoding="utf-8") as fh:
+            json.dump(images_data, fh, indent=2, ensure_ascii=False)
+
+        # Update merged.json
+        merged_file = out_dir / "merged.json"
+        if merged_file.exists():
+            try:
+                merged = json.loads(merged_file.read_text(encoding="utf-8"))
+                merged["images"] = images
+                with open(merged_file, "w", encoding="utf-8") as fh:
+                    json.dump(merged, fh, indent=2, ensure_ascii=False)
+            except Exception:
+                pass
+
+    t = threading.Thread(target=_run, daemon=True)
+    t.start()
+    t.join(timeout=60)
+
+    if t.is_alive():
+        return {"status": "processing", "message": "Image extraction still running in background"}
+
+    # Read back results
+    images_data = json.loads((out_dir / "12_images.json").read_text(encoding="utf-8"))
+    total = images_data.get("count", 0)
+    with_path = sum(1 for i in images_data.get("images", []) if i.get("imagePath"))
+    return {
+        "status": "done",
+        "totalImages": total,
+        "withExtractedFile": with_path,
+        "message": f"Re-extracted {with_path} images with files out of {total} total",
+    }
+
+
 @jobs_router.get("/api/extraction-report/{job_id}")
 async def api_extraction_report(request: Request, job_id: str, _=Depends(require_login)):
     """Return the per-page extraction report for a completed job."""

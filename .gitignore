@@ -37,3 +37,7 @@ Thumbs.db
 
 # Theme source (not needed in deployment)
 theme/
+docs/db/
+docs/S3_IMAGE_UPLOAD_PLAN.md
+verify_extraction_output/
+verify_image_extraction.py

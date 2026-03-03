@@ -263,6 +263,36 @@ def build_activities_chunk(
     return activities, tasks, stems, response_areas, scaffolding
 
 
+_VALID_TOOLS = {"CALCULATOR", "RULER", "PROTRACTOR", "COMPASS", "MANIPULATIVES"}
+
+_VALID_SCAFFOLDING_TYPES = {
+    "HINT", "GUIDING_QUESTION", "STRATEGY_PROMPT",
+    "REMINDER", "CHARACTER_SUPPORT", "WORKED_EXAMPLE",
+}
+
+_VALID_RESPONSE_AREA_TYPES = {
+    "OPEN_ENDED", "SHORT_ANSWER", "GRID", "NUMBER_LINE", "ALGORITHM_WORKSPACE",
+}
+
+# Legacy image-level types Gemini may still return → normalize to schema types
+_RESPONSE_AREA_TYPE_MAP = {
+    "COORDINATE_PLANE": "GRID",
+    "TABLE":            "GRID",
+    "OPEN_LINE":        "SHORT_ANSWER",
+    "BOX":              "SHORT_ANSWER",
+    "STEM":             "SHORT_ANSWER",
+}
+
+
+def _normalize_response_area_type(raw: str | None) -> str:
+    if not raw:
+        return "OPEN_ENDED"
+    upper = raw.upper()
+    if upper in _VALID_RESPONSE_AREA_TYPES:
+        return upper
+    return _RESPONSE_AREA_TYPE_MAP.get(upper, "OPEN_ENDED")
+
+
 def _build_tasks_for_activity(
     act_id: str,
     raw_tasks: list[dict],
@@ -282,21 +312,30 @@ def _build_tasks_for_activity(
         resp_area_id = None
         if raw_task.get("has_response_area"):
             resp_area_id = gen_id()
+            ra_type  = _normalize_response_area_type(raw_task.get("response_area_type"))
+            lines    = raw_task.get("response_area_lines")
+            tools    = raw_task.get("allowed_tools") or []
             response_areas_acc.append({
-                "id":             resp_area_id,
-                "type":           raw_task.get("response_area_type", "OPEN_ENDED"),
-                "description":    "",
-                "specifications": None,
+                "id":          resp_area_id,
+                "type":        ra_type,
+                "description": raw_task.get("response_area_description") or "",
+                "specifications": {
+                    "textAreaLines": int(lines) if lines else 1,
+                    "allowedTools":  [t for t in tools if t in _VALID_TOOLS],
+                },
             })
 
         scaff_refs: list[dict] = []
         for raw_scaff in raw_task.get("scaffolding") or []:
             if not raw_scaff or not raw_scaff.get("content"):
                 continue
-            scaff_id = gen_id()
+            scaff_id    = gen_id()
+            scaff_type  = raw_scaff.get("scaffolding_type", "CHARACTER_SUPPORT")
+            if scaff_type not in _VALID_SCAFFOLDING_TYPES:
+                scaff_type = "CHARACTER_SUPPORT"
             scaffolding_acc.append({
                 "id":              scaff_id,
-                "scaffoldingType": raw_scaff.get("scaffolding_type", "CHARACTER_SUPPORT"),
+                "scaffoldingType": scaff_type,
                 "content":         raw_scaff.get("content", ""),
                 "image":           None,
             })
@@ -341,11 +380,20 @@ def build_task(
     08_tasks.json  (single task entity — called inside build_activities_chunk)
     """
     has_resp = raw_task.get("has_response_area", False)
+    # Prefer Gemini-extracted task_type; fall back to inferring from has_response_area
+    _VALID_TASK_TYPES = {
+        "OPEN_ENDED", "SHORT_ANSWER", "COMPLETION",
+        "MULTIPLE_CHOICE", "WORD_PROBLEM", "STRATEGY_ANALYSIS", "CALCULATION",
+    }
+    raw_task_type = (raw_task.get("task_type") or "").upper()
+    task_type = raw_task_type if raw_task_type in _VALID_TASK_TYPES else (
+        "OPEN_ENDED" if has_resp else "SHORT_ANSWER"
+    )
     return {
         "id":          task_id,
         "activityId":  act_id,
         "taskNumber":  raw_task.get("task_number", ""),
-        "taskType":    "OPEN_ENDED" if has_resp else "SHORT_ANSWER",
+        "taskType":    task_type,
         "stems":       [{"id": stem_id, "type": "STEM", "sequenceNumber": 1}],
         "scaffolding": scaffolding_refs or [],
         "sourcePage":  source_page,
@@ -498,35 +546,49 @@ def build_images_chunk(
     """
     12_images.json — aligned with CL-Json-Schema media/image.json.
 
-    When image_manifest is provided (from utils/image_extractor), each image
-    entity gets an ``imagePath`` pointing to the actual extracted image file
-    (e.g. "images/page_3_img_0.jpeg").  ``pageImagePath`` still points to
-    the full page render for fallback.
+    Combines two sources:
+    1. Gemini-described images (alt_text, description, image_type, graph_details)
+    2. Physically extracted images from image_manifest (raster + vector crops)
+
+    Images are linked by position-based matching done in the image extractor.
+    Unmatched extracted images are added as additional entries so users can
+    review and delete irrelevant ones from the UI.
     """
     extracted = (image_manifest or {}).get("extracted", {})
+    used_paths: set[str] = set()
 
     images: list[dict] = []
-    # Track how many Gemini images we've seen per PDF page to map to extracted index
-    page_img_counter: dict[int, int] = {}
 
     for page in pages:
         page_num = page.get("page_number")
-        # _pdf_page_index is the 1-based PDF page; it's what the extractor uses
         pdf_idx = page.get("_pdf_page_index")
+        page_num_val = page_num if page_num is not None else ""
+        page_image_path = (
+            f"page_images/{pdf_idx}.png" if pdf_idx
+            else (f"page_images/{page_num_val}.png" if page_num_val else None)
+        )
 
+        lookup_key = pdf_idx if pdf_idx is not None else page_num
+        page_extracted = extracted.get(lookup_key, []) if lookup_key is not None else []
+
+        # Build a map: extracted images that matched a Gemini image → the ext entry
+        matched_ext_by_gemini_pos: dict[str, dict] = {}
+        for ext in page_extracted:
+            gm = ext.get("matched_gemini")
+            if gm:
+                pos = (gm.get("position") or "").upper()
+                matched_ext_by_gemini_pos[pos] = ext
+
+        # 1. Gemini-described images: try to link to an extracted file
         for raw_img in page.get("images") or []:
             acc = raw_img.get("accessibility") or {}
-            page_num_val = page_num if page_num is not None else ""
+            pos = (raw_img.get("position") or "").upper()
 
-            # Match Gemini-detected image with an extracted file via PDF page index
             image_path = None
-            lookup_key = pdf_idx if pdf_idx is not None else page_num
-            if lookup_key is not None and lookup_key in extracted:
-                idx = page_img_counter.get(lookup_key, 0)
-                page_extracted = extracted[lookup_key]
-                if idx < len(page_extracted):
-                    image_path = page_extracted[idx]["path"]
-                page_img_counter[lookup_key] = idx + 1
+            ext_entry = matched_ext_by_gemini_pos.get(pos)
+            if ext_entry:
+                image_path = ext_entry["path"]
+                used_paths.add(image_path)
 
             img = {
                 "id":               gen_id(),
@@ -551,9 +613,42 @@ def build_images_chunk(
                 "sourcePage":       page_num,
                 "pdfPageIndex":     pdf_idx,
                 "imagePath":        image_path,
-                "pageImagePath":    f"page_images/{pdf_idx}.png" if pdf_idx else (f"page_images/{page_num_val}.png" if page_num_val else None),
+                "pageImagePath":    page_image_path,
             }
             images.append(img)
+
+        # 2. Unmatched extracted images: add as separate entries for user review
+        for ext in page_extracted:
+            if ext["path"] in used_paths:
+                continue
+            gm = ext.get("matched_gemini")
+            if gm:
+                continue
+
+            img = {
+                "id":               gen_id(),
+                "imageType":        "UNREVIEWED",
+                "filename":         "",
+                "technicalArtType": None,
+                "altText":          "",
+                "caption":          None,
+                "title":            None,
+                "description":      f"Extracted {ext.get('source', 'image')} — needs review",
+                "dimensions":       {"width": ext.get("width"), "height": ext.get("height"), "unit": "PIXELS"},
+                "format":           "PNG",
+                "accessibility":    {"isDecorative": False, "longDescription": None},
+                "position":         None,
+                "containsGraph":    False,
+                "isResponseArea":   False,
+                "responseAreaType": None,
+                "graphDetails":     None,
+                "sourcePage":       page_num,
+                "pdfPageIndex":     pdf_idx,
+                "imagePath":        ext["path"],
+                "pageImagePath":    page_image_path,
+            }
+            images.append(img)
+
     return images
 
 
@@ -642,26 +737,60 @@ def build_instructional_segments(
 
 # ── 16 — Practice Sections ────────────────────────────────────────────────────
 
+_VALID_PRACTICE_TYPES = {"LESSON_PRACTICE", "INTERACTIVE_PRACTICE", "FAMILY_GUIDE"}
+
+
 def build_practice_sections_chunk(
     *,
     lesson_id: str,
     activities: list[dict],
+    pages: list[dict] | None = None,
 ) -> list[dict]:
     """
     16_practice_sections.json
-    Groups PRACTICE activities into practice section entities.
+    First looks for Gemini-extracted practice_section objects at the page level
+    (populated when the Gemini prompt detected a "Practice and Apply" heading, a
+    LiveHint reference, or a family-guide section).  Falls back to grouping any
+    activities whose activityType is PRACTICE.
     """
-    practice_acts = [
-        a for a in activities if a.get("activityType") == "PRACTICE"
-    ]
+    _PRACTICE_ACTIVITY_TYPES = {"PRACTICE", "LESSON_PRACTICE", "SPB_PRACTICE"}
+    practice_acts = [a for a in activities if a.get("activityType") in _PRACTICE_ACTIVITY_TYPES]
+
+    # ── Path 1: use Gemini page-level practice_section objects ────────────────
+    if pages:
+        seen_types: set[str] = set()
+        sections: list[dict] = []
+        for page in pages:
+            ps = page.get("practice_section")
+            if not (ps and isinstance(ps, dict)):
+                continue
+            ps_type = (ps.get("practice_section_type") or "").upper()
+            if ps_type not in _VALID_PRACTICE_TYPES or ps_type in seen_types:
+                continue
+            seen_types.add(ps_type)
+            title = ps.get("title") or "Practice"
+            sections.append({
+                "id":                  gen_id(),
+                "parentId":            lesson_id,
+                "practiceSectionType": ps_type,
+                "title":               title,
+                "activities": [
+                    {"id": a["id"], "type": "ACTIVITY", "sequenceNumber": i + 1}
+                    for i, a in enumerate(practice_acts)
+                ],
+            })
+        if sections:
+            return sections
+
+    # ── Path 2: fallback — group PRACTICE activities under one section ────────
     if not practice_acts:
         return []
 
     return [{
-        "id":                   gen_id(),
-        "parentId":             lesson_id,
-        "practiceSectionType":  "LESSON_PRACTICE",
-        "title":                "Practice",
+        "id":                  gen_id(),
+        "parentId":            lesson_id,
+        "practiceSectionType": "LESSON_PRACTICE",
+        "title":               "Practice",
         "activities": [
             {"id": a["id"], "type": "ACTIVITY", "sequenceNumber": i + 1}
             for i, a in enumerate(practice_acts)

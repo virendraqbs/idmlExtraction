@@ -50,11 +50,42 @@ For STANDARDS_PAGE pages you MUST fully populate the standards_block object:
     has_modeling_symbol: true if a star ★ symbol appears next to the standard
 
 ═══ SCAFFOLDING ═══
-If a task or activity has supportive hints, character speech bubbles, worked examples,
-or other scaffolding content, output them in the task's scaffolding array.
-scaffolding_type is one of: CHARACTER_SUPPORT
-content: the scaffolding text exactly as shown.
-has_image: true only if the scaffolding includes a character image or illustration.
+Detect EVERY sidebar callout, prompt box, speech bubble, or support element on the page.
+Include them in the enclosing task's "scaffolding" array (or the activity's if not task-specific).
+
+scaffolding_type mapping — use the FIRST match:
+  Heading/label "Take Note"        → HINT
+  Heading/label "Ask Yourself"     → GUIDING_QUESTION
+  Heading/label "Learning Prompt"  → GUIDING_QUESTION
+  Heading/label "Habits of Mind"   → STRATEGY_PROMPT
+  "SMP" sidebar label              → STRATEGY_PROMPT
+  Heading/label "Remember"         → REMINDER
+  Character mascot / speech bubble → CHARACTER_SUPPORT
+  Solved/worked example as model   → WORKED_EXAMPLE
+
+content: EXACT full text of the callout — do not paraphrase.
+has_image: true if a character illustration or diagram is inside the box, else false.
+
+═══ RESPONSE AREAS ═══
+For every task with a blank answer space, box, grid, or number line:
+  has_response_area: true
+  response_area_type (pick one):
+    OPEN_ENDED          → multi-line writing (explain, describe, justify, list)
+    SHORT_ANSWER        → single-line / small box (letter, number, brief word)
+    GRID                → coordinate grid or fill-in table
+    NUMBER_LINE         → printed number line with tick marks
+    ALGORITHM_WORKSPACE → column-arithmetic structured workspace
+  response_area_description: one sentence — what does the student write here?
+  response_area_lines: integer ≥ 1 — count of blank lines printed (estimate 3 if lines not countable)
+  allowed_tools: [] unless a tool icon is printed near the task; then include from:
+    "CALCULATOR" | "RULER" | "PROTRACTOR" | "COMPASS" | "MANIPULATIVES"
+
+═══ PRACTICE SECTION DETECTION ═══
+Detect whether the page contains an independent/take-home practice section.
+practice_section_type rules (null when no such section is present):
+  "Practice and Apply" / "Independent Practice" heading → LESSON_PRACTICE
+  Reference to LiveHint, online platform, QR code       → INTERACTIVE_PRACTICE
+  Section addressed to families / parents               → FAMILY_GUIDE
 
 ═══ IMAGE EXTRACTION (CL-Json-Schema media/image) ═══
 For EVERY image, graph, chart, diagram, icon on the page output an object with:
@@ -103,12 +134,24 @@ Graph/response-area (keep):
     "habits_of_mind": [],
     "direction_lines": [{"sequence_number": 1, "text": ""}],
     "tasks": [{
-      "id": "", "task_number": "", "stem_text": "", "ancillary_text": null,
-      "has_response_area": false, "response_area_type": null,
+      "id": "", "task_number": "", "task_type": "OPEN_ENDED | SHORT_ANSWER | COMPLETION | MULTIPLE_CHOICE | WORD_PROBLEM | STRATEGY_ANALYSIS",
+      "stem_text": "", "ancillary_text": null,
+      "has_response_area": false,
+      "response_area_type": "OPEN_ENDED | SHORT_ANSWER | GRID | NUMBER_LINE | ALGORITHM_WORKSPACE",
+      "response_area_description": null,
+      "response_area_lines": null,
+      "allowed_tools": [],
       "has_graph": false, "sub_tasks": [],
-      "scaffolding": [{"scaffolding_type": "CHARACTER_SUPPORT", "content": "", "has_image": false}]
+      "scaffolding": [{
+        "scaffolding_type": "HINT | GUIDING_QUESTION | STRATEGY_PROMPT | REMINDER | CHARACTER_SUPPORT | WORKED_EXAMPLE",
+        "content": "", "has_image": false
+      }]
     }]
   }],
+  "practice_section": {
+    "title": null,
+    "practice_section_type": "LESSON_PRACTICE | INTERACTIVE_PRACTICE | FAMILY_GUIDE"
+  },
   "images": [{
     "id": "", "sequence_on_page": 1, "image_type": "", "filename": "",
     "technical_art_type": null, "alt_text": "", "caption": null, "title": null,
@@ -253,4 +296,5 @@ def _empty_page(page_number: int) -> dict:
         "images":              [],
         "instructional_prompts": [],
         "page_layout":         None,
+        "practice_section":    None,
     }

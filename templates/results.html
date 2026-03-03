@@ -294,6 +294,92 @@ window.MathJax = {
   /* PDF view */
   .pdf-view-wrap { flex: 1; display: flex; overflow: hidden; }
   .pdf-view-wrap iframe { flex: 1; border: none; min-height: 600px; }
+
+  /* ── S3 image selection ───────────────────────────────────────────────────── */
+  .img-select-cb {
+    position: absolute; top: 8px; left: 8px; z-index: 2;
+    width: 18px; height: 18px; cursor: pointer; accent-color: var(--primary);
+  }
+  .s3-uploaded-badge {
+    padding: 1px 6px; font-size: 10px; background: #1565c0; color: #fff; border-radius: 3px;
+  }
+
+  /* ── Floating S3 upload bar ───────────────────────────────────────────────── */
+  #s3-upload-bar {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 500;
+    background: var(--surface); border-top: 2px solid var(--primary);
+    padding: 12px 28px; display: none; align-items: center; gap: 16px;
+    box-shadow: 0 -4px 32px rgba(0,0,0,0.18);
+  }
+  #s3-upload-bar .s3-count { font-size: 14px; font-weight: 600; color: var(--text); flex: 1; }
+  .s3-bar-btn {
+    padding: 8px 16px; font-size: 13px; font-weight: 600; border-radius: 4px;
+    cursor: pointer; border: 1px solid var(--border); background: var(--surface2);
+    color: var(--text); transition: all 0.2s;
+  }
+  .s3-bar-btn:hover { border-color: var(--primary); color: var(--primary); }
+  .s3-bar-btn.primary {
+    background: var(--primary); color: #fff; border-color: var(--primary);
+  }
+  .s3-bar-btn.primary:hover { opacity: 0.88; }
+  .s3-bar-btn.primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* ── S3 confirmation / progress modal ────────────────────────────────────── */
+  #s3-modal {
+    display: none; position: fixed; inset: 0; z-index: 9000;
+    background: rgba(0,0,0,0.72); align-items: center; justify-content: center;
+  }
+  .s3-modal-box {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    width: 640px; max-width: 94vw; max-height: 88vh; display: flex; flex-direction: column;
+    box-shadow: 0 16px 60px rgba(0,0,0,0.4);
+  }
+  .s3-modal-header {
+    padding: 20px 24px 16px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .s3-modal-header h2 { font-size: 17px; font-weight: 700; color: var(--text); margin: 0; }
+  .s3-modal-close {
+    width: 30px; height: 30px; border: none; border-radius: 50%;
+    background: var(--surface2); color: var(--muted); font-size: 18px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .s3-modal-close:hover { background: var(--border); color: var(--text); }
+  .s3-modal-body { flex: 1; overflow: auto; padding: 20px 24px; }
+  .s3-thumb-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 10px;
+    margin-bottom: 16px;
+  }
+  .s3-thumb-item {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    background: var(--surface2); border-radius: 5px; padding: 8px; font-size: 10px;
+    color: var(--muted); text-align: center;
+  }
+  .s3-thumb-item img { width: 72px; height: 72px; object-fit: contain; border-radius: 3px; border: 1px solid var(--border); }
+  .s3-thumb-item .s3-thumb-no-img {
+    width: 72px; height: 72px; border-radius: 3px; border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center; font-size: 24px;
+    background: var(--surface); color: var(--muted);
+  }
+  .s3-thumb-item .s3-status {
+    font-size: 11px; font-weight: 600; width: 100%; text-align: center;
+    padding: 2px 4px; border-radius: 3px;
+  }
+  .s3-status.pending  { color: var(--muted); }
+  .s3-status.uploading { color: #e09000; background: rgba(255,165,0,0.1); }
+  .s3-status.done     { color: var(--success); background: rgba(27,207,180,0.1); }
+  .s3-status.error    { color: var(--danger); background: rgba(231,76,60,0.1); }
+  .s3-progress-wrap { margin: 12px 0; }
+  .s3-progress-bar-outer {
+    height: 8px; border-radius: 4px; background: var(--border); overflow: hidden;
+  }
+  .s3-progress-bar-inner {
+    height: 100%; background: var(--primary); border-radius: 4px; transition: width 0.3s;
+  }
+  .s3-modal-footer {
+    padding: 16px 24px; border-top: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: flex-end; gap: 12px;
+  }
 </style>
 </head>
 <body>
@@ -320,6 +406,7 @@ window.MathJax = {
         <button type="button" class="view-mode-btn" data-view="source">Source</button>
         <button type="button" class="view-mode-btn" data-view="pdf">PDF</button>
       </div>
+      <button type="button" id="btn-reextract" onclick="reextractImages()" style="margin-left:auto;padding:7px 16px;font-size:12px;font-weight:600;border:1px solid var(--primary);background:rgba(182,109,255,0.08);color:var(--primary);border-radius:4px;cursor:pointer;transition:all 0.2s" title="Re-extract images from PDF with enhanced extraction (raster + vector graphs)">&#128247; Re-extract Images</button>
     </div>
   </div>
 
@@ -568,6 +655,10 @@ function renderPageWebView(page, data) {
   const pageImages     = pn ? allImages.filter(i => i.sourcePage === pn)     : allImages;
   const pagePrompts    = pn ? allPrompts.filter(p => p.sourcePage === pn)    : allPrompts;
 
+  const allPages = (data.pages || []).filter(p => p.pageType !== 'UNKNOWN' && p.pageType !== 'NON_CONTENT');
+  const firstPageNum = allPages.length ? (allPages[0].pageNumber || 1) : null;
+  const isFirstPage = !pn || pn === firstPageNum;
+
   let html = '';
 
   if (page) {
@@ -635,7 +726,7 @@ function renderPageWebView(page, data) {
     });
   }
 
-  if (lesson.title || lesson.lessonSummary) {
+  if (isFirstPage && (lesson.title || lesson.lessonSummary)) {
     html += `<div class="editor-section">
       <span class="schema-tag">lesson</span>
       <h3>Lesson Overview</h3>
@@ -646,7 +737,7 @@ function renderPageWebView(page, data) {
   }
 
   const goals = lesson.learningGoals || [];
-  if (goals.length) {
+  if (isFirstPage && goals.length) {
     html += `<div class="editor-section">
       <span class="schema-tag">learning_goals</span>
       <h3>My Learning Goals</h3>
@@ -678,27 +769,96 @@ function renderPageWebView(page, data) {
   }
 
   if (pageImages.length) {
+    const unmatchedExtracted = allImages.filter(i => i.imageType === 'UNREVIEWED' && i.imagePath);
+    const unmatchedGemini = allImages.filter(i => i.imageType !== 'UNREVIEWED' && !i.imagePath);
+
     html += '<div class="editor-section"><span class="schema-tag">images</span>';
     html += '<h3>Images (' + pageImages.length + ')</h3>';
     pageImages.forEach(img => {
       const imgUrl = img.imagePath ? '/outputs/' + jobId + '/' + img.imagePath : null;
-      let card = '<div style="margin-bottom:14px;padding:12px;background:var(--surface2);border-radius:6px;font-size:13px;display:flex;gap:12px;align-items:flex-start">';
+      const isUnreviewed = img.imageType === 'UNREVIEWED';
+      const needsFile = !isUnreviewed && !img.imagePath;
+      const borderColor = isUnreviewed ? '#ff9800' : (img.imagePath ? '#4caf50' : 'var(--border)');
+      const isSelected = window.selectedImages && window.selectedImages.has(img.id);
+      let card = '<div id="img-card-' + img.id + '" style="position:relative;margin-bottom:14px;padding:12px;background:var(--surface2);border-radius:6px;font-size:13px;display:flex;gap:12px;align-items:flex-start;border-left:3px solid ' + borderColor + '">';
+
+      // Selection checkbox — top-left
+      card += '<input type="checkbox" class="img-select-cb" id="cb-' + img.id + '" ' + (isSelected ? 'checked' : '') + ' onchange="toggleImageSelection(\'' + img.id + '\', this.checked)" title="Select for S3 upload">';
+
+      // Delete icon overlaid on top-right of card
+      card += '<button type="button" onclick="deleteImage(\'' + img.id + '\')" title="Delete image" style="position:absolute;top:6px;right:6px;z-index:2;width:24px;height:24px;display:flex;align-items:center;justify-content:center;border:none;border-radius:50%;background:rgba(231,76,60,0.85);color:#fff;font-size:13px;font-weight:700;cursor:pointer;line-height:1;box-shadow:0 1px 4px rgba(0,0,0,0.18);transition:background 0.15s" onmouseenter="this.style.background=\'#c0392b\'" onmouseleave="this.style.background=\'rgba(231,76,60,0.85)\'">&#10005;</button>';
+      // Swap button (only for cards that already have an image file)
       if (imgUrl) {
-        card += '<a href="' + imgUrl + '" target="_blank" rel="noopener" style="flex-shrink:0">';
-        card += '<img src="' + imgUrl + '" alt="' + escapeHtml(img.altText || 'Image') + '" style="width:120px;height:auto;border-radius:4px;border:1px solid var(--border)" loading="lazy">';
-        card += '</a>';
+        card += '<button type="button" id="swap-btn-' + img.id + '" onclick="swapImage(\'' + img.id + '\')" title="Swap image with another card" style="position:absolute;top:6px;right:34px;z-index:2;width:24px;height:24px;display:flex;align-items:center;justify-content:center;border:none;border-radius:50%;background:rgba(100,100,100,0.45);color:#fff;font-size:14px;cursor:pointer;line-height:1;box-shadow:0 1px 4px rgba(0,0,0,0.18);transition:background 0.15s">&#8651;</button>';
       }
-      card += '<div style="flex:1;min-width:0">';
-      card += '<span class="activity-label">' + escapeHtml(img.imageType || 'IMAGE') + '</span> ';
-      card += '<strong>' + escapeHtml(img.altText || 'No alt text') + '</strong>';
-      if (img.sourcePage != null) card += ' <span style="font-size:11px;color:var(--muted)">p.' + img.sourcePage + '</span>';
-      if (img.imagePath) card += '<span style="display:inline-block;margin-left:6px;padding:1px 6px;font-size:10px;background:#4caf50;color:#fff;border-radius:3px">extracted</span>';
+
+      if (imgUrl) {
+        card += '<div style="flex-shrink:0;position:relative;width:140px">';
+        card += '<div id="img-thumb-' + img.id + '" onclick="openImageModal(\'' + imgUrl + '\', \'' + escapeHtml((img.altText || 'Image').replace(/'/g, '')) + '\')" style="cursor:pointer" title="Click to enlarge">';
+        card += '<img src="' + imgUrl + '" alt="' + escapeHtml(img.altText || 'Image') + '" style="width:140px;height:auto;border-radius:4px;border:1px solid var(--border);transition:box-shadow 0.15s" onmouseenter="this.style.boxShadow=\'0 0 0 2px var(--primary)\'" onmouseleave="this.style.boxShadow=\'none\'" loading="lazy">';
+        card += '</div>';
+        card += '<button type="button" onclick="unassignImage(\'' + img.id + '\')" title="Remove image (keep text)" style="position:absolute;bottom:4px;right:4px;z-index:3;padding:2px 5px;font-size:10px;border:none;border-radius:3px;background:rgba(0,0,0,0.55);color:#fff;cursor:pointer;line-height:1.4;white-space:nowrap" onmouseenter="this.style.background=\'rgba(231,76,60,0.9)\'" onmouseleave="this.style.background=\'rgba(0,0,0,0.55)\'">&#10005; img</button>';
+        card += '</div>';
+      } else {
+        card += '<div id="img-thumb-' + img.id + '" style="flex-shrink:0;width:140px"></div>';
+      }
+      card += '<div style="flex:1;min-width:0;padding-right:20px">';
+      card += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">';
+      card += '<span class="activity-label">' + escapeHtml(img.imageType || 'IMAGE') + '</span>';
+      if (img.imagePath) card += '<span style="padding:1px 6px;font-size:10px;background:#4caf50;color:#fff;border-radius:3px">extracted</span>';
+      if (isUnreviewed) card += '<span style="padding:1px 6px;font-size:10px;background:#ff9800;color:#fff;border-radius:3px">needs review</span>';
+      if (needsFile) card += '<span style="padding:1px 6px;font-size:10px;background:#9e9e9e;color:#fff;border-radius:3px">no file</span>';
+      if (img.s3Url) card += '<span id="s3-badge-' + img.id + '" class="s3-uploaded-badge">&#9729; uploaded</span>';
+      if (img.sourcePage != null) card += '<span style="font-size:11px;color:var(--muted)">p.' + img.sourcePage + '</span>';
+      card += '</div>';
+      card += '<strong style="display:block;margin-top:4px">' + escapeHtml(img.altText || (isUnreviewed ? 'Unmatched — review or delete' : 'No alt text')) + '</strong>';
       if (img.description) {
         const desc = img.description.length > 200 ? img.description.substring(0, 200) + '…' : img.description;
         card += '<p style="margin:4px 0 0;font-size:12px;color:var(--muted)">' + escapeHtml(desc) + '</p>';
       }
+      if (img.containsGraph && img.graphDetails) {
+        const gd = img.graphDetails;
+        let graphInfo = [];
+        if (gd.x_axis_label) graphInfo.push('x: ' + gd.x_axis_label);
+        if (gd.y_axis_label) graphInfo.push('y: ' + gd.y_axis_label);
+        if (gd.plotted_elements && gd.plotted_elements.length) graphInfo.push(gd.plotted_elements[0]);
+        if (graphInfo.length) card += '<p style="margin:2px 0 0;font-size:11px;color:var(--primary)">Graph: ' + escapeHtml(graphInfo.join(' | ')) + '</p>';
+      }
+
+      // Manual mapping dropdown
+      if (needsFile && unmatchedExtracted.length) {
+        card += '<div style="margin-top:6px;display:flex;align-items:center;gap:6px">';
+        card += '<label style="font-size:11px;color:var(--muted);white-space:nowrap">Map to:</label>';
+        card += '<select onchange="previewAndMapImage(\'' + img.id + '\', this, \'gemini\')" style="font-size:11px;padding:3px 6px;border:1px solid var(--primary);border-radius:3px;background:rgba(182,109,255,0.06);max-width:260px;cursor:pointer">';
+        card += '<option value="">— Select extracted image —</option>';
+        unmatchedExtracted.forEach(ext => {
+          const thumbUrl = '/outputs/' + jobId + '/' + ext.imagePath;
+          const label = ext.imagePath.split('/').pop() + (ext.dimensions ? ' (' + ext.dimensions.width + '×' + ext.dimensions.height + ')' : '');
+          card += '<option value="' + ext.id + '" data-url="' + thumbUrl + '">' + escapeHtml(label) + '</option>';
+        });
+        card += '</select>';
+        card += '</div>';
+      }
+      if (isUnreviewed && unmatchedGemini.length) {
+        card += '<div style="margin-top:6px;display:flex;align-items:center;gap:6px">';
+        card += '<label style="font-size:11px;color:var(--muted);white-space:nowrap">Map to:</label>';
+        card += '<select onchange="mapImage(\'' + img.id + '\', this.value, \'extracted\')" style="font-size:11px;padding:3px 6px;border:1px solid #ff9800;border-radius:3px;background:rgba(255,152,0,0.06);max-width:260px;cursor:pointer">';
+        card += '<option value="">— Select Gemini description —</option>';
+        unmatchedGemini.forEach(gem => {
+          const label = (gem.altText || gem.description || gem.imageType || 'Image').substring(0, 60);
+          card += '<option value="' + gem.id + '">' + escapeHtml(label) + '</option>';
+        });
+        card += '</select>';
+        card += '</div>';
+      }
+
       if (imgUrl) {
-        card += '<div style="margin-top:6px"><a href="' + imgUrl + '" target="_blank" rel="noopener" style="font-size:11px">View extracted image →</a></div>';
+        card += '<div style="margin-top:6px"><a href="javascript:void(0)" onclick="openImageModal(\'' + imgUrl + '\', \'' + escapeHtml((img.altText || 'Image').replace(/'/g, '')) + '\')" style="font-size:11px;color:var(--primary);cursor:pointer">View full size →</a></div>';
+      }
+      if (img.s3Url) {
+        card += '<div id="s3-url-' + img.id + '" style="margin-top:5px;font-size:10px;color:#7090cc;word-break:break-all">S3: ' + escapeHtml(img.s3Url) + '</div>';
+      } else {
+        card += '<div id="s3-url-' + img.id + '" style="margin-top:5px;font-size:10px;color:#7090cc;display:none"></div>';
       }
       card += '</div></div>';
       html += card;
@@ -841,11 +1001,22 @@ async function loadEditorView() {
       pageSelect.appendChild(opt);
     });
 
+    // Track image IDs visible on the current page for "Select all"
+    window.pageImageIds = [];
+
     function onPageChange() {
       const idx = pageSelect.value;
       const page = idx === '' ? null : pages[Number(idx)];
       renderPageWebView(page, data);
       updateEditorPdf(page);
+      // Snapshot current-page image IDs for "Select all on page"
+      const merged2 = data.merged || {};
+      const allImgs = merged2.images || data.images || [];
+      const pn = page ? page.pageNumber : null;
+      window.pageImageIds = (pn ? allImgs.filter(i => i.sourcePage === pn) : allImgs)
+        .filter(i => i.imagePath)
+        .map(i => i.id);
+      updateSelectionBar();
     }
 
     pageSelect.addEventListener('change', onPageChange);
@@ -859,6 +1030,534 @@ async function loadEditorView() {
     loadingEl.style.display = 'none';
     if (dropdownsEl) dropdownsEl.style.display = 'none';
     contentEl.innerHTML = `<div class="editor-error">Failed to load editor view: ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function openImageModal(src, alt) {
+  const modal = document.getElementById('image-modal');
+  const img = document.getElementById('image-modal-img');
+  const caption = document.getElementById('image-modal-caption');
+  img.src = src;
+  img.alt = alt || '';
+  caption.textContent = alt || '';
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+function closeImageModal() {
+  const modal = document.getElementById('image-modal');
+  modal.style.display = 'none';
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && document.getElementById('image-modal').style.display === 'flex') closeImageModal();
+});
+
+async function reextractImages() {
+  const btn = document.getElementById('btn-reextract');
+  if (!btn) return;
+  btn.disabled = true;
+  btn.textContent = '⏳ Extracting...';
+  btn.style.opacity = '0.6';
+  try {
+    const headers = {'Content-Type': 'application/json'};
+    if (jobOutputDir) headers['X-Output-Dir'] = jobOutputDir;
+    const r = await fetch('/api/results/' + jobId + '/reextract-images', { method: 'POST', headers });
+    if (!r.ok) {
+      const t = await r.text();
+      let msg = r.statusText;
+      try { const j = JSON.parse(t); if (j.detail) msg = j.detail; } catch(_) {}
+      throw new Error(msg);
+    }
+    const result = await r.json();
+    btn.textContent = '✓ ' + result.message;
+    btn.style.background = 'rgba(27,207,180,0.12)';
+    btn.style.borderColor = 'var(--success)';
+    btn.style.color = 'var(--success)';
+    // Reload editor to show new images
+    window.editorLoaded = false;
+    loaded['image'] = false;
+    rawData['image'] = null;
+    setTimeout(() => loadEditorView(), 500);
+  } catch(e) {
+    btn.textContent = '✕ ' + e.message;
+    btn.style.background = 'rgba(231,76,60,0.08)';
+    btn.style.borderColor = '#e74c3c';
+    btn.style.color = '#e74c3c';
+  }
+  setTimeout(() => {
+    btn.disabled = false;
+    btn.textContent = '📷 Re-extract Images';
+    btn.style.opacity = '1';
+    btn.style.background = 'rgba(182,109,255,0.08)';
+    btn.style.borderColor = 'var(--primary)';
+    btn.style.color = 'var(--primary)';
+  }, 5000);
+}
+
+function previewAndMapImage(cardId, selectEl, sourceType) {
+  const targetId = selectEl.value;
+  if (!targetId) return;
+  const selectedOpt = selectEl.options[selectEl.selectedIndex];
+  const thumbUrl = selectedOpt.dataset.url;
+  if (thumbUrl) {
+    const thumbContainer = document.getElementById('img-thumb-' + cardId);
+    if (thumbContainer) {
+      thumbContainer.innerHTML = '<img src="' + thumbUrl + '" alt="Preview" style="width:140px;height:auto;border-radius:4px;border:1px solid var(--border);transition:box-shadow 0.15s" onmouseenter="this.style.boxShadow=\'0 0 0 2px var(--primary)\'" onmouseleave="this.style.boxShadow=\'none\'" loading="lazy">';
+      thumbContainer.onclick = () => openImageModal(thumbUrl, 'Preview');
+      thumbContainer.style.cursor = 'pointer';
+      thumbContainer.title = 'Click to enlarge';
+    }
+    const card = document.getElementById('img-card-' + cardId);
+    if (card) card.style.borderLeftColor = '#4caf50';
+  }
+  mapImage(cardId, targetId, sourceType);
+}
+
+// ── Unassign image (keep text metadata) ───────────────────────────────────
+async function unassignImage(imgId) {
+  try {
+    const headers = {'Content-Type': 'application/json'};
+    if (jobOutputDir) headers['X-Output-Dir'] = jobOutputDir;
+    const r = await fetch('/api/results/' + jobId + '/images/unassign', {
+      method: 'POST', headers,
+      body: JSON.stringify({ imageId: imgId }),
+    });
+    if (!r.ok) {
+      const t = await r.text();
+      let msg = r.statusText;
+      try { const j = JSON.parse(t); if (j.detail) msg = j.detail; } catch(_) {}
+      throw new Error(msg);
+    }
+
+    // Update local data
+    if (window.editorData) {
+      const srcs = [window.editorData.images, (window.editorData.merged || {}).images];
+      srcs.forEach(arr => {
+        if (!arr) return;
+        const img = arr.find(i => i.id === imgId);
+        if (img) { delete img.imagePath; delete img.dimensions; }
+      });
+    }
+
+    // Update card DOM instantly: remove thumbnail, swap button, unassign button; show "no file" badge
+    const thumbWrap = document.getElementById('img-thumb-' + imgId);
+    if (thumbWrap) {
+      // Replace the whole wrapper (parent of thumb + unassign button) with empty placeholder
+      const parent = thumbWrap.closest('[style*="position:relative"]') || thumbWrap;
+      const placeholder = document.createElement('div');
+      placeholder.id = 'img-thumb-' + imgId;
+      placeholder.style.cssText = 'flex-shrink:0;width:140px';
+      parent.replaceWith(placeholder);
+    }
+    const swapBtn = document.getElementById('swap-btn-' + imgId);
+    if (swapBtn) swapBtn.remove();
+    // Update border to grey
+    const card = document.getElementById('img-card-' + imgId);
+    if (card) card.style.borderLeftColor = 'var(--border)';
+    // Swap "extracted" badge for "no file"
+    const extractedBadge = card && card.querySelector('span[style*="4caf50"]');
+    if (extractedBadge) {
+      extractedBadge.style.background = '#9e9e9e';
+      extractedBadge.textContent = 'no file';
+    }
+  } catch(e) {
+    alert('Unassign failed: ' + e.message);
+  }
+}
+// ──────────────────────────────────────────────────────────────────────────
+
+// ── Swap image between two cards ──────────────────────────────────────────
+window.swapPending = null;
+
+function swapImage(imgId) {
+  if (!window.swapPending) {
+    // First click: mark this card as swap source
+    window.swapPending = imgId;
+    const btn = document.getElementById('swap-btn-' + imgId);
+    const card = document.getElementById('img-card-' + imgId);
+    if (btn) { btn.style.background = '#e67e22'; btn.title = 'Click another card\'s ⇄ to swap — click here to cancel'; }
+    if (card) { card.style.outline = '2px dashed #e67e22'; card.style.outlineOffset = '2px'; }
+  } else if (window.swapPending === imgId) {
+    // Second click on same card: cancel
+    _cancelSwap();
+  } else {
+    // Second click on different card: perform swap
+    const idA = window.swapPending;
+    const idB = imgId;
+    _cancelSwap();
+    _doSwap(idA, idB);
+  }
+}
+
+function _cancelSwap() {
+  if (window.swapPending) {
+    const btn = document.getElementById('swap-btn-' + window.swapPending);
+    const card = document.getElementById('img-card-' + window.swapPending);
+    if (btn) { btn.style.background = 'rgba(100,100,100,0.45)'; btn.title = 'Swap image with another card'; }
+    if (card) { card.style.outline = ''; card.style.outlineOffset = ''; }
+  }
+  window.swapPending = null;
+}
+
+async function _doSwap(idA, idB) {
+  try {
+    const headers = {'Content-Type': 'application/json'};
+    if (jobOutputDir) headers['X-Output-Dir'] = jobOutputDir;
+    const r = await fetch('/api/results/' + jobId + '/images/swap', {
+      method: 'POST', headers,
+      body: JSON.stringify({ imageIdA: idA, imageIdB: idB }),
+    });
+    if (!r.ok) {
+      const t = await r.text();
+      let msg = r.statusText;
+      try { const j = JSON.parse(t); if (j.detail) msg = j.detail; } catch(_) {}
+      throw new Error(msg);
+    }
+    const result = await r.json();
+
+    // Instantly swap thumbnails in DOM
+    const thumbA = document.getElementById('img-thumb-' + idA);
+    const thumbB = document.getElementById('img-thumb-' + idB);
+    if (thumbA && thumbB) {
+      const tmpHtml = thumbA.innerHTML;
+      const tmpOnclick = thumbA.onclick;
+      thumbA.innerHTML = thumbB.innerHTML;
+      thumbA.onclick = thumbB.onclick;
+      thumbB.innerHTML = tmpHtml;
+      thumbB.onclick = tmpOnclick;
+    }
+
+    // Update local data
+    if (window.editorData) {
+      const srcs = [window.editorData.images, (window.editorData.merged || {}).images];
+      srcs.forEach(arr => {
+        if (!arr) return;
+        const a = arr.find(i => i.id === idA);
+        const b = arr.find(i => i.id === idB);
+        if (a && b) {
+          [a.imagePath, b.imagePath] = [b.imagePath, a.imagePath];
+          [a.dimensions, b.dimensions] = [b.dimensions, a.dimensions];
+        }
+      });
+    }
+  } catch(e) {
+    alert('Swap failed: ' + e.message);
+  }
+}
+// ─────────────────────────────────────────────────────────────────────────
+
+async function mapImage(sourceId, targetId, sourceType) {
+  if (!targetId) return;
+  const geminiId = sourceType === 'gemini' ? sourceId : targetId;
+  const extractedId = sourceType === 'extracted' ? sourceId : targetId;
+  try {
+    const headers = {'Content-Type': 'application/json'};
+    if (jobOutputDir) headers['X-Output-Dir'] = jobOutputDir;
+    const r = await fetch('/api/results/' + jobId + '/images/map', {
+      method: 'POST', headers,
+      body: JSON.stringify({ geminiImageId: geminiId, extractedImageId: extractedId }),
+    });
+    if (!r.ok) {
+      const t = await r.text();
+      let msg = r.statusText;
+      try { const j = JSON.parse(t); if (j.detail) msg = j.detail; } catch(_) {}
+      throw new Error(msg);
+    }
+    const result = await r.json();
+
+    // Update local data so UI refreshes correctly
+    if (window.editorData) {
+      const srcs = [window.editorData.images, (window.editorData.merged || {}).images];
+      srcs.forEach(arr => {
+        if (!arr) return;
+        const gem = arr.find(i => i.id === geminiId);
+        if (gem) gem.imagePath = result.imagePath;
+      });
+      if (window.editorData.images) window.editorData.images = window.editorData.images.filter(i => i.id !== extractedId);
+      if (window.editorData.merged && window.editorData.merged.images)
+        window.editorData.merged.images = window.editorData.merged.images.filter(i => i.id !== extractedId);
+    }
+
+    // Remove extracted card from DOM
+    const extCard = document.getElementById('img-card-' + extractedId);
+    if (extCard) {
+      extCard.style.transition = 'all 0.3s ease';
+      extCard.style.opacity = '0';
+      extCard.style.maxHeight = '0';
+      extCard.style.overflow = 'hidden';
+      extCard.style.marginBottom = '0';
+      extCard.style.padding = '0';
+      setTimeout(() => extCard.remove(), 350);
+    }
+
+    // Refresh the Gemini card to show the linked image
+    window.editorLoaded = false;
+    loaded['image'] = false;
+    setTimeout(() => loadEditorView(), 400);
+  } catch(e) {
+    alert('Mapping failed: ' + e.message);
+  }
+}
+
+async function deleteImage(imageId) {
+  if (!confirm('Delete this image? The file will be removed from disk.')) return;
+  const card = document.getElementById('img-card-' + imageId);
+  try {
+    const headers = {};
+    if (jobOutputDir) headers['X-Output-Dir'] = jobOutputDir;
+    const r = await fetch('/api/results/' + jobId + '/images/' + imageId, {
+      method: 'DELETE', headers,
+    });
+    if (!r.ok) throw new Error('Delete failed: ' + r.statusText);
+    if (card) {
+      card.style.transition = 'opacity 0.3s, max-height 0.3s';
+      card.style.opacity = '0';
+      card.style.maxHeight = card.offsetHeight + 'px';
+      setTimeout(() => { card.style.maxHeight = '0'; card.style.padding = '0'; card.style.margin = '0'; }, 300);
+      setTimeout(() => card.remove(), 600);
+    }
+    // Update local data so re-renders don't resurrect the deleted image
+    if (window.editorData) {
+      const imgs = window.editorData.images;
+      if (imgs) {
+        const idx = imgs.findIndex(i => i.id === imageId);
+        if (idx !== -1) imgs.splice(idx, 1);
+      }
+      const merged = window.editorData.merged;
+      if (merged && merged.images) {
+        const idx = merged.images.findIndex(i => i.id === imageId);
+        if (idx !== -1) merged.images.splice(idx, 1);
+      }
+    }
+  } catch (e) {
+    alert('Failed to delete image: ' + e.message);
+  }
+}
+
+// ── S3 image selection ────────────────────────────────────────────────────────
+window.selectedImages = new Set();
+window.pageImageIds   = [];
+let s3Configured = false;
+
+// Check S3 configuration on load
+(async function checkS3Config() {
+  try {
+    const r = await fetch('/api/s3/config');
+    if (r.ok) {
+      const d = await r.json();
+      s3Configured = d.configured;
+      const btn = document.getElementById('btn-upload-s3');
+      if (btn && !s3Configured) {
+        btn.disabled = true;
+        btn.title = 'S3 not configured — set AWS credentials and S3_BUCKET in .env';
+        btn.textContent = '⚠ S3 Not Configured';
+      }
+    }
+  } catch(_) {}
+})();
+
+function toggleImageSelection(imageId, checked) {
+  if (checked) {
+    window.selectedImages.add(imageId);
+  } else {
+    window.selectedImages.delete(imageId);
+  }
+  updateSelectionBar();
+}
+
+function selectAllOnPage() {
+  window.pageImageIds.forEach(id => window.selectedImages.add(id));
+  // Re-check all checkboxes on current page
+  window.pageImageIds.forEach(id => {
+    const cb = document.getElementById('cb-' + id);
+    if (cb) cb.checked = true;
+  });
+  updateSelectionBar();
+}
+
+function clearSelection() {
+  window.selectedImages.clear();
+  document.querySelectorAll('.img-select-cb').forEach(cb => { cb.checked = false; });
+  updateSelectionBar();
+}
+
+function updateSelectionBar() {
+  const bar = document.getElementById('s3-upload-bar');
+  const countEl = document.getElementById('s3-selected-count');
+  const n = window.selectedImages.size;
+  if (!bar) return;
+  if (n === 0) {
+    bar.style.display = 'none';
+  } else {
+    bar.style.display = 'flex';
+    countEl.textContent = n + ' image' + (n === 1 ? '' : 's') + ' selected';
+  }
+}
+
+function showUploadConfirmation() {
+  if (!s3Configured) { alert('S3 is not configured. Set AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and S3_BUCKET in your .env file.'); return; }
+  const ids = [...window.selectedImages];
+  if (!ids.length) return;
+
+  const allImages = (window.editorData && (window.editorData.images || [])) || [];
+  const imgMap = {};
+  allImages.forEach(i => { imgMap[i.id] = i; });
+
+  // Build thumbnail grid
+  let thumbsHtml = '<div class="s3-thumb-grid">';
+  ids.forEach(id => {
+    const img = imgMap[id];
+    if (!img) return;
+    const imgUrl = img.imagePath ? '/outputs/' + jobId + '/' + img.imagePath : null;
+    thumbsHtml += '<div class="s3-thumb-item" id="s3-thumb-' + id + '">';
+    if (imgUrl) {
+      thumbsHtml += '<img src="' + imgUrl + '" alt="">';
+    } else {
+      thumbsHtml += '<div class="s3-thumb-no-img">&#128247;</div>';
+    }
+    thumbsHtml += '<span class="s3-status pending" id="s3-status-' + id + '">pending</span>';
+    thumbsHtml += '</div>';
+  });
+  thumbsHtml += '</div>';
+
+  const n = ids.length;
+  const body = document.getElementById('s3-modal-body');
+  body.innerHTML = '<p style="margin-bottom:12px;color:var(--muted);font-size:13px">'
+    + n + ' image' + (n === 1 ? '' : 's') + ' will be uploaded to S3.</p>'
+    + thumbsHtml;
+
+  document.getElementById('s3-modal-title').textContent = 'Upload to S3';
+  document.getElementById('s3-modal-footer').style.display = 'flex';
+  document.getElementById('btn-confirm-upload').disabled = false;
+  document.getElementById('btn-confirm-upload').textContent = 'Confirm Upload';
+
+  document.getElementById('s3-modal').style.display = 'flex';
+}
+
+function closeS3Modal() {
+  document.getElementById('s3-modal').style.display = 'none';
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && document.getElementById('s3-modal').style.display === 'flex') closeS3Modal();
+});
+
+async function uploadSelectedImages() {
+  if (!s3Configured) return;
+  const ids = [...window.selectedImages];
+  if (!ids.length) return;
+
+  const confirmBtn = document.getElementById('btn-confirm-upload');
+  confirmBtn.disabled = true;
+  confirmBtn.textContent = 'Uploading…';
+
+  // Switch modal to progress view
+  const body = document.getElementById('s3-modal-body');
+  const n = ids.length;
+
+  // Add progress bar
+  const progressHtml = '<div class="s3-progress-wrap">'
+    + '<div style="font-size:12px;color:var(--muted);margin-bottom:6px" id="s3-progress-label">Uploading 0 of ' + n + '…</div>'
+    + '<div class="s3-progress-bar-outer"><div class="s3-progress-bar-inner" id="s3-progress-bar" style="width:0%"></div></div>'
+    + '</div>';
+
+  // Prepend progress bar (thumbnails stay)
+  body.insertAdjacentHTML('afterbegin', progressHtml);
+
+  // Mark all as "uploading"
+  ids.forEach(id => {
+    const s = document.getElementById('s3-status-' + id);
+    if (s) { s.textContent = 'uploading'; s.className = 's3-status uploading'; }
+  });
+
+  try {
+    const headers = { 'Content-Type': 'application/json' };
+    if (jobOutputDir) headers['X-Output-Dir'] = jobOutputDir;
+    const r = await fetch('/api/results/' + jobId + '/images/upload', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ imageIds: ids }),
+    });
+    const result = await r.json();
+
+    if (!r.ok) {
+      throw new Error(result.detail || r.statusText);
+    }
+
+    // Update per-image statuses
+    const uploadedIds = new Set((result.uploaded || []).map(u => u.imageId));
+    const errorMap = {};
+    (result.errors || []).forEach(e => { errorMap[e.imageId] = e.error; });
+
+    let doneCount = 0;
+    ids.forEach(id => {
+      const s = document.getElementById('s3-status-' + id);
+      if (uploadedIds.has(id)) {
+        doneCount++;
+        if (s) { s.textContent = '✓ done'; s.className = 's3-status done'; }
+      } else {
+        const errMsg = errorMap[id] || 'skipped';
+        if (s) { s.textContent = errMsg; s.className = 's3-status error'; }
+      }
+    });
+
+    // Update progress bar to 100%
+    const pb = document.getElementById('s3-progress-bar');
+    const pl = document.getElementById('s3-progress-label');
+    if (pb) pb.style.width = '100%';
+    if (pl) pl.textContent = doneCount + ' of ' + n + ' uploaded.';
+
+    // Update in-page badges + local data for uploaded images
+    (result.uploaded || []).forEach(u => {
+      // Update local editorData so re-renders show the badge
+      if (window.editorData) {
+        [window.editorData.images, (window.editorData.merged || {}).images].forEach(arr => {
+          if (!arr) return;
+          const img = arr.find(i => i.id === u.imageId);
+          if (img) { img.s3Url = u.s3Url; img.s3Key = u.s3Key; }
+        });
+      }
+      // Update badge in DOM if card is currently visible
+      const badge = document.getElementById('s3-badge-' + u.imageId);
+      const urlEl = document.getElementById('s3-url-' + u.imageId);
+      const cb    = document.getElementById('cb-' + u.imageId);
+      if (!badge) {
+        // Card is rendered — add badge near the type label
+        const card = document.getElementById('img-card-' + u.imageId);
+        if (card) {
+          const labelSpan = card.querySelector('.activity-label');
+          if (labelSpan) {
+            const b = document.createElement('span');
+            b.id = 's3-badge-' + u.imageId;
+            b.className = 's3-uploaded-badge';
+            b.textContent = '☁ uploaded';
+            labelSpan.after(b);
+          }
+        }
+      } else {
+        badge.textContent = '☁ uploaded';
+      }
+      if (urlEl) { urlEl.textContent = 'S3: ' + u.s3Url; urlEl.style.display = ''; }
+      // Remove from selection after successful upload
+      window.selectedImages.delete(u.imageId);
+      if (cb) cb.checked = false;
+    });
+
+    updateSelectionBar();
+
+    // Hide footer cancel/confirm; show close button only
+    document.getElementById('s3-modal-footer').innerHTML =
+      '<button class="s3-bar-btn primary" onclick="closeS3Modal()">Close</button>';
+
+  } catch(e) {
+    const pl = document.getElementById('s3-progress-label');
+    if (pl) pl.textContent = 'Upload failed: ' + e.message;
+    ids.forEach(id => {
+      const s = document.getElementById('s3-status-' + id);
+      if (s && s.className.includes('uploading')) { s.textContent = 'error'; s.className = 's3-status error'; }
+    });
+    confirmBtn.disabled = false;
+    confirmBtn.textContent = 'Retry';
   }
 }
 
@@ -948,5 +1647,38 @@ document.addEventListener('DOMContentLoaded', () => {
   if (firstTab) loadPanel(firstTab.dataset.file, firstTab.dataset.panel);
 });
 </script>
+<!-- ── S3 floating upload bar ─────────────────────────────────────────────── -->
+<div id="s3-upload-bar">
+  <span class="s3-count" id="s3-selected-count">0 images selected</span>
+  <button class="s3-bar-btn" onclick="selectAllOnPage()">Select all on page</button>
+  <button class="s3-bar-btn" onclick="clearSelection()">Clear</button>
+  <button class="s3-bar-btn primary" id="btn-upload-s3" onclick="showUploadConfirmation()">&#9650; Upload to S3</button>
+</div>
+
+<!-- ── S3 confirm / progress modal ───────────────────────────────────────── -->
+<div id="s3-modal" onclick="closeS3Modal()">
+  <div class="s3-modal-box" onclick="event.stopPropagation()">
+    <div class="s3-modal-header">
+      <h2 id="s3-modal-title">Upload to S3</h2>
+      <button class="s3-modal-close" onclick="closeS3Modal()">&times;</button>
+    </div>
+    <div class="s3-modal-body" id="s3-modal-body">
+      <!-- populated by JS -->
+    </div>
+    <div class="s3-modal-footer" id="s3-modal-footer">
+      <button class="s3-bar-btn" onclick="closeS3Modal()">Cancel</button>
+      <button class="s3-bar-btn primary" id="btn-confirm-upload" onclick="uploadSelectedImages()">Confirm Upload</button>
+    </div>
+  </div>
+</div>
+
+<!-- Image lightbox modal -->
+<div id="image-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.82);align-items:center;justify-content:center;cursor:zoom-out" onclick="closeImageModal()">
+  <button onclick="closeImageModal()" style="position:absolute;top:16px;right:20px;z-index:10000;width:36px;height:36px;border:none;border-radius:50%;background:rgba(255,255,255,0.15);color:#fff;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s" onmouseenter="this.style.background='rgba(255,255,255,0.3)'" onmouseleave="this.style.background='rgba(255,255,255,0.15)'">&times;</button>
+  <div onclick="event.stopPropagation()" style="max-width:92vw;max-height:90vh;display:flex;flex-direction:column;align-items:center;cursor:default">
+    <img id="image-modal-img" src="" alt="" style="max-width:92vw;max-height:82vh;object-fit:contain;border-radius:6px;box-shadow:0 8px 40px rgba(0,0,0,0.5)">
+    <p id="image-modal-caption" style="margin:10px 0 0;color:rgba(255,255,255,0.8);font-size:13px;text-align:center;max-width:700px"></p>
+  </div>
+</div>
 </body>
 </html>

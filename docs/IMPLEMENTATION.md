@@ -1,6 +1,6 @@
 # CL PDF Extraction Pipeline — Implementation Guide
 
-> **Version**: 2.0 (FastAPI)
+> **Version**: 2.1 (FastAPI + Image Pipeline + S3)
 > **Last Updated**: March 2026
 > **Framework**: FastAPI + Uvicorn + Jinja2
 > **AI Backend**: Google Gemini 2.5 Flash (Vision)
@@ -17,18 +17,19 @@
 6. [Application Startup Flow](#6-application-startup-flow)
 7. [Authentication](#7-authentication)
 8. [Pipeline — The 5-Stage Extraction Process](#8-pipeline--the-5-stage-extraction-process)
-9. [Schema Assembly — 18 + 1 Output Files](#9-schema-assembly--18--1-output-files)
-10. [Merged JSON — Parent-Child Hierarchy](#10-merged-json--parent-child-hierarchy)
-11. [API Reference](#11-api-reference)
-12. [Frontend Views](#12-frontend-views)
-13. [Data Flow Diagrams](#13-data-flow-diagrams)
-14. [CL-Json-Schema Hierarchy](#14-cl-json-schema-hierarchy)
-15. [File-by-File Reference](#15-file-by-file-reference)
-16. [Gemini Extraction Prompt](#16-gemini-extraction-prompt)
-17. [Error Handling & Retry Strategy](#17-error-handling--retry-strategy)
-18. [Security Considerations](#18-security-considerations)
-19. [Setup & Deployment Guide](#19-setup--deployment-guide)
-20. [Troubleshooting](#20-troubleshooting)
+9. [Image Extraction Pipeline](#9-image-extraction-pipeline)
+10. [Schema Assembly — 18 + 1 Output Files](#10-schema-assembly--18--1-output-files)
+11. [Merged JSON — Parent-Child Hierarchy](#11-merged-json--parent-child-hierarchy)
+12. [API Reference](#12-api-reference)
+13. [Frontend Views](#13-frontend-views)
+14. [Data Flow Diagrams](#14-data-flow-diagrams)
+15. [CL-Json-Schema Hierarchy](#15-cl-json-schema-hierarchy)
+16. [File-by-File Reference](#16-file-by-file-reference)
+17. [Gemini Extraction Prompt](#17-gemini-extraction-prompt)
+18. [Error Handling & Retry Strategy](#18-error-handling--retry-strategy)
+19. [Security Considerations](#19-security-considerations)
+20. [Setup & Deployment Guide](#20-setup--deployment-guide)
+21. [Troubleshooting](#21-troubleshooting)
 
 ---
 
@@ -48,6 +49,9 @@ PDF Upload → Page Rendering → AI Extraction → Schema Assembly → 19 JSON 
 
 - **PDF → Structured JSON**: Converts educational PDFs into 18 schema-compliant JSON files plus a merged nested JSON
 - **AI-Powered Extraction**: Uses Gemini 2.5 Flash Vision to understand page layouts, text, math, graphs, and images
+- **Image Extraction**: Extracts raster and vector images from PDFs using PyMuPDF, spatially maps them to Gemini-described metadata (alt text, description, type), and produces print-ready image files
+- **Image Management**: Delete, manually map unmatched images, re-extract images for existing jobs — all from the editor UI
+- **S3 Upload**: Select and upload extracted images to AWS S3 with batch parallel uploads, multipart support for large files, and a per-job manifest
 - **Real-Time Progress**: Live pipeline monitoring with 5-stage progress tracking
 - **Three-View Results**: Editor (human-readable), Source (raw JSON), PDF (original document)
 - **Merged Hierarchy**: Single nested JSON following the full parent-child relationship
@@ -79,9 +83,9 @@ PDF Upload → Page Rendering → AI Extraction → Schema Assembly → 19 JSON 
 │  │  Controller │  │  Controller  │  │  (CSS / Theme)     │     │
 │  └─────────────┘  └──────────────┘  └────────────────────┘     │
 │         │                │                                      │
-│         │    ┌───────────┴────────────┐                         │
-│         │    │                        │                         │
-│         ▼    ▼                        ▼                         │
+│         │    ┌───────────┼────────────┐                         │
+│         │    │           │            │                         │
+│         ▼    ▼           ▼            ▼                         │
 │  ┌─────────────┐  ┌──────────────┐  ┌────────────────────┐     │
 │  │  Session    │  │  Pipeline    │  │     Assembler      │     │
 │  │ Middleware  │  │  Service     │  │     Service        │     │
@@ -93,9 +97,14 @@ PDF Upload → Page Rendering → AI Extraction → Schema Assembly → 19 JSON 
 │                   │   Service    │  │  (18 builders)     │     │
 │                   └──────────────┘  └────────────────────┘     │
 │                          │                    │                  │
+│  ┌─────────────┐         │         ┌──────────────────────┐     │
+│  │  Job Model  │         │         │  Image Extractor     │     │
+│  │ (In-Memory) │         │         │  (PyMuPDF)           │     │
+│  └─────────────┘         │         └──────────────────────┘     │
+│                          │                    │                  │
 │  ┌─────────────┐         │                    │                  │
-│  │  Job Model  │         │                    │                  │
-│  │ (In-Memory) │         │                    │                  │
+│  │ S3 Uploader │         │                    │                  │
+│  │ (boto3)     │         │                    │                  │
 │  └─────────────┘         │                    │                  │
 └──────────────────────────────────────────────────────────────────┘
                            │                    │
@@ -104,8 +113,14 @@ PDF Upload → Page Rendering → AI Extraction → Schema Assembly → 19 JSON 
     ┌──────────────────┐             ┌──────────────────────┐
     │  Google Gemini    │             │  File System         │
     │  Vision API       │             │  uploads/ outputs/   │
-    │  (2.5 Flash)      │             │  (18 + merged JSON)  │
-    └──────────────────┘             └──────────────────────┘
+    │  (2.5 Flash)      │             │  (18 + merged JSON   │
+    └──────────────────┘             │   + images/ dir)     │
+                                     └──────────────────────┘
+                                                │
+                                     ┌──────────▼──────────┐
+                                     │  AWS S3 (optional)  │
+                                     │  Image storage      │
+                                     └─────────────────────┘
 ```
 
 ### Request Flow Diagram
@@ -169,6 +184,8 @@ cl-pdf-extraction/
 ├── utils/                          # Stateless utility functions
 │   ├── __init__.py                 #   Re-exports helpers
 │   ├── file_utils.py               #   PDF page count, JSON I/O, validation
+│   ├── image_extractor.py          #   PDF image extraction (raster + vector) & Gemini mapping
+│   ├── s3_uploader.py              #   S3 batch upload with multipart & parallel support
 │   └── schema_chunks.py            #   18 build_*() functions for schemas
 │
 ├── templates/                      # Jinja2 HTML templates
@@ -190,10 +207,17 @@ cl-pdf-extraction/
 │       ├── 02_enums.json
 │       ├── ... (18 schema files)
 │       ├── merged.json             #   Single nested hierarchy
-│       └── extraction_report.json  #   Per-page extraction report
+│       ├── raw_extractions.json    #   Raw Gemini responses (all pages)
+│       ├── extraction_report.json  #   Per-page extraction report
+│       ├── s3_uploads.json         #   S3 upload manifest (when images uploaded)
+│       ├── images/                 #   Extracted print-ready images
+│       │   └── page_{n}_img_{seq}.png
+│       └── page_images/            #   Full-page renders (150 DPI)
+│           └── {n}.png
 │
 ├── docs/                           # Documentation
-│   └── IMPLEMENTATION.md           #   This file
+│   ├── IMPLEMENTATION.md           #   This file
+│   └── S3_IMAGE_UPLOAD_PLAN.md     #   Future S3 selection/upload UI plan
 │
 ├── CL-Json-Schema/                 # Schema definitions & documentation
 │   ├── README.md
@@ -228,6 +252,8 @@ cl-pdf-extraction/
 | **AI/Vision** | Google Gemini 2.5 Flash | Page image → structured JSON extraction |
 | **PDF Rendering** | pdf2image + Poppler | PDF → PNG page images |
 | **PDF Parsing** | pypdf | Page count detection |
+| **Image Extraction** | PyMuPDF (fitz) | Raster/vector image extraction, page rendering, drawing analysis |
+| **Cloud Storage** | boto3 (AWS SDK) | S3 image uploads with multipart and parallel support |
 | **Configuration** | python-dotenv | Environment variable management |
 | **Styling** | Custom CSS (Purple Theme) | CSS variables, responsive design |
 | **File Upload** | python-multipart | Multipart form data handling |
@@ -254,7 +280,13 @@ ADMIN_PASS=password                       # Login password
 GEMINI_API_KEY=AIza...                    # Default Gemini API key
 GEMINI_MODEL=gemini-2.5-flash            # Gemini model name
 MAX_UPLOAD_MB=100                         # Max PDF file size
-PDF_RENDER_DPI=200                        # Page image resolution
+PDF_RENDER_DPI=300                        # Page image resolution
+
+# AWS / S3 (optional — for image uploads)
+AWS_ACCESS_KEY_ID=                        # AWS access key
+AWS_SECRET_ACCESS_KEY=                    # AWS secret key
+AWS_REGION=us-east-1                      # AWS region
+S3_BUCKET=                                # S3 bucket name
 ```
 
 ### Config Class (`config.py`)
@@ -268,6 +300,11 @@ The `Config` class loads all environment variables once at import time. Key comp
 | `OUTPUT_DIR` | `BASE_DIR / "outputs"` | Where extraction results are written |
 | `MAX_CONTENT_LENGTH` | `MAX_UPLOAD_MB * 1024 * 1024` | Byte limit for uploads |
 | `ALLOWED_EXTENSIONS` | `frozenset({"pdf"})` | Only PDFs accepted |
+| `AWS_ACCESS_KEY_ID` | from `.env` | AWS access key for S3 |
+| `AWS_SECRET_ACCESS_KEY` | from `.env` | AWS secret key for S3 |
+| `AWS_REGION` | `"us-east-1"` | AWS region |
+| `S3_BUCKET` | from `.env` | S3 bucket name |
+| `s3_configured` | (property) | `True` when AWS keys + bucket are set |
 
 ---
 
@@ -410,7 +447,120 @@ Main Thread (Uvicorn)          Background Thread (Pipeline)
 
 ---
 
-## 9. Schema Assembly — 18 + 1 Output Files
+## 9. Image Extraction Pipeline
+
+The image extraction pipeline (`utils/image_extractor.py`) runs as part of the main pipeline and can also be re-triggered independently on existing jobs via the "Re-extract Images" button.
+
+### Overview
+
+```
+PDF (via PyMuPDF)
+    │
+    ├── Raster images (embedded JPG/PNG)
+    │     └── Filtered by size, deduplicated, cropped at 300 DPI
+    │
+    ├── Vector graphic clusters (drawings)
+    │     └── Grouped by proximity, filtered by area, rendered as PNG
+    │
+    └── Full page renders (150 DPI) → page_images/{n}.png
+          └── Used for inline page preview in the editor
+                │
+                ▼
+        Position-based spatial matching
+        (extracted images ↔ Gemini metadata)
+                │
+                ▼
+        Print-ready files  → images/page_{n}_img_{seq}.png
+        Image manifest     → { pdf_page_index: [img_dict, ...] }
+```
+
+### Two Extraction Modes
+
+#### 1. Embedded Raster Images
+
+- Uses `page.get_images(full=True)` to discover embedded image XREFs
+- Filters out noise: minimum 50×50 px, bounding box > 20×20 pts
+- Skips images that span > 90% of page (likely backgrounds)
+- Crops each image at 300 DPI for print quality
+- Deduplicates overlapping extractions (> 50% overlap threshold)
+
+#### 2. Vector Graphic Clusters
+
+- Uses `page.get_drawings()` to retrieve all vector paths
+- Clusters nearby paths using a gap threshold (20 pts)
+- Iteratively merges overlapping clusters until stable
+- Filters by minimum area (3600 sq pts) and dimension (50 pts)
+- Renders each cluster region as a high-quality PNG
+- Skips clusters that overlap already-extracted raster images
+
+### Gemini Metadata Matching
+
+After physical extraction, images are spatially matched to Gemini's metadata (alt text, description, image type) using a cost-based assignment algorithm:
+
+```
+For each (extracted_image, gemini_image) pair:
+    cost = spatial_distance(extracted_centre, gemini_position)
+         + type_penalty(image_area, gemini_image_type)
+
+Greedy assignment: sort all pairs by cost, assign lowest-cost pairs first.
+Threshold: pairs with cost > 0.8 are left unmatched.
+```
+
+**Type penalties** prevent mismatches between large images and small types:
+
+| Condition | Penalty |
+|-----------|---------|
+| Large image area + `ICON` or `DECORATIVE` type | +0.30 |
+| Small image area + `TECHNICAL_ART`, `INSTRUCTIONAL`, `DIAGRAM`, or `PHOTOGRAPH` type | +0.15 |
+
+**Position centres** map Gemini's position labels (e.g., `TOP_LEFT`, `MIDDLE_CENTER`, `RIGHT_SIDEBAR`) to normalised (x, y) fractions of the page.
+
+### Image Management in the Editor
+
+| Feature | Description |
+|---------|-------------|
+| **Delete** | Red ✕ overlay on each image card → removes from `12_images.json`, `merged.json`, and disk |
+| **Manual mapping** | Dropdown on unmatched cards → links an extracted file to a Gemini description (or vice versa) |
+| **Re-extract** | "Re-extract Images" button → re-runs extraction on existing job using saved `raw_extractions.json` |
+| **Lightbox** | Click any image thumbnail → opens full-size modal overlay with caption |
+
+### S3 Upload
+
+Selected images can be uploaded to AWS S3 via `POST /api/results/{job_id}/images/upload`:
+
+- Uses `utils/s3_uploader.py` with `boto3`
+- Parallel upload (up to 4 concurrent) via `ThreadPoolExecutor`
+- Multipart upload for files > 5 MB
+- S3 key format: `{job_id}/images/{filename}`
+- Updates `12_images.json` and `merged.json` with `s3Url` and `s3Key` fields
+- Saves/appends to `s3_uploads.json` manifest in the job output directory
+- Skips already-uploaded images (idempotent)
+- Returns 503 if S3 is not configured (missing credentials)
+
+### Output Files
+
+| File | Location | Content |
+|------|----------|---------|
+| `images/page_{n}_img_{seq}.png` | `outputs/{job_id}/images/` | Print-ready extracted images |
+| `page_images/{n}.png` | `outputs/{job_id}/page_images/` | Full page renders at 150 DPI |
+| `s3_uploads.json` | `outputs/{job_id}/` | Manifest of all S3-uploaded images |
+
+### Configuration Constants (`image_extractor.py`)
+
+| Constant | Value | Purpose |
+|----------|-------|---------|
+| `CROP_DPI` | 300 | DPI for extracted image crops |
+| `PAGE_RENDER_DPI` | 150 | DPI for full page renders |
+| `MIN_RASTER_DIM` | 50 | Minimum raster image dimension (px) |
+| `MIN_RASTER_BBOX` | 20 | Minimum bounding box dimension (pts) |
+| `MIN_VECTOR_AREA` | 3600 | Minimum vector cluster area (sq pts) |
+| `MIN_VECTOR_DIM` | 50 | Minimum vector cluster dimension (pts) |
+| `CLUSTER_GAP` | 20 | Max gap (pts) for merging vector paths |
+| `MAX_FULL_PAGE_RATIO` | 0.9 | Skip images spanning > 90% of page |
+
+---
+
+## 10. Schema Assembly — 18 + 1 Output Files
 
 ### File Manifest
 
@@ -477,7 +627,7 @@ build_lesson(...)                    ← 06_lesson.json
 
 ---
 
-## 10. Merged JSON — Parent-Child Hierarchy
+## 11. Merged JSON — Parent-Child Hierarchy
 
 The `merged.json` file combines all 18 individual files into a single nested structure following the CL-Json-Schema parent-child relationships.
 
@@ -558,7 +708,7 @@ lesson.id ────────────> instructionalSegment.lessonId
 
 ---
 
-## 11. API Reference
+## 12. API Reference
 
 ### HTML Pages (Server-Rendered)
 
@@ -585,25 +735,41 @@ lesson.id ────────────> instructionalSegment.lessonId
 | GET | `/api/results/{job_id}/merged` | Yes | Full merged nested JSON |
 | GET | `/api/results/{job_id}/editor` | Yes | Merged JSON + flat lists for editor UI |
 | GET | `/api/results/{job_id}/{filename}` | Yes | Single schema JSON file |
+| GET | `/api/s3/config` | Yes | Whether S3 is configured (never exposes credentials) |
+
+### Image Management APIs
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| DELETE | `/api/results/{job_id}/images/{image_id}` | Yes | Delete image from `12_images.json`, `merged.json`, and disk |
+| POST | `/api/results/{job_id}/images/map` | Yes | Manually map an extracted image to a Gemini-described image |
+| POST | `/api/results/{job_id}/images/upload` | Yes | Upload selected images to S3 (batch, parallel) |
+| POST | `/api/results/{job_id}/reextract-images` | Yes | Re-run image extraction using saved `raw_extractions.json` |
 
 ### File Serving
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | GET | `/outputs/{job_id}/pdf` | Yes | Original PDF (inline display) |
-| GET | `/outputs/{job_id}/{filename}` | Yes | Download any output file |
+| GET | `/outputs/{job_id}/page_images/{page_num}.png` | Yes | Render a single PDF page as PNG (on-demand via PyMuPDF) |
+| GET | `/outputs/{job_id}/{filename:path}` | Yes | Download any output file |
 
 ### Route Priority (Order Matters)
 
 FastAPI matches routes top-to-bottom. Specific routes must be declared before generic ones:
 
 ```
-/api/results/{job_id}/merged    ← Matched first (specific)
-/api/results/{job_id}/editor    ← Matched second (specific)
-/api/results/{job_id}/{filename} ← Matched last (generic catch-all)
+/api/results/{job_id}/merged          ← Matched first (specific)
+/api/results/{job_id}/editor          ← Matched second (specific)
+/api/results/{job_id}/images/upload   ← Specific image action
+/api/results/{job_id}/images/map      ← Specific image action
+/api/results/{job_id}/images/{id}     ← Specific image DELETE
+/api/results/{job_id}/reextract-images← Specific action
+/api/results/{job_id}/{filename}      ← Matched last (generic catch-all)
 
-/outputs/{job_id}/pdf           ← Matched first (specific)
-/outputs/{job_id}/{filename}    ← Matched last (generic catch-all)
+/outputs/{job_id}/pdf                 ← Matched first (specific)
+/outputs/{job_id}/page_images/{n}.png ← Matched second (specific)
+/outputs/{job_id}/{filename:path}     ← Matched last (generic catch-all)
 ```
 
 ### Editor API Response Format
@@ -650,7 +816,7 @@ FastAPI matches routes top-to-bottom. Specific routes must be declared before ge
 
 ---
 
-## 12. Frontend Views
+## 13. Frontend Views
 
 ### View Architecture
 
@@ -677,6 +843,14 @@ results.html
 │       │           └── Stem Items (with response area badges)
 │       │               └── Sub-Task Items
 │       └── Images Card           (schema-tag: images)
+│           ├── Image Cards (with thumbnail, metadata, badges)
+│           ├── Delete Overlay (✕ button, top-right of each card)
+│           ├── Manual Mapping Dropdowns (for unmatched images)
+│           └── Image Lightbox Modal (click to enlarge)
+│
+├── Toolbar Actions
+│   ├── Re-extract Images Button  (📷 triggers image re-extraction)
+│   └── (Future: S3 Upload Selection — see docs/S3_IMAGE_UPLOAD_PLAN.md)
 │
 ├── Source View (#view-source)
 │   ├── Tab Bar: [ ★ Merged | Primitives | Enums | ... 15 tabs ]
@@ -728,6 +902,47 @@ Each section is rendered as a card with a purple schema tag:
 └─────────────────────────────────────────────────────────┘
 ```
 
+### Editor View — Image Cards
+
+Each image in the editor view is rendered as a card with the following features:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ [✓]  ┌────────┐  TECHNICAL_ART  extracted  p.3        [✕]  │
+│      │  img   │  Six line graphs showing data trends...     │
+│      │ thumb  │  Graph: x: Year | y: Value                  │
+│      └────────┘  View full size →                           │
+│                                                             │
+│      Map to: [— Select extracted image —  ▼]  ← (if no file│
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Card elements**:
+
+| Element | Description |
+|---------|-------------|
+| **Thumbnail** | 140px wide preview; click opens lightbox modal |
+| **Delete button (✕)** | Circular red overlay in top-right corner; calls `DELETE /api/results/{id}/images/{imgId}` |
+| **Type badge** | Image type from Gemini (e.g., `TECHNICAL_ART`, `ICON`, `PHOTOGRAPH`) |
+| **Status badges** | Green "extracted" (has file), orange "needs review" (UNREVIEWED), gray "no file" (missing) |
+| **Manual mapping dropdown** | For unmatched images: maps an extracted file ↔ Gemini description via `/api/results/{id}/images/map` |
+| **Lightbox modal** | Full-screen overlay showing the image at full size with alt-text caption; closes via ✕, click-outside, or Escape key |
+
+**Border colors** indicate matching status:
+- 🟢 Green: Extracted image with file
+- 🟠 Orange: UNREVIEWED (extracted but no Gemini match)
+- ⬜ Default: Gemini metadata with no extracted file
+
+### Editor View — JavaScript Functions (Image Management)
+
+| Function | Purpose |
+|----------|---------|
+| `deleteImage(imageId)` | DELETE request → animate card removal → update local data |
+| `mapImage(sourceId, targetId, sourceType)` | POST mapping → merge image data locally → refresh view |
+| `reextractImages()` | POST re-extraction → show progress → reload editor |
+| `openImageModal(src, alt)` | Display lightbox modal with image and caption |
+| `closeImageModal()` | Hide lightbox modal, restore page scroll |
+
 ### Dashboard — Extraction Report
 
 The dashboard's "All Extractions" table includes a **Log** column with a document icon for each completed job that has an extraction report. Clicking the icon opens a modal dialog showing the per-page extraction report:
@@ -776,7 +991,7 @@ The job status page shows an expandable "Extraction Report" section once page ex
 
 ---
 
-## 13. Data Flow Diagrams
+## 14. Data Flow Diagrams
 
 ### Upload → Pipeline → Results
 
@@ -824,8 +1039,42 @@ The job status page shows an expandable "Extraction Report" section once page ex
                                                     │  17_response_areas     │
                                                     │  18_scaffolding        │
                                                     │  merged.json           │
+                                                    │  raw_extractions.json  │
                                                     │  extraction_report.json│
+                                                    │  images/               │
+                                                    │  page_images/          │
                                                     └────────────────────────┘
+
+### Image Extraction Data Flow
+
+```
+PDF (on disk)                                  raw_extractions.json (Gemini metadata)
+     │                                                │
+     ▼                                                ▼
+┌──────────────────────────────────────────────────────────────┐
+│                    Image Extractor (PyMuPDF)                  │
+│                                                              │
+│  ┌─────────────────┐   ┌──────────────────┐                │
+│  │ Raster Images   │   │ Vector Clusters  │                │
+│  │ get_images()    │   │ get_drawings()   │                │
+│  │ → crop 300 DPI  │   │ → cluster + crop │                │
+│  └────────┬────────┘   └────────┬─────────┘                │
+│           │                     │                           │
+│           └──────┬──────────────┘                           │
+│                  ▼                                          │
+│         Spatial Matching                                    │
+│         (cost = distance + type penalty)                    │
+│                  │                                          │
+│                  ▼                                          │
+│         Image Manifest                                      │
+│         { page_idx: [ {path, alt_text, ...} ] }            │
+└──────────────────────────────────────────────────────────────┘
+                   │
+        ┌──────────┴──────────────────┐
+        ▼                             ▼
+  images/                      12_images.json
+  page_{n}_img_{seq}.png       (+ merged.json update)
+```
 ```
 
 ### Editor API Data Flow
@@ -883,7 +1132,7 @@ _resolve_editor_output(request, job_id)
 
 ---
 
-## 14. CL-Json-Schema Hierarchy
+## 15. CL-Json-Schema Hierarchy
 
 ### Dual Hierarchy System
 
@@ -983,7 +1232,7 @@ Instructional Segments group activities by phase:
 
 ---
 
-## 15. File-by-File Reference
+## 16. File-by-File Reference
 
 ### `app.py` — Application Factory
 
@@ -1031,9 +1280,15 @@ Instructional Segments group activities by phase:
 | `api_jobs()` | API | Return all in-memory jobs for dashboard polling |
 | `api_extraction_report()` | API | Return per-page extraction report (from memory or disk) |
 | `results()` | Route | Render results viewer |
+| `delete_image()` | API | Delete image from disk, `12_images.json`, and `merged.json` |
+| `map_image()` | API | Manually link an extracted image to a Gemini-described entry |
+| `api_s3_config()` | API | Return S3 configuration status (never exposes credentials) |
+| `upload_images_to_s3()` | API | Batch-upload selected images to S3 via `S3Uploader` |
+| `reextract_images()` | API | Re-run image extraction using `raw_extractions.json` |
 | `api_merged()` | API | Return merged nested JSON |
 | `api_editor_payload()` | API | Return merged + flat data for editor |
 | `api_result_file()` | API | Return single JSON file content |
+| `serve_page_image()` | API | Render and serve a single PDF page as PNG (via PyMuPDF) |
 | `serve_job_pdf()` | API | Serve PDF inline |
 | `download_output()` | API | Download any output file |
 
@@ -1081,6 +1336,30 @@ Instructional Segments group activities by phase:
 | `read_json()` | Read JSON file into dict |
 | `list_output_files()` | List all JSON files in output directory |
 
+### `utils/image_extractor.py` — PDF Image Extraction
+
+| Function | Description |
+|----------|-------------|
+| `extract_images_from_pdf()` | Main entry point: extracts raster + vector images, matches to Gemini metadata, returns manifest |
+| `_cluster_drawings()` | Groups vector drawing paths into meaningful visual clusters by proximity |
+| `_overlaps_any()` | Checks if an extracted rect overlaps existing extractions above a threshold |
+| `_is_header_footer()` | Filters out thin, wide rects in the top/bottom 10% of the page |
+| `_extract_raster_images()` | Extracts embedded raster images from a PDF page via PyMuPDF |
+| `_extract_vector_images()` | Renders vector graphic clusters as PNG images |
+| `_match_to_gemini()` | Spatially matches extracted images to Gemini metadata using cost-based assignment |
+| `_match_cost()` | Computes matching cost (spatial distance + type penalty) for an extracted/Gemini pair |
+| `_distance()` | Euclidean distance between two normalised position tuples |
+
+### `utils/s3_uploader.py` — S3 Upload Helper
+
+| Item | Description |
+|------|-------------|
+| `S3Uploader` | Class wrapping `boto3` S3 client with config-based credentials |
+| `upload_file()` | Upload a single file with multipart support for files > 5 MB |
+| `upload_batch()` | Upload multiple files in parallel (up to 4 concurrent workers) |
+| `UploadResult` | TypedDict for successful upload result (`imageId`, `s3Key`, `s3Url`) |
+| `UploadError` | TypedDict for failed upload result (`imageId`, `error`) |
+
 ### `utils/schema_chunks.py` — Schema Builders
 
 Contains 18+ `build_*()` functions, one per schema file. Also contains:
@@ -1093,7 +1372,7 @@ Contains 18+ `build_*()` functions, one per schema file. Also contains:
 
 ---
 
-## 16. Gemini Extraction Prompt
+## 17. Gemini Extraction Prompt
 
 The master prompt sent with each page image instructs Gemini to extract:
 
@@ -1120,7 +1399,7 @@ The master prompt sent with each page image instructs Gemini to extract:
 
 ---
 
-## 17. Error Handling & Retry Strategy
+## 18. Error Handling & Retry Strategy
 
 ### Gemini API Retry (per extract_page call)
 
@@ -1186,7 +1465,7 @@ The report is:
 
 ---
 
-## 18. Security Considerations
+## 19. Security Considerations
 
 | Area | Implementation |
 |------|---------------|
@@ -1197,12 +1476,13 @@ The report is:
 | **Filename Sanitization** | `_secure_filename()` strips Unicode, path separators, special characters |
 | **Path Traversal** | `relative_to()` checks on all file-serving routes |
 | **API Key** | Stored in session/job; never exposed in API responses |
+| **AWS Credentials** | Stored in `.env`; never exposed via API (`/api/s3/config` returns only `configured: bool` and bucket name) |
 | **CORS** | Not configured (same-origin only) |
 | **Static Files** | Mounted only if directory exists |
 
 ---
 
-## 19. Setup & Deployment Guide
+## 20. Setup & Deployment Guide
 
 ### Prerequisites
 
@@ -1240,7 +1520,13 @@ ADMIN_PASS=your-password
 GEMINI_API_KEY=your-gemini-api-key
 GEMINI_MODEL=gemini-2.5-flash
 MAX_UPLOAD_MB=100
-PDF_RENDER_DPI=200
+PDF_RENDER_DPI=300
+
+# Optional: S3 image upload (leave blank to disable)
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+AWS_REGION=us-east-1
+S3_BUCKET=
 EOF
 
 # 6. Run the application
@@ -1265,7 +1551,7 @@ uvicorn app:app --host 0.0.0.0 --port 5000 --workers 4
 
 ---
 
-## 20. Troubleshooting
+## 21. Troubleshooting
 
 ### Common Issues
 
@@ -1279,12 +1565,16 @@ uvicorn app:app --host 0.0.0.0 --port 5000 --workers 4
 | Login redirect loop | Session cookie issues | Clear browser cookies; check `SECRET_KEY` is set |
 | Empty extraction results | Non-content pages (TOC, glossary) | Expected — these return `page_type: "NON_CONTENT"` |
 | `IndentationError` on startup | Malformed Python | Run `python -m py_compile controllers/job_controller.py` to check |
+| Images not showing in editor | Image extraction not run, or files missing | Click "Re-extract Images" button to re-run extraction |
+| Image matched to wrong Gemini metadata | Spatial matching imprecise | Use the manual mapping dropdown on unmatched image cards |
+| S3 upload returns 503 | AWS credentials or `S3_BUCKET` not configured | Set `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `S3_BUCKET` in `.env` |
+| `ModuleNotFoundError: boto3` | boto3 not installed | Run `pip install boto3` (only needed for S3 uploads) |
 
 ### Diagnostic Steps
 
 1. **Check server logs**: Uvicorn logs all requests and pipeline progress
 2. **Check pipeline logs**: `GET /api/job/{id}` returns last 50 log entries
-3. **Check output files**: `ls outputs/{job_id}/` — should have 19+ JSON files (18 schema + merged + extraction_report)
+3. **Check output files**: `ls outputs/{job_id}/` — should have 19+ JSON files (18 schema + merged + extraction_report + raw_extractions), plus `images/` and `page_images/` directories
 4. **Verify merged.json**: `python -c "import json; json.load(open('outputs/{id}/merged.json'))"` — should parse without errors
 5. **Test API directly**: `curl -b cookies.txt http://localhost:5000/api/results/{id}/merged | python -m json.tool`
 
@@ -1313,8 +1603,12 @@ uvicorn app:app --host 0.0.0.0 --port 5000 --workers 4
 | `17_response_areas.json` | ~100 B - 2 KB | Response area definitions |
 | `18_scaffolding.json` | ~100 B - 3 KB | Scaffolding items |
 | **`merged.json`** | **~25 KB** | **Full nested hierarchy** |
+| `raw_extractions.json` | ~10-50 KB | Raw Gemini responses (all pages) |
 | `extraction_report.json` | ~1 KB | Per-page extraction report |
+| `s3_uploads.json` | ~1 KB | S3 upload manifest (when images uploaded) |
+| `images/` (directory) | ~50 KB - 2 MB | Extracted print-ready images (PNG) |
+| `page_images/` (directory) | ~1-5 MB | Full page renders at 150 DPI |
 
 ---
 
-*This document is auto-maintained. For schema details, see `CL-Json-Schema/SCHEMA_REFERENCE.md`.*
+*This document is maintained alongside the codebase. For schema details, see `CL-Json-Schema/SCHEMA_REFERENCE.md`. For future S3 upload UI plans, see `docs/S3_IMAGE_UPLOAD_PLAN.md`.*

@@ -37,6 +37,16 @@ class Config:
     PDF_RENDER_DPI: int   = int(os.getenv("PDF_RENDER_DPI", "300"))
     ALLOWED_EXTENSIONS: frozenset = frozenset({"pdf"})
 
+    # ── AWS / S3 ─────────────────────────────────────────────────────────────
+    AWS_ACCESS_KEY_ID: str     = os.getenv("AWS_ACCESS_KEY_ID", "")
+    AWS_SECRET_ACCESS_KEY: str = os.getenv("AWS_SECRET_ACCESS_KEY", "")
+    AWS_REGION: str            = os.getenv("AWS_REGION", "us-east-1")
+    S3_BUCKET: str             = os.getenv("S3_BUCKET", "")
+
+    @property
+    def s3_configured(self) -> bool:
+        return bool(self.AWS_ACCESS_KEY_ID and self.AWS_SECRET_ACCESS_KEY and self.S3_BUCKET)
+
     # ── Paths ─────────────────────────────────────────────────────────────────
     BASE_DIR: Path    = Path(__file__).resolve().parent
     UPLOAD_DIR: Path  = BASE_DIR / "uploads"

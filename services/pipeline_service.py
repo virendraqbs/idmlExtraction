@@ -77,12 +77,9 @@ class PipelineService:
             job.total = total
             log_it(f"Rendered {total} page(s)")
 
-            # ── Stage 2b: Extract embedded images from PDF ─────────────
-            log_it("Stage 2b: Extracting embedded images from PDF...")
+            # ── Stage 2b: Render page images dir (full extraction after Gemini) ──
             out_dir = Path(job.output_dir)
             out_dir.mkdir(parents=True, exist_ok=True)
-            image_manifest = extract_images_from_pdf(job.pdf_path, out_dir)
-            log_it(f"Extracted {image_manifest['total_extracted']} embedded images + {len(image_manifest['page_images'])} page renders")
 
             # ── Stage 3: Page-by-page extraction ─────────────────────────
             job.set_status(JobStatus.EXTRACTING)
@@ -135,6 +132,13 @@ class PipelineService:
             with open(raw_output, "w", encoding="utf-8") as rf:
                 json.dump(raw_pages, rf, indent=2, ensure_ascii=False)
             log_it("Saved raw_extractions.json for debugging")
+
+            # ── Stage 3b: Extract images from PDF (raster + vector + mapping)
+            log_it("Stage 3b: Extracting print-ready images from PDF...")
+            image_manifest = extract_images_from_pdf(
+                job.pdf_path, out_dir, gemini_pages=raw_pages,
+            )
+            log_it(f"Extracted {image_manifest['total_extracted']} images + {len(image_manifest['page_images'])} page renders")
 
             # ── Stage 4: Assemble schema files ────────────────────────────
             job.set_status(JobStatus.ASSEMBLING)

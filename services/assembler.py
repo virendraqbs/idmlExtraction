@@ -90,9 +90,9 @@ def assemble_schemas(
         raw_activities=all_raw_activities,
     )
 
-    # Practice sections (groups PRACTICE activities)
+    # Practice sections (groups PRACTICE activities; uses page-level detection first)
     practice_sections = build_practice_sections_chunk(
-        lesson_id=lesson_id, activities=activities,
+        lesson_id=lesson_id, activities=activities, pages=pages,
     )
 
     # Images, pages, prompts
