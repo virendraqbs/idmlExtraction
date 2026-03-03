@@ -82,7 +82,11 @@ class PipelineService:
             out_dir = Path(job.output_dir)
             out_dir.mkdir(parents=True, exist_ok=True)
             image_manifest = extract_images_from_pdf(job.pdf_path, out_dir)
-            log_it(f"Extracted {image_manifest['total_extracted']} embedded images + {len(image_manifest['page_images'])} page renders")
+            log_it(
+                f"Extracted {image_manifest['total_extracted']} embedded images + "
+                f"{image_manifest['total_graphs']} graph regions + "
+                f"{len(image_manifest['page_images'])} page renders"
+            )
 
             # ── Stage 3: Page-by-page extraction ─────────────────────────
             job.set_status(JobStatus.EXTRACTING)

@@ -449,34 +449,52 @@ def build_images_chunk(
     12_images.json — aligned with CL-Json-Schema media/image.json.
 
     When image_manifest is provided (from utils/image_extractor), each image
-    entity gets an ``imagePath`` pointing to the actual extracted image file
-    (e.g. "images/page_3_img_0.jpeg").  ``pageImagePath`` still points to
-    the full page render for fallback.
+    entity gets an ``imagePath`` pointing to the actual extracted image file.
+
+    Matching strategy (separate counters per page):
+    - Gemini images with ``contains_graph: true``  → matched from ``graph_regions``
+      (vector drawing crops produced by _find_graph_regions)
+    - All other images                              → matched from ``extracted``
+      (embedded raster images)
+
+    ``pageImagePath`` always points to the full page render as a fallback.
     """
-    extracted = (image_manifest or {}).get("extracted", {})
+    manifest       = image_manifest or {}
+    extracted      = manifest.get("extracted", {})
+    graph_regions  = manifest.get("graph_regions", {})
 
     images: list[dict] = []
-    # Track how many Gemini images we've seen per PDF page to map to extracted index
-    page_img_counter: dict[int, int] = {}
+    # Independent sequential counters per PDF page index
+    raster_counter: dict[int, int] = {}
+    graph_counter:  dict[int, int] = {}
 
     for page in pages:
         page_num = page.get("page_number")
         # _pdf_page_index is the 1-based PDF page; it's what the extractor uses
         pdf_idx = page.get("_pdf_page_index")
+        lookup_key = pdf_idx if pdf_idx is not None else page_num
+        page_num_val = page_num if page_num is not None else ""
 
         for raw_img in page.get("images") or []:
             acc = raw_img.get("accessibility") or {}
-            page_num_val = page_num if page_num is not None else ""
+            contains_graph = raw_img.get("contains_graph", False)
 
-            # Match Gemini-detected image with an extracted file via PDF page index
             image_path = None
-            lookup_key = pdf_idx if pdf_idx is not None else page_num
-            if lookup_key is not None and lookup_key in extracted:
-                idx = page_img_counter.get(lookup_key, 0)
-                page_extracted = extracted[lookup_key]
-                if idx < len(page_extracted):
-                    image_path = page_extracted[idx]["path"]
-                page_img_counter[lookup_key] = idx + 1
+            if lookup_key is not None:
+                if contains_graph:
+                    # Vector drawing crop — use the graph_regions list
+                    page_graphs = graph_regions.get(lookup_key, [])
+                    idx = graph_counter.get(lookup_key, 0)
+                    if idx < len(page_graphs):
+                        image_path = page_graphs[idx]["path"]
+                    graph_counter[lookup_key] = idx + 1
+                else:
+                    # Embedded raster — use the extracted list
+                    page_rasters = extracted.get(lookup_key, [])
+                    idx = raster_counter.get(lookup_key, 0)
+                    if idx < len(page_rasters):
+                        image_path = page_rasters[idx]["path"]
+                    raster_counter[lookup_key] = idx + 1
 
             img = {
                 "id":               gen_id(),
@@ -494,7 +512,7 @@ def build_images_chunk(
                     "longDescription": acc.get("long_description"),
                 },
                 "position":         raw_img.get("position"),
-                "containsGraph":    raw_img.get("contains_graph", False),
+                "containsGraph":    contains_graph,
                 "isResponseArea":   raw_img.get("is_response_area", False),
                 "responseAreaType": raw_img.get("response_area_type"),
                 "graphDetails":     raw_img.get("graph_details"),

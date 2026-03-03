@@ -821,15 +821,13 @@ async function loadEditorView() {
       SPB_PRACTICE: 'Practice',
       STANDARDS_PAGE: 'Standards',
       NON_CONTENT: 'Non-Content',
-      UNKNOWN: 'Non-Content',
+      UNKNOWN: 'Content',
     };
 
     const contentPages = [];
     pageSelect.innerHTML = '<option value="">Select a page…</option>';
     pages.forEach((p, i) => {
       const rawType = p.pageType || '';
-      const isNonContent = rawType === 'UNKNOWN' || rawType === 'NON_CONTENT';
-      if (isNonContent) return;
       contentPages.push(i);
       const label = PAGE_TYPE_LABELS[rawType] || rawType.replace(/_/g, ' ');
       const opt = document.createElement('option');
