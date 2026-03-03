@@ -93,10 +93,11 @@ def _resolve_output_and_pdf(job_id: str) -> tuple[Path | None, Path | None]:
 def _enrich_folder(p: Path) -> dict:
     """Read page/image counts from a completed output folder."""
     info: dict = {"id": p.name, "path": str(p), "pages": 0, "images": 0, "files": 0,
-                  "status": "Completed", "created": ""}
+                  "status": "Completed", "created": "", "has_report": False}
     try:
         info["files"] = sum(1 for f in p.iterdir() if f.suffix == ".json")
         info["created"] = time.strftime("%Y-%m-%d %H:%M", time.localtime(p.stat().st_mtime))
+        info["has_report"] = (p / "extraction_report.json").exists()
         pages_file = p / "13_pages.json"
         if pages_file.exists():
             with open(pages_file, encoding="utf-8") as f:
@@ -218,6 +219,22 @@ async def api_jobs(request: Request, _=Depends(require_login)):
     return [j.to_api_dict() | {"id": j.id} for j in job_repo.all()]
 
 
+@jobs_router.get("/api/extraction-report/{job_id}")
+async def api_extraction_report(request: Request, job_id: str, _=Depends(require_login)):
+    """Return the per-page extraction report for a completed job."""
+    job = job_repo.get(job_id)
+    if job and job.extraction_report:
+        return job.extraction_report
+
+    out_dir, _ = _resolve_output_and_pdf(job_id)
+    if out_dir:
+        report_file = out_dir / "extraction_report.json"
+        if report_file.exists():
+            return json.loads(report_file.read_text(encoding="utf-8"))
+
+    return []
+
+
 # ── Results viewer ────────────────────────────────────────────────────────────
 
 def _job_or_folder_context(job_id: str):
@@ -333,7 +350,7 @@ def _resolve_editor_output(request: Request, job_id: str) -> Path:
 
 
 def _read_all_schemas(out: Path) -> dict:
-    """Read all 15 schema files and return as flat dict."""
+    """Read all 18 schema files and return as flat dict."""
     def read_json(name: str) -> dict | list:
         p = out / name
         if not p.exists():
@@ -356,6 +373,9 @@ def _read_all_schemas(out: Path) -> dict:
     pages_data = read_json("13_pages.json") or {}
     prompts_data = read_json("14_instructional_prompts.json") or {}
     segments_data = read_json("15_instructional_segments.json") or {}
+    practice_data = read_json("16_practice_sections.json") or {}
+    resp_areas_data = read_json("17_response_areas.json") or {}
+    scaffolding_data = read_json("18_scaffolding.json") or {}
 
     return {
         "primitives": primitives if isinstance(primitives, dict) else {},
@@ -373,6 +393,9 @@ def _read_all_schemas(out: Path) -> dict:
         "pages": pages_data.get("pages", []) if isinstance(pages_data, dict) else [],
         "instructionalPrompts": prompts_data.get("instructionalPrompts", []) if isinstance(prompts_data, dict) else [],
         "instructionalSegments": segments_data.get("instructionalSegments", []) if isinstance(segments_data, dict) else [],
+        "practiceSections": practice_data.get("practiceSections", []) if isinstance(practice_data, dict) else [],
+        "responseAreas": resp_areas_data.get("responseAreas", []) if isinstance(resp_areas_data, dict) else [],
+        "scaffolding": scaffolding_data.get("scaffolding", []) if isinstance(scaffolding_data, dict) else [],
     }
 
 

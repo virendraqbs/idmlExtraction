@@ -89,20 +89,46 @@ class PipelineService:
             log_it("Stage 3: Extracting content page-by-page with Gemini 2.5...")
 
             raw_pages: list[dict] = []
+            extraction_report: list[dict] = []
 
             for i, img in enumerate(images, 1):
                 job.current_page = i
                 log_it(f"Processing page {i}/{total}...")
 
-                page_data = gemini.extract_page(img, i)
+                page_data, report = gemini.extract_page(img, i)
                 page_data["_pdf_page_index"] = i
+
+                if page_data.get("page_type") == "UNKNOWN" and i <= total:
+                    log_it(f"Page {i} returned UNKNOWN — retrying once after delay...")
+                    time.sleep(5)
+                    retry_data, retry_report = gemini.extract_page(img, i)
+                    if retry_data.get("page_type") != "UNKNOWN":
+                        retry_data["_pdf_page_index"] = i
+                        page_data = retry_data
+                        log_it(f"Page {i} retry succeeded: {page_data.get('page_type')}")
+                        retry_report["pipelineRetry"] = True
+                        report = retry_report
+                    else:
+                        report["attempts"] += retry_report["attempts"]
+                        report["errors"].extend(retry_report["errors"])
+                        report["elapsed_ms"] += retry_report["elapsed_ms"]
+                        report["pipelineRetry"] = True
+                        report["status"] = "failed"
+
+                extraction_report.append(report)
                 raw_pages.append(page_data)
 
                 job.pages_done.append(i)
                 job.progress = int((i / total) * 85)
-                time.sleep(0.4)   # polite breathing room between calls
+                time.sleep(1.5)
 
             log_it(f"Extracted {total} pages")
+
+            job.extraction_report = extraction_report
+            report_path = out_dir / "extraction_report.json"
+            with open(report_path, "w", encoding="utf-8") as rp:
+                json.dump(extraction_report, rp, indent=2, ensure_ascii=False)
+            log_it("Saved extraction_report.json")
 
             # Save raw extractions for debugging
             raw_output = out_dir / "raw_extractions.json"
@@ -112,7 +138,7 @@ class PipelineService:
 
             # ── Stage 4: Assemble schema files ────────────────────────────
             job.set_status(JobStatus.ASSEMBLING)
-            log_it("Stage 4: Assembling 15 JSON schema files...")
+            log_it("Stage 4: Assembling 18 JSON schema files...")
             job.progress = 90
 
             schema_files = assemble_schemas(

@@ -5,6 +5,7 @@ from .schema_chunks import (
     build_lesson, build_activities_chunk, build_standards_chunk,
     build_standards_blocks, build_images_chunk, build_pages_chunk,
     build_instructional_prompts_chunk, build_instructional_segments,
+    build_practice_sections_chunk,
     extract_lesson_meta,
 )
 
@@ -15,5 +16,6 @@ __all__ = [
     "build_lesson", "build_activities_chunk", "build_standards_chunk",
     "build_standards_blocks", "build_images_chunk", "build_pages_chunk",
     "build_instructional_prompts_chunk", "build_instructional_segments",
+    "build_practice_sections_chunk",
     "extract_lesson_meta",
 ]

@@ -2,7 +2,7 @@
 services/assembler.py — Schema assembler service.
 
 Calls each build_*() helper from utils/schema_chunks.py in order,
-then writes all 15 JSON files via utils/file_utils.write_json().
+then writes all 18 JSON files via utils/file_utils.write_json().
 
 This is the only place that knows about:
   - the ORDER in which files are written
@@ -30,6 +30,7 @@ from utils.schema_chunks import (
     build_pages_chunk,
     build_instructional_prompts_chunk,
     build_instructional_segments,
+    build_practice_sections_chunk,
 )
 
 log = logging.getLogger(__name__)
@@ -42,7 +43,7 @@ def assemble_schemas(
     image_manifest: dict | None = None,
 ) -> list[str]:
     """
-    Build and write all 15 CL-Json-Schema JSON files.
+    Build and write all 18 CL-Json-Schema JSON files.
 
     Args:
         pages:           Raw per-page dicts from GeminiService.extract_page()
@@ -52,7 +53,7 @@ def assemble_schemas(
                          extracted image file paths.
 
     Returns:
-        List of filenames written (15 items).
+        List of filenames written (18 items).
     """
     extracted_at = now_iso()
 
@@ -84,9 +85,14 @@ def assemble_schemas(
         for act in page.get("activities") or []:
             act["_source_page"] = pn
             all_raw_activities.append(act)
-    activities, tasks, stems = build_activities_chunk(
+    activities, tasks, stems, response_areas, scaffolding_items = build_activities_chunk(
         lesson_id=lesson_id,
         raw_activities=all_raw_activities,
+    )
+
+    # Practice sections (groups PRACTICE activities)
+    practice_sections = build_practice_sections_chunk(
+        lesson_id=lesson_id, activities=activities,
     )
 
     # Images, pages, prompts
@@ -114,6 +120,7 @@ def assemble_schemas(
     module = build_module(
         module_id=module_id, resource_id=resource_id,
         topic_id=topic_id, lesson_meta=lesson_meta,
+        image_ids=[img["id"] for img in images],
     )
     topic = build_topic(
         topic_id=topic_id, module_id=module_id,
@@ -141,7 +148,10 @@ def assemble_schemas(
         ("12_images.json",                {"count": len(images),     "images":     images}),
         ("13_pages.json",                 {"count": len(pg_list),    "pages":      pg_list}),
         ("14_instructional_prompts.json", {"count": len(prompts),    "instructionalPrompts": prompts}),
-        ("15_instructional_segments.json",{"count": len(segments),   "instructionalSegments": segments}),
+        ("15_instructional_segments.json",{"count": len(segments),           "instructionalSegments": segments}),
+        ("16_practice_sections.json",    {"count": len(practice_sections),  "practiceSections":      practice_sections}),
+        ("17_response_areas.json",       {"count": len(response_areas),     "responseAreas":         response_areas}),
+        ("18_scaffolding.json",          {"count": len(scaffolding_items),  "scaffolding":           scaffolding_items}),
     ]
 
     files_written: list[str] = []

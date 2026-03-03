@@ -384,6 +384,9 @@ window.MathJax = {
           ('13_pages.json',                 'Pages',              'Page entities',           'page'),
           ('14_instructional_prompts.json', 'Inst. Prompts',      'Instructional prompts',   'prompt'),
           ('15_instructional_segments.json','Inst. Segments',     'Instructional segments',  'segment'),
+          ('16_practice_sections.json',   'Practice',           'Practice sections',       'practice'),
+          ('17_response_areas.json',      'Resp. Areas',        'Response area defs',      'resp-area'),
+          ('18_scaffolding.json',         'Scaffolding',        'Scaffolding items',       'scaffolding'),
         ] %}
         {% for fname, label, desc, key in file_infos %}
           <div class="tab {{ 'active' if loop.first else '' }}"
@@ -890,7 +893,7 @@ async function loadPanel(file, key) {
     const size = JSON.stringify(data).length;
     document.getElementById(`size-${key}`).textContent = size > 1024 ? `${(size/1024).toFixed(1)} KB` : `${size} B`;
     const countEl = document.getElementById(`count-${key}`);
-    const countableKeys = ['activities','tasks','stems','standards','standardsBlocks','images','pages','instructionalPrompts','instructionalSegments'];
+    const countableKeys = ['activities','tasks','stems','standards','standardsBlocks','images','pages','instructionalPrompts','instructionalSegments','practiceSections','responseAreas','scaffolding'];
     for (const k of countableKeys) {
       if (data[k] && Array.isArray(data[k])) {
         countEl.textContent = data[k].length + ' items';

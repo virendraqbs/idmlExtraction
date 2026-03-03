@@ -1,7 +1,7 @@
 """
 utils/schema_chunks.py — Schema-chunk helpers.
 
-Each public function builds ONE of the 15 CL-Json-Schema output objects
+Each public function builds ONE of the 18 CL-Json-Schema output objects
 from the raw per-page Gemini extractions.  The assembler in
 services/assembler.py calls them in order so logic stays isolated,
 testable, and easy to maintain.
@@ -129,17 +129,25 @@ def build_module(
     resource_id: str,
     topic_id: str,
     lesson_meta: dict,
+    image_ids: list[str] | None = None,
 ) -> dict:
     """
     04_module.json
     Module entity — sits between Resource and Topic.
     """
     return {
-        "id":           module_id,
-        "resourceId":   resource_id,
-        "moduleNumber": lesson_meta.get("module_number", 1),
-        "title":        lesson_meta.get("module_title", ""),
-        "topics":       [{"id": topic_id, "type": "TOPIC", "sequenceNumber": 1}],
+        "id":             module_id,
+        "resourceId":     resource_id,
+        "standardsBody":  lesson_meta.get("standards_body"),
+        "moduleNumber":   lesson_meta.get("module_number", 1),
+        "title":          lesson_meta.get("module_title", ""),
+        "moduleSummary":  lesson_meta.get("module_summary", ""),
+        "images":         [{"id": img_id, "type": "IMAGE"} for img_id in (image_ids or [])],
+        "gradeLevel":     lesson_meta.get("grade_level", ""),
+        "topics":         [{"id": topic_id, "type": "TOPIC", "sequenceNumber": 1}],
+        "metadata": {
+            "localizationInfo": {"language": "en"},
+        },
     }
 
 
@@ -209,24 +217,30 @@ def build_activities_chunk(
     *,
     lesson_id: str,
     raw_activities: list[dict],
-) -> tuple[list[dict], list[dict], list[dict]]:
+) -> tuple[list[dict], list[dict], list[dict], list[dict], list[dict]]:
     """
-    07_activities.json  (also produces raw tasks + stems as side-effect)
+    07_activities.json  (also produces tasks, stems, response areas,
+    and scaffolding as side-effects)
 
     Returns:
-        activities  — list of assembled activity dicts
-        tasks       — flat list of task dicts
-        stems       — flat list of stem dicts
+        activities      — list of assembled activity dicts
+        tasks           — flat list of task dicts
+        stems           — flat list of stem dicts
+        response_areas  — flat list of response area dicts
+        scaffolding     — flat list of scaffolding dicts
     """
-    activities: list[dict] = []
-    tasks:      list[dict] = []
-    stems:      list[dict] = []
+    activities:     list[dict] = []
+    tasks:          list[dict] = []
+    stems:          list[dict] = []
+    response_areas: list[dict] = []
+    scaffolding:    list[dict] = []
 
     for seq, raw_act in enumerate(raw_activities, 1):
         act_id    = gen_id()
         src_page  = raw_act.get("_source_page")
         task_refs = _build_tasks_for_activity(
-            act_id, raw_act.get("tasks") or [], tasks, stems, src_page,
+            act_id, raw_act.get("tasks") or [],
+            tasks, stems, response_areas, scaffolding, src_page,
         )
 
         activities.append({
@@ -240,9 +254,13 @@ def build_activities_chunk(
             "directionLines": raw_act.get("direction_lines", []),
             "tasks":          task_refs,
             "sourcePage":     src_page,
+            "goals":          [],
+            "scaffolding":    [],
+            "images":         [],
+            "metadata":       {},
         })
 
-    return activities, tasks, stems
+    return activities, tasks, stems, response_areas, scaffolding
 
 
 def _build_tasks_for_activity(
@@ -250,20 +268,46 @@ def _build_tasks_for_activity(
     raw_tasks: list[dict],
     tasks_acc: list[dict],
     stems_acc: list[dict],
+    response_areas_acc: list[dict],
+    scaffolding_acc: list[dict],
     source_page: Any = None,
 ) -> list[dict]:
-    """Build task + stem entities for one activity; append to accumulators."""
+    """Build task + stem + response-area + scaffolding entities for one activity."""
     task_refs: list[dict] = []
 
     for raw_task in raw_tasks:
         task_id  = gen_id()
         stem_id  = gen_id()
 
+        resp_area_id = None
+        if raw_task.get("has_response_area"):
+            resp_area_id = gen_id()
+            response_areas_acc.append({
+                "id":             resp_area_id,
+                "type":           raw_task.get("response_area_type", "OPEN_ENDED"),
+                "description":    "",
+                "specifications": None,
+            })
+
+        scaff_refs: list[dict] = []
+        for raw_scaff in raw_task.get("scaffolding") or []:
+            if not raw_scaff or not raw_scaff.get("content"):
+                continue
+            scaff_id = gen_id()
+            scaffolding_acc.append({
+                "id":              scaff_id,
+                "scaffoldingType": raw_scaff.get("scaffolding_type", "CHARACTER_SUPPORT"),
+                "content":         raw_scaff.get("content", ""),
+                "image":           None,
+            })
+            scaff_refs.append({"id": scaff_id, "type": "SCAFFOLDING"})
+
         stems_acc.append(build_stem(
             stem_id=stem_id,
             task_id=task_id,
             raw_task=raw_task,
             source_page=source_page,
+            response_area_id=resp_area_id,
         ))
         tasks_acc.append(build_task(
             task_id=task_id,
@@ -271,6 +315,7 @@ def _build_tasks_for_activity(
             stem_id=stem_id,
             raw_task=raw_task,
             source_page=source_page,
+            scaffolding_refs=scaff_refs,
         ))
         task_refs.append({
             "id":             task_id,
@@ -290,18 +335,20 @@ def build_task(
     stem_id: str,
     raw_task: dict,
     source_page: Any = None,
+    scaffolding_refs: list[dict] | None = None,
 ) -> dict:
     """
     08_tasks.json  (single task entity — called inside build_activities_chunk)
     """
     has_resp = raw_task.get("has_response_area", False)
     return {
-        "id":         task_id,
-        "activityId": act_id,
-        "taskNumber": raw_task.get("task_number", ""),
-        "taskType":   "OPEN_ENDED" if has_resp else "SHORT_ANSWER",
-        "stems":      [{"id": stem_id, "type": "STEM", "sequenceNumber": 1}],
-        "sourcePage": source_page,
+        "id":          task_id,
+        "activityId":  act_id,
+        "taskNumber":  raw_task.get("task_number", ""),
+        "taskType":    "OPEN_ENDED" if has_resp else "SHORT_ANSWER",
+        "stems":       [{"id": stem_id, "type": "STEM", "sequenceNumber": 1}],
+        "scaffolding": scaffolding_refs or [],
+        "sourcePage":  source_page,
     }
 
 
@@ -313,6 +360,7 @@ def build_stem(
     task_id: str,
     raw_task: dict,
     source_page: Any = None,
+    response_area_id: str | None = None,
 ) -> dict:
     """
     09_stems.json  (single stem entity — called inside build_activities_chunk)
@@ -327,6 +375,8 @@ def build_stem(
         "responseAreaType": raw_task.get("response_area_type"),
         "hasGraph":         raw_task.get("has_graph", False),
         "subTasks":         raw_task.get("sub_tasks", []),
+        "image":            None,
+        "responseArea":     response_area_id,
         "sourcePage":       source_page,
     }
 
@@ -590,6 +640,35 @@ def build_instructional_segments(
     return segments
 
 
+# ── 16 — Practice Sections ────────────────────────────────────────────────────
+
+def build_practice_sections_chunk(
+    *,
+    lesson_id: str,
+    activities: list[dict],
+) -> list[dict]:
+    """
+    16_practice_sections.json
+    Groups PRACTICE activities into practice section entities.
+    """
+    practice_acts = [
+        a for a in activities if a.get("activityType") == "PRACTICE"
+    ]
+    if not practice_acts:
+        return []
+
+    return [{
+        "id":                   gen_id(),
+        "parentId":             lesson_id,
+        "practiceSectionType":  "LESSON_PRACTICE",
+        "title":                "Practice",
+        "activities": [
+            {"id": a["id"], "type": "ACTIVITY", "sequenceNumber": i + 1}
+            for i, a in enumerate(practice_acts)
+        ],
+    }]
+
+
 # ── Lesson-meta extractor (shared utility) ────────────────────────────────────
 
 def extract_lesson_meta(pages: list[dict]) -> dict:
@@ -600,14 +679,14 @@ def extract_lesson_meta(pages: list[dict]) -> dict:
     fields = [
         "lesson_number", "title", "lesson_summary", "learning_goals",
         "module_title", "module_number", "topic_title", "topic_number",
-        "grade_level",
+        "grade_level", "module_summary", "standards_body",
     ]
     meta: dict[str, Any] = {}
     for page in pages:
         les = page.get("lesson") or {}
-        # Also check standards_block for grade_level
         sb = page.get("standards_block") or {}
         les["grade_level"] = les.get("grade_level") or sb.get("grade_level")
+        les["standards_body"] = les.get("standards_body") or sb.get("standards_body")
 
         for f in fields:
             if f not in meta or meta[f] in (None, [], ""):

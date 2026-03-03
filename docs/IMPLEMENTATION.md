@@ -17,7 +17,7 @@
 6. [Application Startup Flow](#6-application-startup-flow)
 7. [Authentication](#7-authentication)
 8. [Pipeline — The 5-Stage Extraction Process](#8-pipeline--the-5-stage-extraction-process)
-9. [Schema Assembly — 15 + 1 Output Files](#9-schema-assembly--15--1-output-files)
+9. [Schema Assembly — 18 + 1 Output Files](#9-schema-assembly--18--1-output-files)
 10. [Merged JSON — Parent-Child Hierarchy](#10-merged-json--parent-child-hierarchy)
 11. [API Reference](#11-api-reference)
 12. [Frontend Views](#12-frontend-views)
@@ -39,18 +39,19 @@ CL PDF Extraction Pipeline is a web application that extracts structured educati
 ### What It Does
 
 ```
-PDF Upload → Page Rendering → AI Extraction → Schema Assembly → 16 JSON Files
+PDF Upload → Page Rendering → AI Extraction → Schema Assembly → 19 JSON Files
                                                                     ↓
                                                            Web Viewer (Editor / Source / PDF)
 ```
 
 ### Key Capabilities
 
-- **PDF → Structured JSON**: Converts educational PDFs into 15 schema-compliant JSON files plus a merged nested JSON
+- **PDF → Structured JSON**: Converts educational PDFs into 18 schema-compliant JSON files plus a merged nested JSON
 - **AI-Powered Extraction**: Uses Gemini 2.5 Flash Vision to understand page layouts, text, math, graphs, and images
 - **Real-Time Progress**: Live pipeline monitoring with 5-stage progress tracking
 - **Three-View Results**: Editor (human-readable), Source (raw JSON), PDF (original document)
 - **Merged Hierarchy**: Single nested JSON following the full parent-child relationship
+- **Extraction Report**: Per-page extraction report tracking attempts, status, page type, timing, and errors — viewable from dashboard and job status page
 - **Admin Browse**: View any previously extracted output folder
 
 ---
@@ -89,7 +90,7 @@ PDF Upload → Page Rendering → AI Extraction → Schema Assembly → 16 JSON 
 │                          ▼                    ▼                  │
 │                   ┌──────────────┐  ┌────────────────────┐     │
 │                   │   Gemini     │  │  Schema Chunks     │     │
-│                   │   Service    │  │  (15 builders)     │     │
+│                   │   Service    │  │  (18 builders)     │     │
 │                   └──────────────┘  └────────────────────┘     │
 │                          │                    │                  │
 │  ┌─────────────┐         │                    │                  │
@@ -103,7 +104,7 @@ PDF Upload → Page Rendering → AI Extraction → Schema Assembly → 16 JSON 
     ┌──────────────────┐             ┌──────────────────────┐
     │  Google Gemini    │             │  File System         │
     │  Vision API       │             │  uploads/ outputs/   │
-    │  (2.5 Flash)      │             │  (15 + merged JSON)  │
+    │  (2.5 Flash)      │             │  (18 + merged JSON)  │
     └──────────────────┘             └──────────────────────┘
 ```
 
@@ -159,7 +160,7 @@ cl-pdf-extraction/
 │   ├── __init__.py                 #   Re-exports service classes
 │   ├── gemini_service.py           #   Gemini Vision API wrapper
 │   ├── pipeline_service.py         #   5-stage pipeline orchestrator
-│   └── assembler.py                #   Builds 15+1 JSON schema files
+│   └── assembler.py                #   Builds 18+1 JSON schema files
 │
 ├── models/                         # Data models
 │   ├── __init__.py                 #   Re-exports Job, JobStatus, job_repo
@@ -168,7 +169,7 @@ cl-pdf-extraction/
 ├── utils/                          # Stateless utility functions
 │   ├── __init__.py                 #   Re-exports helpers
 │   ├── file_utils.py               #   PDF page count, JSON I/O, validation
-│   └── schema_chunks.py            #   15 build_*() functions for schemas
+│   └── schema_chunks.py            #   18 build_*() functions for schemas
 │
 ├── templates/                      # Jinja2 HTML templates
 │   ├── login.html                  #   Admin login page
@@ -187,8 +188,9 @@ cl-pdf-extraction/
 │   └── {job_id}/                   #   One folder per job
 │       ├── 01_primitives.json
 │       ├── 02_enums.json
-│       ├── ... (15 schema files)
-│       └── merged.json             #   Single nested hierarchy
+│       ├── ... (18 schema files)
+│       ├── merged.json             #   Single nested hierarchy
+│       └── extraction_report.json  #   Per-page extraction report
 │
 ├── docs/                           # Documentation
 │   └── IMPLEMENTATION.md           #   This file
@@ -369,16 +371,19 @@ python app.py (or uvicorn app:app)
 - Iterates each page image sequentially
 - Sends image + master prompt to Gemini Vision
 - Parses JSON response (strips markdown fences)
-- Retry logic: up to 3 attempts with exponential backoff (10s, 20s, 40s) for rate limits
+- Gemini-level retry: up to 4 attempts with exponential backoff (10s, 20s, 40s, 60s) for rate limits
+- Pipeline-level retry: if a page returns `UNKNOWN`, waits 5s and retries the entire extraction once
 - Falls back to empty page structure on total failure
+- Builds a per-page **extraction report** tracking: page number, attempts, status (ok/failed), page type, errors, and elapsed time (ms)
 - Updates `job.progress` proportionally (15% → 85%)
-- 0.4s pause between pages to respect API rate limits
+- 1.5s pause between pages to respect API rate limits
+- Saves `extraction_report.json` alongside `raw_extractions.json` for debugging
 
 #### Stage 4: Schema Assembly (`JobStatus.ASSEMBLING`)
 - Calls `assemble_schemas()` with all raw page data
 - Generates canonical UUIDs for resource, module, topic, lesson, standards block
-- Builds 15 individual JSON files + 1 merged JSON
-- Writes all 16 files to `outputs/{job_id}/`
+- Builds 18 individual JSON files + 1 merged JSON
+- Writes all 19 files to `outputs/{job_id}/`
 
 #### Stage 5: Done (`JobStatus.DONE`)
 - Sets progress to 100%
@@ -405,7 +410,7 @@ Main Thread (Uvicorn)          Background Thread (Pipeline)
 
 ---
 
-## 9. Schema Assembly — 15 + 1 Output Files
+## 9. Schema Assembly — 18 + 1 Output Files
 
 ### File Manifest
 
@@ -414,19 +419,22 @@ Main Thread (Uvicorn)          Background Thread (Pipeline)
 | 01 | `01_primitives.json` | — | Canonical IDs & run metadata | `build_primitives()` |
 | 02 | `02_enums.json` | — | Distinct enum values found | `build_enums()` |
 | 03 | `03_resource.json` | `resource.json` | Book/publication entity | `build_resource()` |
-| 04 | `04_module.json` | `module.json` | Module entity | `build_module()` |
-| 05 | `05_topic.json` | `topic.json` | Topic entity | `build_topic()` |
-| 06 | `06_lesson.json` | `lesson.json` | Lesson entity + goals | `build_lesson()` |
-| 07 | `07_activities.json` | `activity.json` | Activity list | `build_activities_chunk()` |
-| 08 | `08_tasks.json` | `task.json` | Task list | `build_task()` (via activities) |
-| 09 | `09_stems.json` | `stem.json` | Stem list (question prompts) | `build_stem()` (via activities) |
+| 04 | `04_module.json` | `module.json` | Module entity (with standardsBody, gradeLevel, images, metadata) | `build_module()` |
+| 05 | `05_topic.json` | `topic.json` | Topic entity (with topicSummary, images, metadata) | `build_topic()` |
+| 06 | `06_lesson.json` | `lesson.json` | Lesson entity + goals (with images, metadata) | `build_lesson()` |
+| 07 | `07_activities.json` | `activity.json` | Activity list (with goals, scaffolding refs, images, metadata) | `build_activities_chunk()` |
+| 08 | `08_tasks.json` | `task.json` | Task list (with scaffolding refs) | `build_task()` (via activities) |
+| 09 | `09_stems.json` | `stem.json` | Stem list with optional responseArea link | `build_stem()` (via activities) |
 | 10 | `10_standards.json` | `standard.json` | Education standards | `build_standards_chunk()` |
 | 11 | `11_standards_blocks.json` | `standards-block.json` | Grouped standards | `build_standards_blocks()` |
 | 12 | `12_images.json` | `image.json` | Image entities with graph details | `build_images_chunk()` |
 | 13 | `13_pages.json` | `page.json` | Page entities with layout | `build_pages_chunk()` |
 | 14 | `14_instructional_prompts.json` | `instructional-prompt.json` | Sidebar/callout prompts | `build_instructional_prompts_chunk()` |
 | 15 | `15_instructional_segments.json` | `instructional-segment.json` | Phase segments (Activate/Explore/Reflect) | `build_instructional_segments()` |
-| 16 | `merged.json` | — | **Single nested JSON** (full hierarchy) | `_build_merged_json()` |
+| 16 | `16_practice_sections.json` | `practice-section.json` | Practice sections grouping PRACTICE activities | `build_practice_sections_chunk()` |
+| 17 | `17_response_areas.json` | `response-area.json` | Response area definitions linked from stems | (generated in `_build_tasks_for_activity()`) |
+| 18 | `18_scaffolding.json` | `scaffolding.json` | Scaffolding items (hints, character support) linked from tasks | (generated in `_build_tasks_for_activity()`) |
+| 19 | `merged.json` | — | **Single nested JSON** (full hierarchy) | `_build_merged_json()` |
 
 ### Assembly Order & Dependencies
 
@@ -441,9 +449,12 @@ build_standards_blocks(...)          ← 11_standards_blocks.json
         │
         ▼
 build_activities_chunk(...)          ← 07_activities.json
-        │                               08_tasks.json      (side-effect)
-        │                               09_stems.json      (side-effect)
+        │                               08_tasks.json          (side-effect)
+        │                               09_stems.json          (side-effect)
+        │                               17_response_areas.json (side-effect)
+        │                               18_scaffolding.json    (side-effect)
         ▼
+build_practice_sections_chunk(...)  ← 16_practice_sections.json
 build_images_chunk(pages)            ← 12_images.json
 build_pages_chunk(pages)             ← 13_pages.json
 build_instructional_prompts(pages)   ← 14_instructional_prompts.json
@@ -461,14 +472,14 @@ build_lesson(...)                    ← 06_lesson.json
    Build merged.json                 ← Nests everything into parent-child tree
         │
         ▼
-   Write all 16 files to disk
+   Write all 19 files to disk
 ```
 
 ---
 
 ## 10. Merged JSON — Parent-Child Hierarchy
 
-The `merged.json` file combines all 15 individual files into a single nested structure following the CL-Json-Schema parent-child relationships.
+The `merged.json` file combines all 18 individual files into a single nested structure following the CL-Json-Schema parent-child relationships.
 
 ### Nesting Structure
 
@@ -482,8 +493,11 @@ merged.json
 │           └── lessons[]          (from 06_lesson.json)
 │               ├── activities[]   (from 07_activities.json)
 │               │   └── tasks[]    (from 08_tasks.json)
-│               │       └── stems[] (from 09_stems.json)
-│               ├── instructionalPrompts[]  (from 14)
+│               │       ├── stems[] (from 09_stems.json)
+│               │       └── scaffolding[] (from 18_scaffolding.json)
+│               ├── practiceSections[]     (from 16)
+│               ├── responseAreas[]        (from 17)
+│               ├── instructionalPrompts[] (from 14)
 │               ├── standards[]    (from 10_standards.json)
 │               └── standardsBlocks[]      (from 11)
 ├── pages[]                        (from 13_pages.json)
@@ -565,7 +579,9 @@ lesson.id ────────────> instructionalSegment.lessonId
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/api/job/{job_id}` | Yes | Pipeline progress polling (status, progress, logs) |
+| GET | `/api/job/{job_id}` | Yes | Pipeline progress polling (status, progress, logs, extraction_report) |
+| GET | `/api/jobs` | Yes | All in-memory jobs for dashboard polling |
+| GET | `/api/extraction-report/{job_id}` | Yes | Per-page extraction report (from memory or disk) |
 | GET | `/api/results/{job_id}/merged` | Yes | Full merged nested JSON |
 | GET | `/api/results/{job_id}/editor` | Yes | Merged JSON + flat lists for editor UI |
 | GET | `/api/results/{job_id}/{filename}` | Yes | Single schema JSON file |
@@ -625,7 +641,10 @@ FastAPI matches routes top-to-bottom. Specific routes must be declared before ge
   "standards": [...],
   "instructionalPrompts": [...],
   "images": [...],
-  "instructionalSegments": [...]
+  "instructionalSegments": [...],
+  "practiceSections": [...],
+  "responseAreas": [...],
+  "scaffolding": [...]
 }
 ```
 
@@ -709,6 +728,38 @@ Each section is rendered as a card with a purple schema tag:
 └─────────────────────────────────────────────────────────┘
 ```
 
+### Dashboard — Extraction Report
+
+The dashboard's "All Extractions" table includes a **Log** column with a document icon for each completed job that has an extraction report. Clicking the icon opens a modal dialog showing the per-page extraction report:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  Extraction Report — 3fa85f64…                           [×]   │
+│─────────────────────────────────────────────────────────────────│
+│  4 pages processed — 3 succeeded, 1 failed                     │
+│                                                                 │
+│  Page  │ Status │ Page Type        │ Attempts │ Time  │ Details │
+│  ──────┼────────┼──────────────────┼──────────┼───────┼──────── │
+│  1     │ OK     │ SRB_LESSON_INTRO │ 1        │ 3.2s  │ —       │
+│  2     │ OK     │ SRB_LESSON_EXPL  │ 2        │ 14.5s │ •err…   │
+│  3     │ OK     │ STANDARDS_PAGE   │ 1        │ 4.1s  │ —       │
+│  4     │ FAILED │ UNKNOWN RETRIED  │ 6        │ 82.3s │ •err…   │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+Report fields:
+- **Page**: 1-based page number
+- **Status**: `OK` (extracted successfully) or `FAILED` (all retries exhausted)
+- **Page Type**: The `page_type` returned by Gemini (e.g. SRB_LESSON_EXPLORE)
+- **Attempts**: Total Gemini API calls for this page
+- **Time**: Wall-clock time in seconds
+- **Details**: Error messages from failed attempts (if any)
+- **RETRIED** badge: Shown when the pipeline-level retry was triggered
+
+### Job Status Page — Extraction Report
+
+The job status page shows an expandable "Extraction Report" section once page extraction completes. It contains the same table as the dashboard modal, rendered inline with a toggle to show/hide.
+
 ### Source View — JSON Viewer Features
 
 - **Syntax Highlighting**: Keys (cyan), strings (yellow), numbers (purple), booleans (pink), null (gray)
@@ -764,13 +815,17 @@ Each section is rendered as a card with a purple schema tag:
                                                     ┌─────────▼─────────┐
                                                     │   outputs/{id}/   │
                                                     │                   │
-                                                    │  01_primitives    │
-                                                    │  02_enums         │
-                                                    │  03_resource      │
-                                                    │  ...              │
-                                                    │  15_inst_segments │
-                                                    │  merged.json      │
-                                                    └───────────────────┘
+                                                    │  01_primitives         │
+                                                    │  02_enums              │
+                                                    │  03_resource           │
+                                                    │  ...                   │
+                                                    │  15_inst_segments      │
+                                                    │  16_practice_sections  │
+                                                    │  17_response_areas     │
+                                                    │  18_scaffolding        │
+                                                    │  merged.json           │
+                                                    │  extraction_report.json│
+                                                    └────────────────────────┘
 ```
 
 ### Editor API Data Flow
@@ -786,7 +841,7 @@ Browser                    Job Controller                     File System
    │                          │<── output_dir Path ───────────────│
    │                          │                                   │
    │                          │── _read_all_schemas() ───────────>│
-   │                          │   (reads all 15 JSON files)       │
+   │                          │   (reads all 18 JSON files)       │
    │                          │<── flat dict ─────────────────────│
    │                          │                                   │
    │                          │── _build_merged_json(flat) ──>    │
@@ -841,10 +896,13 @@ Resource (Book)
   └── Module (Major unit, e.g., "Module 1")
        └── Topic (Subject area, e.g., "Quantities and Relationships")
             └── Lesson (Instructional session, e.g., "A Sort of Sorts")
-                 ├── Activity (Learning experience: ACTIVATE, EXPLORE, REFLECT)
+                 ├── Activity (Learning experience: ACTIVATE, EXPLORE, REFLECT, PRACTICE)
                  │    └── Task (Question/problem)
-                 │         └── Stem (Individual prompt with optional response area)
-                 │              └── Sub-Tasks (Follow-up questions)
+                 │         ├── Stem (Individual prompt with optional response area)
+                 │         │    ├── Response Area (student input definition)
+                 │         │    └── Sub-Tasks (Follow-up questions)
+                 │         └── Scaffolding (Hints, character speech bubbles, worked examples)
+                 ├── Practice Sections (Groups of PRACTICE activities)
                  ├── Instructional Prompts (Sidebars, callouts, learning goals)
                  ├── Standards (Education standards alignment)
                  └── Standards Blocks (Grouped standards)
@@ -891,17 +949,19 @@ Resource (Book)
                                     │          │   │  Block       │
                                     │ taskType │   │              │
                                     │ stems[]  │   │ standards[]  │
-                                    └──────────┘   └──────────────┘
-                                     │ 1                │ M
-                                     │              ┌──────────┐
-                                  M │              │ Standard  │
-                                ┌──────────┐       │           │
-                                │   Stem   │       │ code      │
-                                │          │       │ fullText   │
-                                │ stemType │       └──────────┘
-                                │ stemText │
-                                │ subTasks │
-                                └──────────┘
+                                    │ scaff[]  │   └──────────────┘
+                                    └──────────┘        │ M
+                                     │ 1    │ M     ┌──────────┐
+                                     │      │       │ Standard │
+                                  M │   ┌────────┐  │ code     │
+                                ┌──────┐│Scaffold│  │ fullText │
+                                │ Stem ││        │  └──────────┘
+                                │      ││ type   │
+                                │ type ││ content│
+                                │ text │└────────┘
+                                │ resp │
+                                │ Area │──> Response Area
+                                └──────┘    (type, specs)
 ```
 
 ### Activity Types & Flow
@@ -960,14 +1020,16 @@ Instructional Segments group activities by phase:
 | `_find_output_dir()` | Helper | Multi-strategy output directory resolution |
 | `_safe_output_dir_from_header()` | Helper | Validate X-Output-Dir header |
 | `_resolve_editor_output()` | Helper | Common resolution for editor/merged endpoints |
-| `_read_all_schemas()` | Helper | Read all 15 JSON files into flat dict |
+| `_read_all_schemas()` | Helper | Read all 18 JSON files into flat dict |
 | `_build_merged_json()` | Helper | Build nested parent-child JSON |
 | `dashboard()` | Route | List all jobs |
 | `browse_outputs()` | Route | List output folders for admin |
 | `upload_page()` | Route | Render upload form |
 | `upload()` | Route | Handle PDF upload, create job, start pipeline |
 | `job_monitor()` | Route | Render pipeline monitor page |
-| `api_job()` | API | Return job progress for polling |
+| `api_job()` | API | Return job progress for polling (includes extraction_report) |
+| `api_jobs()` | API | Return all in-memory jobs for dashboard polling |
+| `api_extraction_report()` | API | Return per-page extraction report (from memory or disk) |
 | `results()` | Route | Render results viewer |
 | `api_merged()` | API | Return merged nested JSON |
 | `api_editor_payload()` | API | Return merged + flat data for editor |
@@ -979,10 +1041,10 @@ Instructional Segments group activities by phase:
 
 | Item | Description |
 |------|-------------|
-| `MASTER_PROMPT` | 90-line extraction prompt that defines the JSON structure Gemini must return |
+| `MASTER_PROMPT` | Multi-section extraction prompt that defines the JSON structure Gemini must return (including scaffolding) |
 | `GeminiService.__init__()` | Configure google-generativeai with API key |
 | `health_check()` | Verify API key with minimal generation call |
-| `extract_page()` | Send page image + prompt to Gemini, parse JSON, retry on rate limit |
+| `extract_page()` | Send page image + prompt to Gemini, parse JSON, retry on rate limit; returns `(data, report)` tuple |
 | `_strip_fences()` | Remove markdown code fences from Gemini response |
 | `_is_rate_limit()` | Detect 429/quota errors |
 | `_empty_page()` | Fallback empty page structure |
@@ -998,14 +1060,14 @@ Instructional Segments group activities by phase:
 
 | Item | Description |
 |------|-------------|
-| `assemble_schemas()` | Build and write all 16 files (15 schema + merged) |
+| `assemble_schemas()` | Build and write all 19 files (18 schema + merged) |
 
 ### `models/job.py` — Data Model
 
 | Item | Description |
 |------|-------------|
 | `JobStatus` | String constants for 7 pipeline states |
-| `Job` | Dataclass with id, filename, status, progress, logs, etc. |
+| `Job` | Dataclass with id, filename, status, progress, logs, extraction_report, etc. |
 | `JobRepository` | In-memory dict store with create/get/all methods |
 | `job_repo` | Singleton repository instance |
 
@@ -1021,7 +1083,7 @@ Instructional Segments group activities by phase:
 
 ### `utils/schema_chunks.py` — Schema Builders
 
-Contains 15+ `build_*()` functions, one per schema file. Also contains:
+Contains 18+ `build_*()` functions, one per schema file. Also contains:
 
 | Function | Description |
 |----------|-------------|
@@ -1042,7 +1104,7 @@ The master prompt sent with each page image instructs Gemini to extract:
 | `lesson` | object | Lesson metadata (number, title, summary, goals, module/topic info) |
 | `standards_block` | object | Standards body, grade level, standard codes + full text |
 | `activities[]` | array | Activity type, label, title, direction lines, tasks |
-| `activities[].tasks[]` | array | Task number, stem text, response area flags, sub-tasks |
+| `activities[].tasks[]` | array | Task number, stem text, response area flags, sub-tasks, scaffolding |
 | `images[]` | array | Image type, position, alt text, description, graph details |
 | `instructional_prompts[]` | array | Prompt type, display style, title, content, content items |
 | `page_layout` | object | Sidebar presence, position, column count, content order |
@@ -1060,22 +1122,54 @@ The master prompt sent with each page image instructs Gemini to extract:
 
 ## 17. Error Handling & Retry Strategy
 
-### Gemini API Retry
+### Gemini API Retry (per extract_page call)
 
 ```
 Attempt 1 → API Call
     │
-    ├── Success → Parse JSON → Return
+    ├── Success → Parse JSON → Return (data, report{attempts:1, status:"ok"})
     │
     └── Failure
          ├── Rate Limit (429/quota) → Wait 10s → Attempt 2
-         │                                         ├── Success → Return
-         │                                         └── Failure → Wait 20s → Attempt 3
-         │                                                                    ├── Success → Return
-         │                                                                    └── Failure → Return empty page
+         │     └── Failure → Wait 20s → Attempt 3
+         │           └── Failure → Wait 40s → Attempt 4
+         │                 └── Failure → Return (empty_page, report{attempts:4, status:"failed"})
          │
-         └── Other Error → Wait 3s → Attempt 2 → ... → Attempt 3 → Return empty page
+         └── Other Error → Wait 3s → Attempt 2 → ... → Attempt 4 → Return empty page
 ```
+
+### Pipeline-Level Retry (UNKNOWN page type)
+
+```
+extract_page(img, i) → (data, report)
+    │
+    ├── page_type != "UNKNOWN" → Accept result, append report
+    │
+    └── page_type == "UNKNOWN"
+         └── Wait 5s → extract_page(img, i) again → (retry_data, retry_report)
+              ├── retry succeeded → Use retry_data, mark report with pipelineRetry=true
+              └── retry still UNKNOWN → Merge attempt counts, mark failed + pipelineRetry=true
+```
+
+### Extraction Report
+
+Each page extraction produces a report entry:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `page` | int | 1-based page number |
+| `attempts` | int | Total Gemini API calls (including retries) |
+| `status` | string | `"ok"` or `"failed"` |
+| `pageType` | string | Gemini's `page_type` response |
+| `errors` | string[] | Error messages from failed attempts |
+| `elapsed_ms` | int | Wall-clock time in milliseconds |
+| `pipelineRetry` | bool | Present when pipeline-level retry was triggered |
+
+The report is:
+- Saved to `extraction_report.json` in the output directory
+- Stored on the `Job.extraction_report` field (in-memory)
+- Available via `GET /api/extraction-report/{job_id}`
+- Displayed in the dashboard modal (Log icon) and job status page (expandable section)
 
 ### Pipeline Error Handling
 
@@ -1181,7 +1275,7 @@ uvicorn app:app --host 0.0.0.0 --port 5000 --workers 4
 | "Failed to load editor view" | Route ordering bug | Ensure `/editor` and `/merged` routes are declared before `/{filename}` |
 | PDF downloads instead of displaying | Missing `content_disposition_type="inline"` | Already fixed in `serve_job_pdf()` |
 | "Gemini health check failed" | Invalid API key or quota exhausted | Verify API key; check Google Cloud console for quota |
-| Rate limit errors (429) | Too many API calls | Pipeline has built-in 0.4s delay + exponential backoff |
+| Rate limit errors (429) | Too many API calls | Pipeline has built-in 1.5s delay + exponential backoff (10/20/40/60s) + pipeline-level retry for UNKNOWN pages |
 | Login redirect loop | Session cookie issues | Clear browser cookies; check `SECRET_KEY` is set |
 | Empty extraction results | Non-content pages (TOC, glossary) | Expected — these return `page_type: "NON_CONTENT"` |
 | `IndentationError` on startup | Malformed Python | Run `python -m py_compile controllers/job_controller.py` to check |
@@ -1190,7 +1284,7 @@ uvicorn app:app --host 0.0.0.0 --port 5000 --workers 4
 
 1. **Check server logs**: Uvicorn logs all requests and pipeline progress
 2. **Check pipeline logs**: `GET /api/job/{id}` returns last 50 log entries
-3. **Check output files**: `ls outputs/{job_id}/` — should have 16 JSON files
+3. **Check output files**: `ls outputs/{job_id}/` — should have 19+ JSON files (18 schema + merged + extraction_report)
 4. **Verify merged.json**: `python -c "import json; json.load(open('outputs/{id}/merged.json'))"` — should parse without errors
 5. **Test API directly**: `curl -b cookies.txt http://localhost:5000/api/results/{id}/merged | python -m json.tool`
 
@@ -1215,7 +1309,11 @@ uvicorn app:app --host 0.0.0.0 --port 5000 --workers 4
 | `13_pages.json` | ~2 KB | Page layouts |
 | `14_instructional_prompts.json` | ~3 KB | Sidebar/callout content |
 | `15_instructional_segments.json` | ~500 B | Phase groupings |
-| **`merged.json`** | **~20 KB** | **Full nested hierarchy** |
+| `16_practice_sections.json` | ~200 B - 1 KB | Practice section entities |
+| `17_response_areas.json` | ~100 B - 2 KB | Response area definitions |
+| `18_scaffolding.json` | ~100 B - 3 KB | Scaffolding items |
+| **`merged.json`** | **~25 KB** | **Full nested hierarchy** |
+| `extraction_report.json` | ~1 KB | Per-page extraction report |
 
 ---
 

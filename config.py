@@ -34,7 +34,7 @@ class Config:
     # ── Upload / render ──────────────────────────────────────────────────────
     MAX_UPLOAD_MB: int    = int(os.getenv("MAX_UPLOAD_MB", "100"))
     MAX_CONTENT_LENGTH: int = MAX_UPLOAD_MB * 1024 * 1024
-    PDF_RENDER_DPI: int   = int(os.getenv("PDF_RENDER_DPI", "200"))
+    PDF_RENDER_DPI: int   = int(os.getenv("PDF_RENDER_DPI", "300"))
     ALLOWED_EXTENSIONS: frozenset = frozenset({"pdf"})
 
     # ── Paths ─────────────────────────────────────────────────────────────────

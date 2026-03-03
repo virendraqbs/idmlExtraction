@@ -49,6 +49,13 @@ For STANDARDS_PAGE pages you MUST fully populate the standards_block object:
     cluster: the cluster heading if present (e.g. "Understand the concept of a function")
     has_modeling_symbol: true if a star ★ symbol appears next to the standard
 
+═══ SCAFFOLDING ═══
+If a task or activity has supportive hints, character speech bubbles, worked examples,
+or other scaffolding content, output them in the task's scaffolding array.
+scaffolding_type is one of: CHARACTER_SUPPORT
+content: the scaffolding text exactly as shown.
+has_image: true only if the scaffolding includes a character image or illustration.
+
 ═══ IMAGE EXTRACTION (CL-Json-Schema media/image) ═══
 For EVERY image, graph, chart, diagram, icon on the page output an object with:
 
@@ -83,7 +90,7 @@ Graph/response-area (keep):
   "lesson": {
     "lesson_number": null, "title": null, "lesson_summary": null,
     "learning_goals": [], "module_title": null, "module_number": null,
-    "topic_title": null, "topic_number": null
+    "topic_title": null, "topic_number": null, "module_summary": null
   },
   "standards_block": {
     "title": null, "standards_body": null, "grade_level": null,
@@ -98,7 +105,8 @@ Graph/response-area (keep):
     "tasks": [{
       "id": "", "task_number": "", "stem_text": "", "ancillary_text": null,
       "has_response_area": false, "response_area_type": null,
-      "has_graph": false, "sub_tasks": []
+      "has_graph": false, "sub_tasks": [],
+      "scaffolding": [{"scaffolding_type": "CHARACTER_SUPPORT", "content": "", "has_image": false}]
     }]
   }],
   "images": [{
@@ -128,8 +136,8 @@ If this page has NO lesson content (table of contents, glossary, blank),
 return page_type "NON_CONTENT" and null/[] for everything else."""
 
 # Retry back-off delays (seconds) for rate-limit errors
-BACKOFF_SECONDS = (10, 20, 40)
-MAX_ATTEMPTS = 3
+BACKOFF_SECONDS = (10, 20, 40, 60)
+MAX_ATTEMPTS = 4
 
 
 class GeminiService:
@@ -162,18 +170,21 @@ class GeminiService:
         except Exception as exc:
             raise RuntimeError(f"Gemini health check failed: {exc}") from exc
 
-    def extract_page(self, page_image: Any, page_number: int) -> dict:
+    def extract_page(self, page_image: Any, page_number: int) -> tuple[dict, dict]:
         """
-        Send one page image to Gemini and return parsed JSON dict.
-        Retries up to MAX_ATTEMPTS times with exponential back-off on 429.
-        Falls back to an empty-shell dict after all retries are exhausted.
+        Send one page image to Gemini and return (parsed_data, report).
+
+        The report dict always contains:
+            page, attempts, status ("ok"|"failed"), errors, elapsed_ms
         """
         model = self._genai.GenerativeModel(
             model_name=config.GEMINI_MODEL,
-            generation_config={"temperature": 0.1, "max_output_tokens": 8192},
+            generation_config={"temperature": 0.1, "max_output_tokens": 16384},
         )
 
         last_error: Optional[Exception] = None
+        errors: list[str] = []
+        t0 = time.time()
 
         for attempt in range(1, MAX_ATTEMPTS + 1):
             try:
@@ -182,11 +193,21 @@ class GeminiService:
                 cleaned   = _strip_fences(raw_text)
                 data      = json.loads(cleaned)
                 data["page_number"] = data.get("page_number") or page_number
-                return data
+                elapsed = int((time.time() - t0) * 1000)
+                report = {
+                    "page": page_number,
+                    "attempts": attempt,
+                    "status": "ok",
+                    "pageType": data.get("page_type"),
+                    "errors": errors,
+                    "elapsed_ms": elapsed,
+                }
+                return data, report
 
             except Exception as exc:
                 last_error = exc
                 msg = str(exc).lower()
+                errors.append(f"attempt {attempt}: {exc}")
 
                 if _is_rate_limit(msg):
                     delay = BACKOFF_SECONDS[min(attempt - 1, len(BACKOFF_SECONDS) - 1)]
@@ -196,8 +217,17 @@ class GeminiService:
                     log.warning("Page %d attempt %d error: %s", page_number, attempt, exc)
                     time.sleep(3)
 
+        elapsed = int((time.time() - t0) * 1000)
         log.error("Page %d failed after %d attempts: %s", page_number, MAX_ATTEMPTS, last_error)
-        return _empty_page(page_number)
+        report = {
+            "page": page_number,
+            "attempts": MAX_ATTEMPTS,
+            "status": "failed",
+            "pageType": "UNKNOWN",
+            "errors": errors,
+            "elapsed_ms": elapsed,
+        }
+        return _empty_page(page_number), report
 
 
 # ── Private helpers ───────────────────────────────────────────────────────────

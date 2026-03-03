@@ -71,6 +71,28 @@
   /* Toast */
   .toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; }
 
+  /* Extraction report modal */
+  .report-modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 10000; display: none; align-items: center; justify-content: center; }
+  .report-modal-backdrop.show { display: flex; }
+  .report-modal { background: #fff; border-radius: 12px; width: 680px; max-width: 95vw; max-height: 85vh; overflow: hidden; box-shadow: 0 12px 40px rgba(0,0,0,0.2); display: flex; flex-direction: column; }
+  .report-modal-header { padding: 16px 20px; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: space-between; }
+  .report-modal-header h6 { margin: 0; font-weight: 700; font-size: 15px; }
+  .report-modal-body { padding: 16px 20px; overflow-y: auto; flex: 1; }
+  .report-modal-close { border: none; background: none; font-size: 22px; color: #6b7280; cursor: pointer; line-height: 1; }
+  .report-modal-close:hover { color: #111; }
+
+  .report-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .report-table th { text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; color: #6b7280; font-weight: 600; padding: 8px 10px; border-bottom: 2px solid #e5e7eb; text-align: left; }
+  .report-table td { padding: 8px 10px; border-bottom: 1px solid #f3f4f6; vertical-align: top; }
+  .report-table tr:last-child td { border-bottom: none; }
+  .report-status-ok { color: #16a34a; font-weight: 600; }
+  .report-status-failed { color: #dc2626; font-weight: 600; }
+  .report-errors { font-size: 11px; color: #6b7280; font-family: 'SF Mono', 'Fira Code', monospace; margin-top: 4px; }
+  .report-badge { display: inline-block; font-size: 10px; padding: 2px 6px; border-radius: 3px; font-weight: 600; }
+  .report-badge-retry { background: #fef3c7; color: #92400e; }
+  .btn-log { border: none; background: none; cursor: pointer; font-size: 16px; color: #6b7280; padding: 2px 6px; border-radius: 4px; transition: all 0.15s; }
+  .btn-log:hover { background: #f3f4f6; color: var(--primary); }
+
   /* Active job cards */
   .active-job-card {
     background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px 20px;
@@ -95,6 +117,19 @@
 
 <!-- Toast container -->
 <div class="toast-container" id="toast-container"></div>
+
+<!-- Extraction Report Modal -->
+<div class="report-modal-backdrop" id="report-modal-backdrop">
+  <div class="report-modal">
+    <div class="report-modal-header">
+      <h6>Extraction Report <span id="report-modal-title" style="font-weight:400;color:#6b7280;font-size:13px"></span></h6>
+      <button class="report-modal-close" id="report-modal-close">&times;</button>
+    </div>
+    <div class="report-modal-body" id="report-modal-body">
+      <div style="text-align:center;padding:32px;color:#9ca3af">Loading...</div>
+    </div>
+  </div>
+</div>
 
 <div class="page">
   {% if error %}
@@ -184,6 +219,7 @@
             <th>Images</th>
             <th>Files</th>
             <th>Created</th>
+            <th>Log</th>
             <th>Action</th>
           </tr>
         </thead>
@@ -197,6 +233,13 @@
             <td class="text-center">{{ f.images }}</td>
             <td class="text-center">{{ f.files }}</td>
             <td>{{ f.created }}</td>
+            <td class="text-center">
+              {% if f.has_report %}
+              <button class="btn-log" onclick="showReport('{{ f.id }}')" title="Extraction report">&#128220;</button>
+              {% else %}
+              <span style="color:#d1d5db">—</span>
+              {% endif %}
+            </td>
             <td><a href="/results/{{ f.id }}" class="btn btn-sm btn-outline-primary" style="border-color:var(--primary);color:var(--primary)">View</a></td>
           </tr>
           {% endfor %}
@@ -225,6 +268,7 @@ $(document).ready(function() {
       { targets: [2], className: 'text-center', orderable: false },
       { targets: [3, 4, 5], className: 'text-center' },
       { targets: [7], orderable: false, className: 'text-center' },
+      { targets: [8], orderable: false, className: 'text-center' },
     ],
   });
 });
@@ -336,6 +380,9 @@ function addCompletedRow(job) {
   if (!dtTable) return;
   var rowCount = dtTable.rows().count() + 1;
   var shortId = job.id;
+  var logBtn = (job.extraction_report && job.extraction_report.length)
+    ? '<button class="btn-log" onclick="showReport(\'' + job.id + '\')" title="Extraction report">&#128220;</button>'
+    : '<span style="color:#d1d5db">—</span>';
   dtTable.row.add([
     rowCount,
     '<span class="mono-id">' + shortId + '</span>',
@@ -344,6 +391,7 @@ function addCompletedRow(job) {
     '—',
     '—',
     new Date().toISOString().slice(0, 16).replace('T', ' '),
+    logBtn,
     '<a href="/results/' + job.id + '" class="btn btn-sm btn-outline-primary" style="border-color:var(--primary);color:var(--primary)">View</a>'
   ]).draw(false);
 
@@ -383,6 +431,64 @@ function pollJobs() {
 }
 
 pollJobs();
+
+/* ── Extraction report modal ── */
+var reportBackdrop = document.getElementById('report-modal-backdrop');
+var reportBody = document.getElementById('report-modal-body');
+var reportTitle = document.getElementById('report-modal-title');
+
+document.getElementById('report-modal-close').addEventListener('click', function() { reportBackdrop.classList.remove('show'); });
+reportBackdrop.addEventListener('click', function(e) { if (e.target === reportBackdrop) reportBackdrop.classList.remove('show'); });
+document.addEventListener('keydown', function(e) { if (e.key === 'Escape') reportBackdrop.classList.remove('show'); });
+
+function showReport(jobId) {
+  reportTitle.textContent = '— ' + jobId.substring(0, 12) + '…';
+  reportBody.innerHTML = '<div style="text-align:center;padding:32px;color:#9ca3af">Loading...</div>';
+  reportBackdrop.classList.add('show');
+
+  fetch('/api/extraction-report/' + jobId)
+    .then(function(r) { return r.json(); })
+    .then(function(report) {
+      if (!Array.isArray(report) || report.length === 0) {
+        reportBody.innerHTML = '<div style="text-align:center;padding:32px;color:#9ca3af">No extraction report available for this job.</div>';
+        return;
+      }
+      var html = '<table class="report-table"><thead><tr>' +
+        '<th>Page</th><th>Status</th><th>Page Type</th><th>Attempts</th><th>Time</th><th>Details</th>' +
+        '</tr></thead><tbody>';
+      report.forEach(function(r) {
+        var statusCls = r.status === 'ok' ? 'report-status-ok' : 'report-status-failed';
+        var statusLabel = r.status === 'ok' ? 'OK' : 'FAILED';
+        var retryBadge = r.pipelineRetry ? ' <span class="report-badge report-badge-retry">RETRIED</span>' : '';
+        var elapsed = r.elapsed_ms ? (r.elapsed_ms / 1000).toFixed(1) + 's' : '—';
+        var errHtml = '';
+        if (r.errors && r.errors.length) {
+          errHtml = '<div class="report-errors">' + r.errors.map(function(e) { return '&#8226; ' + e.replace(/</g, '&lt;'); }).join('<br>') + '</div>';
+        }
+        html += '<tr>' +
+          '<td style="font-weight:600">Page ' + r.page + '</td>' +
+          '<td><span class="' + statusCls + '">' + statusLabel + '</span>' + retryBadge + '</td>' +
+          '<td>' + (r.pageType || '—') + '</td>' +
+          '<td>' + r.attempts + '</td>' +
+          '<td>' + elapsed + '</td>' +
+          '<td>' + (errHtml || '<span style="color:#d1d5db">—</span>') + '</td>' +
+          '</tr>';
+      });
+      html += '</tbody></table>';
+
+      var okCount = report.filter(function(r) { return r.status === 'ok'; }).length;
+      var failCount = report.filter(function(r) { return r.status === 'failed'; }).length;
+      var summary = '<div style="margin-bottom:14px;font-size:13px;color:#374151">' +
+        '<strong>' + report.length + '</strong> pages processed — ' +
+        '<span style="color:#16a34a">' + okCount + ' succeeded</span>' +
+        (failCount > 0 ? ', <span style="color:#dc2626">' + failCount + ' failed</span>' : '') +
+        '</div>';
+      reportBody.innerHTML = summary + html;
+    })
+    .catch(function() {
+      reportBody.innerHTML = '<div style="text-align:center;padding:32px;color:#dc2626">Failed to load extraction report.</div>';
+    });
+}
 </script>
 </body>
 </html>

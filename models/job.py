@@ -38,6 +38,7 @@ class Job:
     pages_done:   list[int]   = field(default_factory=list)
     logs:         list[str]   = field(default_factory=list)
     output_files: list[str]   = field(default_factory=list)
+    extraction_report: list[dict] = field(default_factory=list)
     error:        Optional[str] = None
     started_at:   float       = field(default_factory=time.time)
 
@@ -60,6 +61,7 @@ class Job:
             "current_page": self.current_page,
             "pages_done":   self.pages_done,
             "output_files": self.output_files,
+            "extraction_report": self.extraction_report,
             "error":        self.error,
             "started_at":   self.started_at,
         }
@@ -77,6 +79,7 @@ class Job:
             "pages_done":   self.pages_done,
             "logs":         self.logs[-50:],
             "output_files": self.output_files,
+            "extraction_report": self.extraction_report,
             "error":        self.error,
             "filename":     self.filename,
         }
