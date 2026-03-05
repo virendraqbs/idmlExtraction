@@ -11,8 +11,10 @@ Naming convention:
 """
 from __future__ import annotations
 
+import os
 import time
 import uuid
+from pathlib import Path
 from typing import Any
 
 # ── ID helpers ────────────────────────────────────────────────────────────────
@@ -538,10 +540,28 @@ def build_standards_blocks(
 
 # ── 12 — Images (CL-Json-Schema schemas/media/image.json) ─────────────────────
 
+def _file_size(out_dir: Path | None, rel_path: str | None) -> dict | None:
+    """Return fileSize dict {bytes, formatted} for a relative image path, or None."""
+    if not out_dir or not rel_path:
+        return None
+    try:
+        size = (out_dir / rel_path).stat().st_size
+    except OSError:
+        return None
+    if size < 1024:
+        formatted = f"{size} B"
+    elif size < 1024 * 1024:
+        formatted = f"{size / 1024:.1f} KB"
+    else:
+        formatted = f"{size / (1024 * 1024):.1f} MB"
+    return {"bytes": size, "formatted": formatted}
+
+
 def build_images_chunk(
     *,
     pages: list[dict],
     image_manifest: dict | None = None,
+    out_dir: Path | None = None,
 ) -> list[dict]:
     """
     12_images.json — aligned with CL-Json-Schema media/image.json.
@@ -590,21 +610,57 @@ def build_images_chunk(
                 image_path = ext_entry["path"]
                 used_paths.add(image_path)
 
+            # Use Gemini dimensions if present, otherwise fall back to extracted pixel dims
+            dimensions = raw_img.get("dimensions")
+            if not dimensions and ext_entry:
+                dimensions = {
+                    "width":  ext_entry.get("width"),
+                    "height": ext_entry.get("height"),
+                    "unit":   "PIXELS",
+                }
+
             img = {
                 "id":               gen_id(),
                 "imageType":        raw_img.get("image_type", "INSTRUCTIONAL"),
-                "filename":         raw_img.get("filename", ""),
                 "technicalArtType": raw_img.get("technical_art_type"),
+                "filename":         raw_img.get("filename", ""),
+                "filepath":         image_path,
+                "url":              None,
+                "sourceFilename":   None,
+                "sourceFileUrl":    None,
                 "altText":          raw_img.get("alt_text", ""),
                 "caption":          raw_img.get("caption"),
                 "title":            raw_img.get("title"),
-                "description":      raw_img.get("description", ""),
-                "dimensions":       raw_img.get("dimensions"),
+                "dimensions":       dimensions,
                 "format":           raw_img.get("format"),
+                "fileSize":         _file_size(out_dir, image_path),
+                "usage": {
+                    "usedInPages":      [page_num] if page_num is not None else [],
+                    "usedInActivities": [],
+                    "usedInTasks":      [],
+                    "isReusable":       False,
+                },
                 "accessibility":    {
                     "isDecorative":    acc.get("is_decorative", raw_img.get("is_decorative", False)),
                     "longDescription": acc.get("long_description"),
+                    "transcriptUrl":   None,
                 },
+                "copyright": {
+                    "holder":      None,
+                    "year":        None,
+                    "license":     None,
+                    "attribution": None,
+                    "source":      None,
+                },
+                "metadata": {
+                    "createdDate":      None,
+                    "lastModifiedDate": None,
+                    "creator":          None,
+                    "tags":             [],
+                    "notes":            None,
+                },
+                # Extended fields (not in base schema — used by pipeline/UI)
+                "description":      raw_img.get("description", ""),
                 "position":         raw_img.get("position"),
                 "containsGraph":    raw_img.get("contains_graph", False),
                 "isResponseArea":   raw_img.get("is_response_area", False),
@@ -628,15 +684,45 @@ def build_images_chunk(
             img = {
                 "id":               gen_id(),
                 "imageType":        "UNREVIEWED",
-                "filename":         "",
                 "technicalArtType": None,
+                "filename":         "",
+                "filepath":         ext["path"],
+                "url":              None,
+                "sourceFilename":   None,
+                "sourceFileUrl":    None,
                 "altText":          "",
                 "caption":          None,
                 "title":            None,
-                "description":      f"Extracted {ext.get('source', 'image')} — needs review",
                 "dimensions":       {"width": ext.get("width"), "height": ext.get("height"), "unit": "PIXELS"},
                 "format":           "PNG",
-                "accessibility":    {"isDecorative": False, "longDescription": None},
+                "fileSize":         _file_size(out_dir, ext["path"]),
+                "usage": {
+                    "usedInPages":      [page_num] if page_num is not None else [],
+                    "usedInActivities": [],
+                    "usedInTasks":      [],
+                    "isReusable":       False,
+                },
+                "accessibility":    {
+                    "isDecorative":  False,
+                    "longDescription": None,
+                    "transcriptUrl": None,
+                },
+                "copyright": {
+                    "holder":      None,
+                    "year":        None,
+                    "license":     None,
+                    "attribution": None,
+                    "source":      None,
+                },
+                "metadata": {
+                    "createdDate":      None,
+                    "lastModifiedDate": None,
+                    "creator":          None,
+                    "tags":             [],
+                    "notes":            None,
+                },
+                # Extended fields (not in base schema — used by pipeline/UI)
+                "description":      f"Extracted {ext.get('source', 'image')} — needs review",
                 "position":         None,
                 "containsGraph":    False,
                 "isResponseArea":   False,

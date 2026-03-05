@@ -96,7 +96,7 @@ def assemble_schemas(
     )
 
     # Images, pages, prompts
-    images   = build_images_chunk(pages=pages, image_manifest=image_manifest)
+    images   = build_images_chunk(pages=pages, image_manifest=image_manifest, out_dir=out_dir)
     pg_list  = build_pages_chunk(pages=pages, resource_id=resource_id)
     prompts  = build_instructional_prompts_chunk(pages=pages, lesson_id=lesson_id)
     segments = build_instructional_segments(lesson_id=lesson_id, activities=activities)

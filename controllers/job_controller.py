@@ -593,6 +593,7 @@ async def upload_images_to_s3(request: Request, job_id: str, _=Depends(require_l
         if img["id"] in url_map:
             img["s3Url"] = url_map[img["id"]]["s3Url"]
             img["s3Key"] = url_map[img["id"]]["s3Key"]
+            img["url"] = url_map[img["id"]]["s3Url"]  # schema-compliant url field
 
     with open(images_file, "w", encoding="utf-8") as fh:
         json.dump(images_data, fh, indent=2, ensure_ascii=False)
@@ -607,6 +608,7 @@ async def upload_images_to_s3(request: Request, job_id: str, _=Depends(require_l
                     if mi.get("id") in url_map:
                         mi["s3Url"] = url_map[mi["id"]]["s3Url"]
                         mi["s3Key"] = url_map[mi["id"]]["s3Key"]
+                        mi["url"] = url_map[mi["id"]]["s3Url"]
             with open(merged_file, "w", encoding="utf-8") as fh:
                 json.dump(merged, fh, indent=2, ensure_ascii=False)
         except Exception:
