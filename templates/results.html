@@ -811,11 +811,10 @@ function renderPageWebView(page, data) {
       if (img.s3Url) card += '<span id="s3-badge-' + img.id + '" class="s3-uploaded-badge">&#9729; uploaded</span>';
       if (img.sourcePage != null) card += '<span style="font-size:11px;color:var(--muted)">p.' + img.sourcePage + '</span>';
       card += '</div>';
-      card += '<strong style="display:block;margin-top:4px">' + escapeHtml(img.altText || (isUnreviewed ? 'Unmatched — review or delete' : 'No alt text')) + '</strong>';
-      if (img.description) {
-        const desc = img.description.length > 200 ? img.description.substring(0, 200) + '…' : img.description;
-        card += '<p style="margin:4px 0 0;font-size:12px;color:var(--muted)">' + escapeHtml(desc) + '</p>';
-      }
+      card += '<strong id="img-alt-' + img.id + '" data-imgid="' + img.id + '" data-field="altText" onclick="editImageField(this)" title="Click to edit" style="display:block;margin-top:4px;cursor:text;border-radius:3px;padding:1px 2px;transition:background 0.15s" onmouseenter="this.style.background=\'rgba(182,109,255,0.10)\'" onmouseleave="this.style.background=\'transparent\'">' + escapeHtml(img.altText || (isUnreviewed ? 'Unmatched — review or delete' : 'No alt text')) + '</strong>';
+      const fullDesc = img.description || '';
+      const displayDesc = fullDesc.length > 200 ? fullDesc.substring(0, 200) + '…' : fullDesc;
+      card += '<p id="img-desc-' + img.id + '" data-imgid="' + img.id + '" data-field="description" data-full="' + escapeHtml(fullDesc).replace(/"/g, '&quot;') + '" onclick="editImageField(this)" title="Click to edit" style="margin:4px 0 0;font-size:12px;color:var(--muted);cursor:text;border-radius:3px;padding:1px 2px;transition:background 0.15s;min-height:18px" onmouseenter="this.style.background=\'rgba(182,109,255,0.08)\'" onmouseleave="this.style.background=\'transparent\'">' + (fullDesc ? escapeHtml(displayDesc) : '<span style="opacity:0.4;font-style:italic">Add description…</span>') + '</p>';
       if (img.containsGraph && img.graphDetails) {
         const gd = img.graphDetails;
         let graphInfo = [];
@@ -1112,6 +1111,78 @@ function previewAndMapImage(cardId, selectEl, sourceType) {
   }
   mapImage(cardId, targetId, sourceType);
 }
+
+// ── Inline edit image text fields ─────────────────────────────────────────
+function editImageField(el) {
+  if (el.querySelector('textarea')) return; // already editing
+  const imgId = el.dataset.imgid;
+  const field = el.dataset.field;
+  const isAlt = field === 'altText';
+  // Get current full value from data attribute (description) or text content (altText)
+  const currentValue = isAlt
+    ? (el.textContent || '').trim()
+    : (el.dataset.full || el.textContent || '').trim();
+
+  const ta = document.createElement('textarea');
+  ta.value = currentValue;
+  ta.rows = isAlt ? 2 : 4;
+  ta.style.cssText = 'width:100%;box-sizing:border-box;font-size:inherit;font-family:inherit;font-weight:' + (isAlt ? '700' : 'normal') + ';color:inherit;padding:4px 6px;border:1px solid var(--primary);border-radius:3px;resize:vertical;background:var(--surface);outline:none;margin:0';
+  el.innerHTML = '';
+  el.style.background = 'transparent';
+  el.style.cursor = 'default';
+  el.appendChild(ta);
+  ta.focus();
+  ta.setSelectionRange(ta.value.length, ta.value.length);
+
+  async function save() {
+    const newValue = ta.value.trim();
+    el.style.cursor = 'text';
+    if (newValue === currentValue) {
+      _restoreField(el, field, currentValue, isAlt);
+      return;
+    }
+    try {
+      const headers = {'Content-Type': 'application/json'};
+      if (jobOutputDir) headers['X-Output-Dir'] = jobOutputDir;
+      const r = await fetch('/api/results/' + jobId + '/images/update-field', {
+        method: 'POST', headers,
+        body: JSON.stringify({ imageId: imgId, field, value: newValue }),
+      });
+      if (!r.ok) throw new Error((await r.json().catch(() => ({detail: r.statusText}))).detail);
+      // Update local data
+      if (window.editorData) {
+        [window.editorData.images, (window.editorData.merged || {}).images].forEach(arr => {
+          const img = arr && arr.find(i => i.id === imgId);
+          if (img) img[field] = newValue;
+        });
+      }
+      if (!isAlt) el.dataset.full = newValue;
+      _restoreField(el, field, newValue, isAlt);
+    } catch(e) {
+      _restoreField(el, field, currentValue, isAlt);
+      alert('Save failed: ' + e.message);
+    }
+  }
+
+  function cancel() { _restoreField(el, field, currentValue, isAlt); }
+
+  ta.addEventListener('blur', save);
+  ta.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { e.preventDefault(); ta.removeEventListener('blur', save); cancel(); }
+    if (e.key === 'Enter' && !e.shiftKey && isAlt) { e.preventDefault(); ta.removeEventListener('blur', save); save(); }
+  });
+}
+
+function _restoreField(el, field, value, isAlt) {
+  el.style.cursor = 'text';
+  if (value) {
+    const display = value.length > 200 ? value.substring(0, 200) + '…' : value;
+    el.innerHTML = escapeHtml(display);
+  } else {
+    el.innerHTML = '<span style="opacity:0.4;font-style:italic">' + (isAlt ? 'No alt text' : 'Add description…') + '</span>';
+  }
+}
+// ──────────────────────────────────────────────────────────────────────────
 
 // ── Unassign image (keep text metadata) ───────────────────────────────────
 async function unassignImage(imgId) {

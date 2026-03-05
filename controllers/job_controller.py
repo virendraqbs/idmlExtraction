@@ -475,6 +475,56 @@ async def unassign_image(request: Request, job_id: str, _=Depends(require_login)
     return {"status": "unassigned", "imageId": image_id}
 
 
+@jobs_router.post("/api/results/{job_id}/images/update-field")
+async def update_image_field(request: Request, job_id: str, _=Depends(require_login)):
+    """Update a single text field on an image entry.
+
+    Body: { "imageId": "<id>", "field": "altText"|"description", "value": "<new text>" }
+    """
+    out_dir = _find_output_dir(job_id)
+    if not out_dir:
+        raise HTTPException(status_code=404, detail="Output folder not found")
+
+    body = await request.json()
+    image_id = body.get("imageId")
+    field = body.get("field")
+    value = body.get("value", "")
+
+    ALLOWED_FIELDS = {"altText", "description"}
+    if not image_id or field not in ALLOWED_FIELDS:
+        raise HTTPException(status_code=400, detail=f"imageId and field ({', '.join(ALLOWED_FIELDS)}) are required")
+
+    images_file = out_dir / "12_images.json"
+    if not images_file.exists():
+        raise HTTPException(status_code=404, detail="Images file not found")
+
+    with open(images_file, encoding="utf-8") as fh:
+        images_data = json.load(fh)
+
+    entry = next((i for i in images_data.get("images", []) if i.get("id") == image_id), None)
+    if not entry:
+        raise HTTPException(status_code=404, detail="Image not found")
+
+    entry[field] = value
+
+    with open(images_file, "w", encoding="utf-8") as fh:
+        json.dump(images_data, fh, indent=2, ensure_ascii=False)
+
+    merged_file = out_dir / "merged.json"
+    if merged_file.exists():
+        try:
+            merged = json.loads(merged_file.read_text(encoding="utf-8"))
+            for mi in merged.get("images", []):
+                if mi.get("id") == image_id:
+                    mi[field] = value
+            with open(merged_file, "w", encoding="utf-8") as fh:
+                json.dump(merged, fh, indent=2, ensure_ascii=False)
+        except Exception:
+            pass
+
+    return {"status": "updated", "imageId": image_id, "field": field, "value": value}
+
+
 @jobs_router.get("/api/s3/config")
 async def api_s3_config(request: Request, _=Depends(require_login)):
     """Return whether S3 is configured (never exposes credentials)."""
