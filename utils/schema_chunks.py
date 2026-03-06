@@ -104,15 +104,19 @@ def build_resource(
     lesson_meta: dict,
     total_pages: int,
     extracted_at: str,
+    book_name_override: str | None = None,
 ) -> dict:
     """
     03_resource.json
     Top-level book/resource entity.
     """
+    title = (book_name_override or source_filename or "").strip()
+    if not title and source_filename:
+        title = source_filename.replace(".pdf", "")
     return {
         "id":           resource_id,
         "resourceType": "STUDENT_RESOURCE_BOOK",
-        "title":        source_filename.replace(".pdf", ""),
+        "title":        title or "Untitled Resource",
         "gradeLevel":   lesson_meta.get("grade_level", "HS"),
         "modules":      [{"id": module_id, "type": "MODULE"}],
         "metadata": {
@@ -132,24 +136,32 @@ def build_module(
     topic_id: str,
     lesson_meta: dict,
     image_ids: list[str] | None = None,
+    module_name_override: str | None = None,
+    module_subtitle_override: str | None = None,
+    module_meta_override: str | None = None,
 ) -> dict:
     """
     04_module.json
     Module entity — sits between Resource and Topic.
     """
+    title = (module_name_override or lesson_meta.get("module_title") or "").strip() or ""
+    module_summary = (module_subtitle_override or lesson_meta.get("module_summary") or "").strip() or ""
+    metadata: dict[str, Any] = {"localizationInfo": {"language": "en"}}
+    if module_subtitle_override:
+        metadata["subtitle"] = module_subtitle_override
+    if module_meta_override:
+        metadata["userMeta"] = module_meta_override
     return {
         "id":             module_id,
         "resourceId":     resource_id,
         "standardsBody":  lesson_meta.get("standards_body"),
         "moduleNumber":   lesson_meta.get("module_number", 1),
-        "title":          lesson_meta.get("module_title", ""),
-        "moduleSummary":  lesson_meta.get("module_summary", ""),
+        "title":          title,
+        "moduleSummary":  module_summary,
         "images":         [{"id": img_id, "type": "IMAGE"} for img_id in (image_ids or [])],
         "gradeLevel":     lesson_meta.get("grade_level", ""),
         "topics":         [{"id": topic_id, "type": "TOPIC", "sequenceNumber": 1}],
-        "metadata": {
-            "localizationInfo": {"language": "en"},
-        },
+        "metadata":       metadata,
     }
 
 
@@ -166,11 +178,13 @@ def build_topic(
     05_topic.json
     Topic entity — groups lessons within a module.
     """
+    topic_summary = (lesson_meta.get("topic_summary") or "").strip() or ""
     return {
-        "id":          topic_id,
-        "moduleId":    module_id,
-        "topicNumber": lesson_meta.get("topic_number", 1),
-        "title":       lesson_meta.get("topic_title", ""),
+        "id":            topic_id,
+        "moduleId":      module_id,
+        "topicNumber":   lesson_meta.get("topic_number", 1),
+        "title":         lesson_meta.get("topic_title", ""),
+        "topicSummary":  topic_summary,
         "lessons": [{
             "id":             lesson_id,
             "type":           "LESSON",
@@ -894,7 +908,7 @@ def extract_lesson_meta(pages: list[dict]) -> dict:
     fields = [
         "lesson_number", "title", "lesson_summary", "learning_goals",
         "module_title", "module_number", "topic_title", "topic_number",
-        "grade_level", "module_summary", "standards_body",
+        "grade_level", "module_summary", "topic_summary", "standards_body",
     ]
     meta: dict[str, Any] = {}
     for page in pages:

@@ -27,7 +27,7 @@ from starlette.templating import Jinja2Templates
 from config import config
 from models.job import job_repo
 from services.pipeline_service import PipelineService
-from utils.file_utils import is_allowed_file
+from utils.file_utils import is_allowed_file, read_json
 
 
 # ── Auth exception & dependency ───────────────────────────────────────────────
@@ -153,6 +153,16 @@ async def upload(
     request: Request,
     pdf_file: UploadFile | None = File(None),
     api_key: str = Form(""),
+    book_name: str = Form(""),
+    module_name: str = Form(""),
+    module_subtitle: str = Form(""),
+    module_meta: str = Form(""),
+    selected_resource_id: str = Form(""),
+    selected_resource_title: str = Form(""),
+    selected_module_id: str = Form(""),
+    selected_module_title: str = Form(""),
+    selected_topic_id: str = Form(""),
+    selected_topic_title: str = Form(""),
     _=Depends(require_login),
 ):
     api_key = api_key.strip() or config.GEMINI_API_KEY
@@ -170,12 +180,21 @@ async def upload(
             "upload.html", {"request": request, "error": "Gemini API key is required."}
         )
 
+    # Prefer selected resource/module titles from dropdowns for extraction metadata
+    book_name = (book_name or selected_resource_title or "").strip() or None
+    module_name = (module_name or selected_module_title or "").strip() or None
+    module_subtitle = (module_subtitle or selected_topic_title or "").strip() or None
+
     filename = _secure_filename(pdf_file.filename)
     job = job_repo.create(
         filename=filename,
         pdf_path="",
         api_key=api_key,
         output_dir="",
+        book_name=book_name,
+        module_name=module_name,
+        module_subtitle=module_subtitle,
+        module_meta=module_meta.strip() or None,
     )
 
     pdf_path = config.UPLOAD_DIR / f"{job.id}_{filename}"
@@ -191,6 +210,68 @@ async def upload(
     PipelineService.start(job)
 
     return RedirectResponse(url="/dashboard", status_code=303)
+
+
+def _collect_upload_options() -> dict:
+    """Scan existing output folders for resource/module metadata to suggest in upload form."""
+    book_names: set[str] = set()
+    module_names: set[str] = set()
+    module_subtitles: set[str] = set()
+    module_meta_list: set[str] = set()
+    out_dir = config.OUTPUT_DIR
+    if not out_dir.exists():
+        return {"bookNames": [], "moduleNames": [], "moduleSubtitles": [], "moduleMetaList": []}
+    for child in out_dir.iterdir():
+        if not child.is_dir():
+            continue
+        try:
+            res_path = child / "03_resource.json"
+            if res_path.exists():
+                data = read_json(res_path)
+                if isinstance(data, dict) and data.get("title"):
+                    book_names.add((data.get("title") or "").strip())
+            mod_path = child / "04_module.json"
+            if mod_path.exists():
+                data = read_json(mod_path)
+                if isinstance(data, dict):
+                    if data.get("title"):
+                        module_names.add((data.get("title") or "").strip())
+                    meta = data.get("metadata") or {}
+                    if meta.get("subtitle"):
+                        module_subtitles.add((meta.get("subtitle") or "").strip())
+                    if meta.get("userMeta"):
+                        module_meta_list.add((meta.get("userMeta") or "").strip())
+        except Exception:
+            continue
+    return {
+        "bookNames": sorted(book_names),
+        "moduleNames": sorted(module_names),
+        "moduleSubtitles": sorted(module_subtitles),
+        "moduleMetaList": sorted(module_meta_list),
+    }
+
+
+@jobs_router.get("/api/upload-options")
+async def api_upload_options(request: Request, _=Depends(require_login)):
+    """Return suggested book/module names from previous extractions for upload form dropdowns."""
+    return _collect_upload_options()
+
+
+def _load_source_structure() -> dict:
+    """Load resource/module/topic structure from sourceFile JSON (e.g. A1_Tagged Pdf.json)."""
+    path = config.BASE_DIR / "sourceFile" / "A1_Tagged Pdf.json"
+    if not path.exists():
+        return {"resource": None, "modules": []}
+    try:
+        return read_json(path)
+    except Exception:
+        return {"resource": None, "modules": []}
+
+
+@jobs_router.get("/api/source-structure")
+async def api_source_structure(request: Request, _=Depends(require_login)):
+    """Return resource and modules with topics for Extract PDF resource → module → topic selection."""
+    return _load_source_structure()
 
 
 # ── Job monitor ───────────────────────────────────────────────────────────────

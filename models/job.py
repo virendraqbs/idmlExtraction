@@ -41,6 +41,11 @@ class Job:
     extraction_report: list[dict] = field(default_factory=list)
     error:        Optional[str] = None
     started_at:   float       = field(default_factory=time.time)
+    # Optional user-provided metadata at upload (overrides extraction when set)
+    book_name:    Optional[str] = None
+    module_name:  Optional[str] = None
+    module_subtitle: Optional[str] = None
+    module_meta:  Optional[str] = None
 
     # ── Helpers ───────────────────────────────────────────────────────────────
     def log(self, msg: str) -> None:
@@ -93,13 +98,27 @@ class JobRepository:
     def __init__(self) -> None:
         self._store: dict[str, Job] = {}
 
-    def create(self, filename: str, pdf_path: str, api_key: str, output_dir: str) -> Job:
+    def create(
+        self,
+        filename: str,
+        pdf_path: str,
+        api_key: str,
+        output_dir: str,
+        book_name: Optional[str] = None,
+        module_name: Optional[str] = None,
+        module_subtitle: Optional[str] = None,
+        module_meta: Optional[str] = None,
+    ) -> Job:
         job = Job(
             id=str(uuid.uuid4()),
             filename=filename,
             pdf_path=pdf_path,
             api_key=api_key,
             output_dir=output_dir,
+            book_name=book_name or None,
+            module_name=module_name or None,
+            module_subtitle=module_subtitle or None,
+            module_meta=module_meta or None,
         )
         self._store[job.id] = job
         return job

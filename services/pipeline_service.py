@@ -150,6 +150,10 @@ class PipelineService:
                 out_dir=out_dir,
                 source_filename=Path(job.pdf_path).name,
                 image_manifest=image_manifest,
+                book_name=job.book_name,
+                module_name=job.module_name,
+                module_subtitle=job.module_subtitle,
+                module_meta=job.module_meta,
             )
 
             # ── Stage 5: Done ─────────────────────────────────────────────

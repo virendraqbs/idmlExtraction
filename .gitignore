@@ -39,5 +39,6 @@ Thumbs.db
 theme/
 docs/db/
 docs/S3_IMAGE_UPLOAD_PLAN.md
+docs/TIG_IMPLEMENTATION_PLAN.md
 verify_extraction_output/
 verify_image_extraction.py

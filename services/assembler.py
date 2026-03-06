@@ -41,6 +41,10 @@ def assemble_schemas(
     out_dir: Path,
     source_filename: str,
     image_manifest: dict | None = None,
+    book_name: str | None = None,
+    module_name: str | None = None,
+    module_subtitle: str | None = None,
+    module_meta: str | None = None,
 ) -> list[str]:
     """
     Build and write all 18 CL-Json-Schema JSON files.
@@ -51,6 +55,10 @@ def assemble_schemas(
         source_filename: Original PDF filename (used as resource title)
         image_manifest:  Output from extract_images_from_pdf() — maps pages to
                          extracted image file paths.
+        book_name:       Optional user-provided resource/book title override.
+        module_name:     Optional user-provided module title override.
+        module_subtitle: Optional user-provided module subtitle.
+        module_meta:     Optional user-provided module meta (JSON string or text).
 
     Returns:
         List of filenames written (18 items).
@@ -116,11 +124,15 @@ def assemble_schemas(
         resource_id=resource_id, module_id=module_id,
         source_filename=source_filename, lesson_meta=lesson_meta,
         total_pages=len(pages), extracted_at=extracted_at,
+        book_name_override=book_name,
     )
     module = build_module(
         module_id=module_id, resource_id=resource_id,
         topic_id=topic_id, lesson_meta=lesson_meta,
         image_ids=[img["id"] for img in images],
+        module_name_override=module_name,
+        module_subtitle_override=module_subtitle,
+        module_meta_override=module_meta,
     )
     topic = build_topic(
         topic_id=topic_id, module_id=module_id,

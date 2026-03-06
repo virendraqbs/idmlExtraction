@@ -36,44 +36,49 @@
   }
 
   .upload-card {
-    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
-    padding: 32px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 36px; box-shadow: 0 4px 24px rgba(0,0,0,0.06);
   }
 
   .drop-zone {
-    border: 2px dashed var(--border); border-radius: 8px;
-    padding: 48px 32px; text-align: center; cursor: pointer;
-    transition: all 0.25s; position: relative;
-    background: var(--bg); min-height: 200px;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    border: 2px dashed var(--border); border-radius: 12px;
+    padding: 44px 32px; text-align: center; cursor: pointer;
+    transition: border-color 0.2s, background 0.2s, box-shadow 0.2s; position: relative;
+    background: linear-gradient(180deg, var(--bg) 0%, #f1f5f9 100%);
+    min-height: 200px; display: flex; flex-direction: column; align-items: center; justify-content: center;
   }
   .drop-zone:hover, .drop-zone.dragover {
-    border-color: var(--primary); background: rgba(182,109,255,0.04);
+    border-color: var(--primary); background: linear-gradient(180deg, rgba(var(--primary-rgb),0.06) 0%, rgba(var(--primary-rgb),0.02) 100%);
+    box-shadow: 0 0 0 4px rgba(var(--primary-rgb),0.1);
   }
   .drop-zone input[type="file"] {
     position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
   }
-  .drop-icon { font-size: 56px; margin-bottom: 14px; opacity: 0.5; line-height: 1; }
-  .drop-zone:hover .drop-icon { opacity: 0.8; }
+  .drop-icon {
+    width: 56px; height: 56px; border-radius: 14px; background: rgba(var(--primary-rgb),0.12);
+    display: flex; align-items: center; justify-content: center; font-size: 28px; margin-bottom: 14px;
+    color: var(--primary); transition: background 0.2s, transform 0.2s;
+  }
+  .drop-zone:hover .drop-icon { background: rgba(var(--primary-rgb),0.18); transform: scale(1.03); }
   .drop-title { font-size: 18px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
   .drop-sub { font-size: 13px; color: var(--muted); }
   .drop-or {
-    font-size: 12px; color: var(--muted); margin: 12px 0;
+    font-size: 12px; color: var(--muted); margin: 14px 0;
     display: flex; align-items: center; gap: 10px;
   }
   .drop-or::before, .drop-or::after { content: ''; flex: 1; height: 1px; background: var(--border); }
   .browse-btn {
     display: inline-block; padding: 10px 24px; font-size: 14px; font-weight: 500;
     color: var(--primary); border: 1px solid rgba(var(--primary-rgb),0.4);
-    border-radius: 6px; cursor: pointer; background: none;
+    border-radius: 8px; cursor: pointer; background: none;
     transition: all 0.2s; position: relative; z-index: 2;
   }
   .browse-btn:hover { background: rgba(var(--primary-rgb),0.08); border-color: var(--primary); }
 
   .file-preview {
-    display: none; margin-top: 20px; padding: 16px 20px; border-radius: 8px;
-    background: rgba(27,207,180,0.08); border: 1px solid rgba(27,207,180,0.3);
-    align-items: center; gap: 14px;
+    display: none; margin-top: 20px; padding: 16px 20px; border-radius: 10px;
+    background: linear-gradient(135deg, rgba(27,207,180,0.08) 0%, rgba(27,207,180,0.14) 100%);
+    border: 1px solid rgba(27,207,180,0.35); align-items: center; gap: 14px;
   }
   .file-preview.visible { display: flex; }
   .file-preview-icon { font-size: 32px; flex-shrink: 0; }
@@ -82,9 +87,9 @@
   .file-preview-size { font-size: 12px; color: var(--success); margin-top: 2px; }
   .file-preview-remove {
     font-size: 20px; color: var(--muted); cursor: pointer; border: none; background: none;
-    padding: 4px 8px; border-radius: 4px; transition: color 0.2s;
+    padding: 6px 10px; border-radius: 6px; transition: color 0.2s, background 0.2s;
   }
-  .file-preview-remove:hover { color: var(--danger); }
+  .file-preview-remove:hover { color: var(--danger); background: rgba(254,124,150,0.08); }
 
   .pipeline-preview {
     display: none; margin-top: 24px; padding-top: 24px;
@@ -109,16 +114,25 @@
   .submit-row { display: none; margin-top: 24px; }
   .submit-row.visible { display: block; }
   .btn-submit {
-    background: linear-gradient(to right, var(--primary), var(--primary-dark));
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
     color: #fff !important; border: none; font-size: 15px; font-weight: 600;
     text-transform: uppercase; letter-spacing: 0.5px;
-    padding: 16px; cursor: pointer; width: 100%; border-radius: 6px;
-    transition: opacity 0.2s, transform 0.1s;
+    padding: 16px; cursor: pointer; width: 100%; border-radius: 10px;
+    transition: box-shadow 0.2s, transform 0.05s;
     display: flex; align-items: center; justify-content: center; gap: 8px;
   }
-  .btn-submit:hover { opacity: 0.92; }
+  .btn-submit:hover { box-shadow: 0 4px 16px rgba(var(--primary-rgb),0.35); }
   .btn-submit:active { transform: scale(0.99); }
   .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+  .upload-select-section { margin-bottom: 24px; padding: 20px 22px; border-radius: 12px; background: linear-gradient(180deg, #f0f4ff 0%, #e8eeff 100%); border: 1px solid var(--border); }
+  .upload-select-section .select-title { font-size: 11px; font-weight: 700; letter-spacing: 1.2px; color: var(--primary); text-transform: uppercase; margin-bottom: 14px; }
+  .upload-select-section .select-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 12px; }
+  @media (max-width: 600px) { .upload-select-section .select-row { grid-template-columns: 1fr; } }
+  .upload-select-section .select-field label { display: block; font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+  .upload-select-section .select-field select { width: 100%; padding: 10px 12px; font-size: 13px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
+  .upload-select-section .select-field select:disabled { background: var(--surface2); color: var(--muted); }
+  .upload-upload-section { display: none; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border); }
+  .upload-upload-section.visible { display: block; }
 </style>
 </head>
 <body>
@@ -134,7 +148,7 @@
   <div class="page-header">
     <div class="breadcrumb"><a href="/dashboard">Dashboard</a> / New Extraction</div>
     <h1>Upload PDF</h1>
-    <p>Upload a Carnegie Learning PDF to extract structured JSON entities. Each page is processed individually through Gemini 2.5 Vision.</p>
+    <p>Select resource, module, and topic, then upload a lesson PDF. Each page is processed through Gemini.</p>
   </div>
 
   {% if error %}
@@ -143,6 +157,37 @@
 
   <div class="upload-card">
     <form method="POST" enctype="multipart/form-data" id="upload-form">
+      <div class="upload-select-section">
+        <div class="select-title">1. Select resource, module &amp; topic</div>
+        <div class="select-row">
+          <div class="select-field">
+            <label for="select-resource">Resource</label>
+            <select id="select-resource" required>
+              <option value="">— Select resource —</option>
+            </select>
+          </div>
+          <div class="select-field">
+            <label for="select-module">Module</label>
+            <select id="select-module" disabled>
+              <option value="">— Select module —</option>
+            </select>
+          </div>
+          <div class="select-field">
+            <label for="select-topic">Topic</label>
+            <select id="select-topic" disabled>
+              <option value="">— Select topic —</option>
+            </select>
+          </div>
+        </div>
+        <input type="hidden" name="selected_resource_id" id="hidden-resource-id" value="">
+        <input type="hidden" name="selected_resource_title" id="hidden-resource-title" value="">
+        <input type="hidden" name="selected_module_id" id="hidden-module-id" value="">
+        <input type="hidden" name="selected_module_title" id="hidden-module-title" value="">
+        <input type="hidden" name="selected_topic_id" id="hidden-topic-id" value="">
+        <input type="hidden" name="selected_topic_title" id="hidden-topic-title" value="">
+      </div>
+      <div class="upload-upload-section" id="upload-upload-section">
+        <div class="select-title" style="color:var(--muted);margin-bottom:10px">2. Upload lesson PDF</div>
       <div class="drop-zone" id="drop-zone">
         <input type="file" name="pdf_file" id="pdf-input" accept=".pdf" required>
         <div class="drop-icon">&#128196;</div>
@@ -183,6 +228,7 @@
           <span>Start Extraction</span>
           <span>&#8594;</span>
         </button>
+      </div>
       </div>
     </form>
   </div>
@@ -236,6 +282,85 @@ document.getElementById('upload-form').addEventListener('submit', () => {
   submitBtn.innerHTML = '<span>Uploading&#8230;</span>';
   submitBtn.disabled = true;
 });
+
+/* Resource → Module → Topic selection */
+let sourceStructure = { resource: null, modules: [] };
+const selectResource = document.getElementById('select-resource');
+const selectModule = document.getElementById('select-module');
+const selectTopic = document.getElementById('select-topic');
+const uploadUploadSection = document.getElementById('upload-upload-section');
+
+function setHiddenSelection(resourceId, resourceTitle, moduleId, moduleTitle, topicId, topicTitle) {
+  document.getElementById('hidden-resource-id').value = resourceId || '';
+  document.getElementById('hidden-resource-title').value = resourceTitle || '';
+  document.getElementById('hidden-module-id').value = moduleId || '';
+  document.getElementById('hidden-module-title').value = moduleTitle || '';
+  document.getElementById('hidden-topic-id').value = topicId || '';
+  document.getElementById('hidden-topic-title').value = topicTitle || '';
+}
+
+function onTopicChange() {
+  const topicOpt = selectTopic.options[selectTopic.selectedIndex];
+  if (topicOpt && topicOpt.value) {
+    const resOpt = selectResource.options[selectResource.selectedIndex];
+    const modOpt = selectModule.options[selectModule.selectedIndex];
+    uploadUploadSection.classList.add('visible');
+    setHiddenSelection(resOpt && resOpt.value ? resOpt.value : '', resOpt && resOpt.value ? resOpt.text : '', modOpt && modOpt.value ? modOpt.value : '', modOpt && modOpt.value ? modOpt.text : '', topicOpt.value, topicOpt.text);
+  } else {
+    uploadUploadSection.classList.remove('visible');
+    setHiddenSelection('', '', '', '', '', '');
+  }
+}
+
+fetch('/api/source-structure').then(r => r.json()).then(data => {
+  sourceStructure = data;
+  if (data.resource) {
+    const opt = document.createElement('option');
+    opt.value = data.resource.id;
+    opt.textContent = data.resource.title;
+    selectResource.appendChild(opt);
+  }
+  if (data.modules && data.modules.length > 0 && data.resource) {
+    selectResource.value = data.resource.id;
+    selectResource.dispatchEvent(new Event('change'));
+  }
+}).catch(() => {});
+
+selectResource.addEventListener('change', () => {
+  selectModule.innerHTML = '<option value="">— Select module —</option>';
+  selectModule.disabled = true;
+  selectTopic.innerHTML = '<option value="">— Select topic —</option>';
+  selectTopic.disabled = true;
+  uploadUploadSection.classList.remove('visible');
+  setHiddenSelection('', '', '', '', '', '');
+  if (!sourceStructure.modules || !selectResource.value) return;
+  sourceStructure.modules.forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m.id;
+    opt.textContent = 'Module ' + (m.moduleNumber || '') + (m.title ? ': ' + m.title : '');
+    selectModule.appendChild(opt);
+  });
+  selectModule.disabled = false;
+});
+
+selectModule.addEventListener('change', () => {
+  selectTopic.innerHTML = '<option value="">— Select topic —</option>';
+  selectTopic.disabled = true;
+  uploadUploadSection.classList.remove('visible');
+  setHiddenSelection('', '', '', '', '', '');
+  if (!selectModule.value) return;
+  const mod = sourceStructure.modules.find(m => m.id === selectModule.value);
+  if (!mod || !mod.topics) return;
+  mod.topics.forEach(t => {
+    const opt = document.createElement('option');
+    opt.value = t.id;
+    opt.textContent = 'Topic ' + (t.topicNumber || '') + (t.title ? ': ' + t.title : '');
+    selectTopic.appendChild(opt);
+  });
+  selectTopic.disabled = false;
+});
+
+selectTopic.addEventListener('change', onTopicChange);
 </script>
 </body>
 </html>

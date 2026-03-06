@@ -17,34 +17,56 @@
 
   .page { max-width: 1260px; margin: 0 auto; padding: 28px 24px; }
 
-  /* Upload Card */
+  /* Upload Card — centered on the page */
   .upload-card {
-    background: #fff; border: 1px solid #e5e7eb; border-radius: 10px;
-    padding: 24px 28px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); margin-bottom: 28px;
+    background: #fff; border: 1px solid #e8eaf0; border-radius: 14px;
+    padding: 28px 32px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); margin-bottom: 28px;
+    max-width: 720px; margin-left: auto; margin-right: auto; width: 100%;
   }
-  .upload-card h5 { font-weight: 700; margin-bottom: 4px; }
-  .upload-card .text-muted { font-size: 13px; }
+  .upload-card .upload-inner { max-width: 100%; }
+  .upload-card h5 { font-weight: 700; font-size: 1.15rem; margin-bottom: 6px; color: #1f2937; }
+  .upload-card .text-muted { font-size: 13px; line-height: 1.5; color: #6b7280; }
 
   .drop-zone {
-    border: 2px dashed #d1d5db; border-radius: 8px; padding: 32px 20px;
-    text-align: center; cursor: pointer; transition: all 0.2s; position: relative;
-    background: #fafbfc; min-height: 140px;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    border: 2px dashed #d1d5db; border-radius: 12px; padding: 36px 24px;
+    text-align: center; cursor: pointer; transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+    position: relative; background: linear-gradient(180deg, #fafbfc 0%, #f3f4f6 100%);
+    min-height: 152px; display: flex; flex-direction: column; align-items: center; justify-content: center;
   }
-  .drop-zone:hover, .drop-zone.dragover { border-color: var(--primary); background: rgba(124,58,237,0.03); }
+  .drop-zone:hover, .drop-zone.dragover {
+    border-color: var(--primary); background: linear-gradient(180deg, rgba(124,58,237,0.06) 0%, rgba(124,58,237,0.02) 100%);
+    box-shadow: 0 0 0 4px rgba(124,58,237,0.08);
+  }
   .drop-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-  .drop-icon { font-size: 36px; opacity: 0.4; margin-bottom: 8px; }
-  .drop-zone:hover .drop-icon { opacity: 0.7; }
+  .drop-icon {
+    width: 52px; height: 52px; border-radius: 12px; background: rgba(124,58,237,0.1);
+    display: flex; align-items: center; justify-content: center; font-size: 26px; margin-bottom: 12px;
+    color: var(--primary); transition: background 0.2s, transform 0.2s;
+  }
+  .drop-zone:hover .drop-icon { background: rgba(124,58,237,0.16); transform: scale(1.02); }
+  .drop-zone .drop-title { font-size: 15px; font-weight: 600; color: #374151; margin-bottom: 4px; }
+  .drop-zone .drop-sub { font-size: 12px; color: #9ca3af; }
 
-  .file-preview { display: none; margin-top: 12px; padding: 10px 14px; border-radius: 6px; background: #f0fdf4; border: 1px solid #bbf7d0; align-items: center; gap: 10px; }
+  .file-preview {
+    display: none; margin-top: 14px; padding: 14px 18px; border-radius: 10px;
+    background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border: 1px solid #bbf7d0;
+    align-items: center; gap: 12px;
+  }
   .file-preview.visible { display: flex; }
-  .file-preview-name { font-size: 13px; font-weight: 600; flex: 1; word-break: break-all; }
-  .file-preview-size { font-size: 12px; color: #16a34a; }
-  .file-preview-remove { border: none; background: none; color: #9ca3af; font-size: 18px; cursor: pointer; }
-  .file-preview-remove:hover { color: #ef4444; }
+  .file-preview-name { font-size: 14px; font-weight: 600; flex: 1; word-break: break-all; color: #166534; }
+  .file-preview-size { font-size: 12px; color: #16a34a; font-weight: 500; }
+  .file-preview-remove { border: none; background: none; color: #9ca3af; font-size: 20px; cursor: pointer; padding: 2px 6px; border-radius: 6px; transition: color 0.2s, background 0.2s; }
+  .file-preview-remove:hover { color: #ef4444; background: rgba(239,68,68,0.08); }
 
-  .submit-row { display: none; margin-top: 12px; }
+  .submit-row { display: none; margin-top: 16px; }
   .submit-row.visible { display: block; }
+  .submit-row .btn-submit-upload {
+    padding: 14px 20px; font-size: 15px; font-weight: 600; border-radius: 10px;
+    background: linear-gradient(135deg, var(--primary) 0%, #6d28d9 100%); border: none;
+    color: #fff; transition: box-shadow 0.2s, transform 0.05s;
+  }
+  .submit-row .btn-submit-upload:hover { box-shadow: 0 4px 14px rgba(124,58,237,0.4); color: #fff; }
+  .submit-row .btn-submit-upload:active { transform: scale(0.99); }
 
   /* Stats */
   .stat-card { border-radius: 10px; border: 1px solid #e5e7eb; background: #fff; text-align: center; padding: 18px 12px; }
@@ -100,6 +122,48 @@
   }
   .active-job-card .job-name { font-weight: 600; font-size: 14px; }
   .active-job-card .job-meta { font-size: 12px; color: #6b7280; margin-top: 4px; }
+
+  /* Upload intro (above form) */
+  .upload-intro { margin-bottom: 24px; }
+  .upload-intro .intro-icon {
+    width: 56px; height: 56px; border-radius: 14px; background: rgba(124,58,237,0.12);
+    display: flex; align-items: center; justify-content: center; font-size: 28px;
+    margin-bottom: 16px; color: var(--primary);
+  }
+  .upload-intro h5 { font-weight: 700; font-size: 1.15rem; margin-bottom: 8px; color: #1f2937; }
+  .upload-intro .intro-desc { font-size: 13px; color: #6b7280; line-height: 1.55; margin-bottom: 20px; }
+  .upload-intro .how-list { list-style: none; padding: 0; margin: 0; }
+  .upload-intro .how-list li {
+    font-size: 12px; color: #4b5563; padding: 6px 0 6px 24px; position: relative;
+    border-left: 2px solid #e5e7eb; margin-left: 6px;
+  }
+  .upload-intro .how-list li::before {
+    content: ''; position: absolute; left: -8px; top: 14px;
+    width: 6px; height: 6px; border-radius: 50%; background: var(--primary);
+  }
+  .upload-intro .how-list li:first-child { padding-top: 0; }
+  .upload-intro .how-list li:last-child { border-left-color: transparent; padding-bottom: 0; }
+
+  /* Resource → Module → Topic selection (required before upload) */
+  .upload-select-section {
+    margin-bottom: 24px; padding: 20px 22px; border-radius: 12px;
+    background: linear-gradient(180deg, #f0f4ff 0%, #e8eeff 100%);
+    border: 1px solid #c7d2fe;
+  }
+  .upload-select-section .select-title {
+    font-size: 11px; font-weight: 700; letter-spacing: 1.2px; color: #4338ca;
+    text-transform: uppercase; margin-bottom: 14px;
+  }
+  .upload-select-section .select-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 12px; }
+  @media (max-width: 768px) { .upload-select-section .select-row { grid-template-columns: 1fr; } }
+  .upload-select-section .select-field label { display: block; font-size: 12px; font-weight: 600; color: #334155; margin-bottom: 6px; }
+  .upload-select-section .select-field select {
+    width: 100%; padding: 10px 12px; font-size: 13px; border-radius: 8px;
+    border: 1px solid #c7d2fe; background: #fff; color: #1e293b;
+  }
+  .upload-select-section .select-field select:disabled { background: #f1f5f9; color: #94a3b8; }
+  .upload-upload-section { display: none; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e2e8f0; }
+  .upload-upload-section.visible { display: block; }
 </style>
 </head>
 <body>
@@ -138,18 +202,49 @@
 
   <!-- Upload -->
   <div class="upload-card">
-    <div class="row align-items-center">
-      <div class="col-md-4">
+    <div class="upload-inner">
+      <div class="upload-intro">
+        <div class="intro-icon">&#128196;</div>
         <h5>Extract PDF</h5>
-        <p class="text-muted mb-0">Upload a PDF to extract structured JSON. The pipeline runs in the background.</p>
+        <p class="text-muted mb-0">Select resource, module, and topic, then upload a lesson PDF. The pipeline runs in the background.</p>
       </div>
-      <div class="col-md-8">
-        <form method="POST" action="/upload" enctype="multipart/form-data" id="upload-form">
+      <form method="POST" action="/upload" enctype="multipart/form-data" id="upload-form">
+          <div class="upload-select-section">
+            <div class="select-title">1. Select resource, module &amp; topic</div>
+            <div class="select-row">
+              <div class="select-field">
+                <label for="select-resource">Resource</label>
+                <select id="select-resource" required>
+                  <option value="">— Select resource —</option>
+                </select>
+              </div>
+              <div class="select-field">
+                <label for="select-module">Module</label>
+                <select id="select-module" disabled>
+                  <option value="">— Select module —</option>
+                </select>
+              </div>
+              <div class="select-field">
+                <label for="select-topic">Topic</label>
+                <select id="select-topic" disabled>
+                  <option value="">— Select topic —</option>
+                </select>
+              </div>
+            </div>
+            <input type="hidden" name="selected_resource_id" id="hidden-resource-id" value="">
+            <input type="hidden" name="selected_resource_title" id="hidden-resource-title" value="">
+            <input type="hidden" name="selected_module_id" id="hidden-module-id" value="">
+            <input type="hidden" name="selected_module_title" id="hidden-module-title" value="">
+            <input type="hidden" name="selected_topic_id" id="hidden-topic-id" value="">
+            <input type="hidden" name="selected_topic_title" id="hidden-topic-title" value="">
+          </div>
+          <div class="upload-upload-section" id="upload-upload-section">
+            <div class="select-title" style="color:#64748b;margin-bottom:10px">2. Upload lesson PDF</div>
           <div class="drop-zone" id="drop-zone">
             <input type="file" name="pdf_file" id="pdf-input" accept=".pdf" required>
             <div class="drop-icon">&#128196;</div>
-            <div style="font-size:14px;font-weight:600;color:#374151">Drop PDF here or click to browse</div>
-            <div style="font-size:12px;color:#9ca3af;margin-top:4px">PDF only, up to 100 MB</div>
+            <div class="drop-title">Drop PDF here or click to browse</div>
+            <div class="drop-sub">PDF only, up to 100 MB</div>
           </div>
           <div class="file-preview" id="file-preview">
             <span style="font-size:22px">&#128203;</span>
@@ -159,12 +254,12 @@
           </div>
           <input type="hidden" name="api_key" value="">
           <div class="submit-row" id="submit-row">
-            <button type="submit" class="btn btn-primary w-100" id="submit-btn" style="background:var(--primary);border-color:var(--primary)">
+            <button type="submit" class="btn btn-submit-upload w-100" id="submit-btn">
               Start Extraction &#8594;
             </button>
           </div>
+          </div>
         </form>
-      </div>
     </div>
   </div>
 
@@ -310,6 +405,92 @@ document.getElementById('upload-form').addEventListener('submit', () => {
   submitBtn.innerHTML = 'Uploading&hellip;';
   submitBtn.disabled = true;
 });
+
+/* ── Resource → Module → Topic selection ── */
+let sourceStructure = { resource: null, modules: [] };
+const selectResource = document.getElementById('select-resource');
+const selectModule = document.getElementById('select-module');
+const selectTopic = document.getElementById('select-topic');
+const uploadUploadSection = document.getElementById('upload-upload-section');
+
+function setHiddenSelection(resourceId, resourceTitle, moduleId, moduleTitle, topicId, topicTitle) {
+  document.getElementById('hidden-resource-id').value = resourceId || '';
+  document.getElementById('hidden-resource-title').value = resourceTitle || '';
+  document.getElementById('hidden-module-id').value = moduleId || '';
+  document.getElementById('hidden-module-title').value = moduleTitle || '';
+  document.getElementById('hidden-topic-id').value = topicId || '';
+  document.getElementById('hidden-topic-title').value = topicTitle || '';
+}
+
+function onTopicChange() {
+  const topicOpt = selectTopic.options[selectTopic.selectedIndex];
+  if (topicOpt && topicOpt.value) {
+    const resOpt = selectResource.options[selectResource.selectedIndex];
+    const modOpt = selectModule.options[selectModule.selectedIndex];
+    uploadUploadSection.classList.add('visible');
+    setHiddenSelection(
+      resOpt && resOpt.value ? resOpt.value : '',
+      resOpt && resOpt.value ? resOpt.text : '',
+      modOpt && modOpt.value ? modOpt.value : '',
+      modOpt && modOpt.value ? modOpt.text : '',
+      topicOpt.value,
+      topicOpt.text
+    );
+  } else {
+    uploadUploadSection.classList.remove('visible');
+    setHiddenSelection('', '', '', '', '', '');
+  }
+}
+
+fetch('/api/source-structure').then(function(r) { return r.json(); }).then(function(data) {
+  sourceStructure = data;
+  if (data.resource) {
+    var opt = document.createElement('option');
+    opt.value = data.resource.id;
+    opt.textContent = data.resource.title;
+    selectResource.appendChild(opt);
+  }
+  if (data.modules && data.modules.length > 0 && data.resource) {
+    selectResource.value = data.resource.id;
+    selectResource.dispatchEvent(new Event('change'));
+  }
+}).catch(function() {});
+
+selectResource.addEventListener('change', function() {
+  selectModule.innerHTML = '<option value="">— Select module —</option>';
+  selectModule.disabled = true;
+  selectTopic.innerHTML = '<option value="">— Select topic —</option>';
+  selectTopic.disabled = true;
+  uploadUploadSection.classList.remove('visible');
+  setHiddenSelection('', '', '', '', '', '');
+  if (!sourceStructure.modules || !this.value) return;
+  sourceStructure.modules.forEach(function(m) {
+    var opt = document.createElement('option');
+    opt.value = m.id;
+    opt.textContent = 'Module ' + (m.moduleNumber || '') + (m.title ? ': ' + m.title : '');
+    selectModule.appendChild(opt);
+  });
+  selectModule.disabled = false;
+});
+
+selectModule.addEventListener('change', function() {
+  selectTopic.innerHTML = '<option value="">— Select topic —</option>';
+  selectTopic.disabled = true;
+  uploadUploadSection.classList.remove('visible');
+  setHiddenSelection('', '', '', '', '', '');
+  if (!this.value) return;
+  var mod = sourceStructure.modules.find(function(m) { return m.id === selectModule.value; });
+  if (!mod || !mod.topics) return;
+  mod.topics.forEach(function(t) {
+    var opt = document.createElement('option');
+    opt.value = t.id;
+    opt.textContent = 'Topic ' + (t.topicNumber || '') + (t.title ? ': ' + t.title : '');
+    selectTopic.appendChild(opt);
+  });
+  selectTopic.disabled = false;
+});
+
+selectTopic.addEventListener('change', onTopicChange);
 
 /* ── Background job polling + toast notifications ── */
 const completedSet = new Set();

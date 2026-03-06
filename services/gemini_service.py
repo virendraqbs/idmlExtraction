@@ -87,6 +87,12 @@ practice_section_type rules (null when no such section is present):
   Reference to LiveHint, online platform, QR code       → INTERACTIVE_PRACTICE
   Section addressed to families / parents               → FAMILY_GUIDE
 
+═══ MODULE AND TOPIC SUMMARIES ═══
+When the page shows a module or topic overview (e.g. "About this module", "In this topic", summary paragraph under a module/topic heading), extract that text:
+- lesson.module_summary: summary or description of the module when visible.
+- lesson.topic_summary: summary or description of the topic when visible.
+Use null when no such text is on the page.
+
 ═══ IMAGE EXTRACTION (CL-Json-Schema media/image) ═══
 For EVERY image, graph, chart, diagram, icon on the page output an object with:
 
@@ -121,7 +127,7 @@ Graph/response-area (keep):
   "lesson": {
     "lesson_number": null, "title": null, "lesson_summary": null,
     "learning_goals": [], "module_title": null, "module_number": null,
-    "topic_title": null, "topic_number": null, "module_summary": null
+    "topic_title": null, "topic_number": null, "module_summary": null, "topic_summary": null
   },
   "standards_block": {
     "title": null, "standards_body": null, "grade_level": null,

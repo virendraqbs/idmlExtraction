@@ -167,6 +167,9 @@ window.MathJax = {
   .editor-section .std-item-block:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
   .editor-section .std-item-block .std-code .std-field-value { font-size: 15px; font-weight: 700; color: var(--text); }
   .editor-section .std-item-block .std-fulltext .std-field-value { margin: 0; line-height: 1.65; color: var(--text); }
+  .editor-context-summaries .editor-summary-block { margin-bottom: 0; }
+  .editor-context-summaries .editor-summary-block + .editor-summary-block { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border-light); }
+  .editor-context-summaries .editor-summary { margin-top: 8px; margin-bottom: 0; }
   .editor-section .activity-item { margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--border-light); }
   .editor-section .activity-item:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
   .editor-section .task-item { margin: 10px 0 10px 16px; padding: 12px; background: var(--surface2); border-radius: 4px; border-left: 3px solid var(--primary); }
@@ -666,6 +669,25 @@ function renderPageWebView(page, data) {
       <span class="schema-tag">page ${pn}</span>
       <h3>Page ${escapeHtml(String(pn))} — ${escapeHtml(page.pageType || 'Content')}</h3>
     </div>`;
+  }
+
+  const modSummary = (mod.moduleSummary || data.module?.moduleSummary || '').trim();
+  const topicSummaryVal = (topic.topicSummary || data.topic?.topicSummary || '').trim();
+  if (modSummary || topicSummaryVal) {
+    html += '<div class="editor-section editor-context-summaries">';
+    if (modSummary) {
+      html += '<div class="editor-summary-block">';
+      html += '<span class="schema-tag">module</span>';
+      html += '<h3>Module Summary</h3>';
+      html += '<p class="editor-summary">' + nl2br(escapeHtml(modSummary)) + '</p></div>';
+    }
+    if (topicSummaryVal) {
+      html += '<div class="editor-summary-block">';
+      html += '<span class="schema-tag">topic</span>';
+      html += '<h3>Topic Summary</h3>';
+      html += '<p class="editor-summary">' + nl2br(escapeHtml(topicSummaryVal)) + '</p></div>';
+    }
+    html += '</div>';
   }
 
   if (page && page.pageType === 'STANDARDS_PAGE') {
