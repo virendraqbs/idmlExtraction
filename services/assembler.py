@@ -205,10 +205,11 @@ def assemble_schemas(
         total_pages=len(pages), extracted_at=extracted_at,
         book_name_override=book_name,
     )
+    # Module only gets module-level images; lesson images stay on activities/pages
     module = build_module(
         module_id=module_id, resource_id=resource_id,
         topic_id=topic_id, lesson_meta=lesson_meta,
-        image_ids=[img["id"] for img in images],
+        image_ids=[],
         module_name_override=module_name,
         module_subtitle_override=module_subtitle,
         module_meta_override=module_meta,

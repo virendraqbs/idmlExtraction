@@ -21,10 +21,24 @@ import unicodedata
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, JSONResponse
 from starlette.templating import Jinja2Templates
 
 from config import config
+from database import (
+    create_module,
+    create_topic,
+    get_module,
+    get_module_id_for_topic,
+    get_topic,
+    get_topics_for_module,
+    link_module_topic,
+    list_modules,
+    list_topics,
+    update_module,
+    update_topic,
+    update_topic_pdf_path,
+)
 from models.job import job_repo
 from services.pipeline_service import PipelineService
 from utils.file_utils import is_allowed_file, read_json
@@ -43,6 +57,20 @@ async def require_login(request: Request):
 
 jobs_router = APIRouter()
 templates = Jinja2Templates(directory=str(config.BASE_DIR / "templates"))
+
+
+def _dashboard_response(request: Request, error: str | None = None):
+    """Return dashboard HTML with optional error message."""
+    return templates.TemplateResponse(
+        "dashboard.html",
+        {
+            "request": request,
+            "session": request.session,
+            "jobs": [j.to_dict(include_logs=False) for j in job_repo.all()],
+            "folders": _scan_output_folders(),
+            "error": error,
+        },
+    )
 
 
 def _secure_filename(filename: str) -> str:
@@ -160,11 +188,28 @@ async def browse_outputs(request: Request, _=Depends(require_login)):
     folders = _scan_output_folders()
     return templates.TemplateResponse(
         "browse.html",
-        {"request": request, "folders": folders},
+        {"request": request, "session": request.session, "folders": folders},
     )
 
 
 # ── Upload ────────────────────────────────────────────────────────────────────
+
+@jobs_router.get("/api/modules")
+async def api_list_modules(_=Depends(require_login)):
+    """List all modules from cl_module for Topic flow and lesson-upload dropdown."""
+    modules = list_modules()
+    return JSONResponse(content=[{"id": m["id"], "title": m["title"], "module_number": m["module_number"]} for m in modules])
+
+
+@jobs_router.get("/api/topics")
+async def api_list_topics(request: Request, _=Depends(require_login)):
+    """List topics for a module (for lesson-upload Topic dropdown)."""
+    module_id = (request.query_params.get("module_id") or "").strip()
+    if not module_id:
+        return JSONResponse(content=[])
+    topics = get_topics_for_module(module_id)
+    return JSONResponse(content=[{"id": t["id"], "title": t["title"], "topic_number": t.get("topic_number")} for t in topics])
+
 
 @jobs_router.get("/upload", response_class=HTMLResponse)
 async def upload_page(request: Request, _=Depends(require_login)):
@@ -176,6 +221,7 @@ async def upload(
     request: Request,
     pdf_file: UploadFile | None = File(None),
     api_key: str = Form(""),
+    upload_type: str = Form(""),
     book_name: str = Form(""),
     module_name: str = Form(""),
     module_subtitle: str = Form(""),
@@ -186,9 +232,18 @@ async def upload(
     selected_module_title: str = Form(""),
     selected_topic_id: str = Form(""),
     selected_topic_title: str = Form(""),
+    topic_module_id: str = Form(""),
     _=Depends(require_login),
 ):
     api_key = api_key.strip() or config.GEMINI_API_KEY
+    content_type = (upload_type or "").strip().upper()
+
+    # ── SRB / TIG only (Module/Topic managed in /modules and /topics) ─────────
+    if content_type not in ("SRB", "TIG"):
+        return _dashboard_response(
+            request,
+            error="Please select a content type: SRB or TIG.",
+        )
 
     if not pdf_file or not pdf_file.filename:
         return templates.TemplateResponse(
@@ -233,6 +288,216 @@ async def upload(
     PipelineService.start(job)
 
     return RedirectResponse(url="/dashboard", status_code=303)
+
+
+# ── Module Management ───────────────────────────────────────────────────────
+
+@jobs_router.get("/modules", response_class=HTMLResponse)
+async def modules_list(request: Request, _=Depends(require_login)):
+    """List all modules with nav."""
+    modules = list_modules()
+    return templates.TemplateResponse(
+        "modules_list.html",
+        {"request": request, "session": request.session, "modules": modules},
+    )
+
+
+@jobs_router.get("/modules/add", response_class=HTMLResponse)
+async def module_add_page(request: Request, _=Depends(require_login)):
+    return templates.TemplateResponse(
+        "module_add.html",
+        {"request": request, "session": request.session, "error": None},
+    )
+
+
+@jobs_router.post("/modules/add", response_class=HTMLResponse)
+async def module_add(
+    request: Request,
+    pdf_file: UploadFile | None = File(None),
+    _=Depends(require_login),
+):
+    if not pdf_file or not pdf_file.filename or not is_allowed_file(pdf_file.filename):
+        return templates.TemplateResponse(
+            "module_add.html",
+            {"request": request, "session": request.session, "error": "Please upload a valid PDF file."},
+        )
+    fn = _secure_filename(pdf_file.filename)
+    title = (fn or "Untitled").replace(".pdf", "").replace(".PDF", "").strip() or "Untitled"
+    mod = create_module(title=title)
+    pdf_path = str(config.UPLOAD_DIR / f"module_{mod['id']}_{fn}")
+    config.UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    with open(pdf_path, "wb") as buf:
+        shutil.copyfileobj(pdf_file.file, buf)
+    update_module(mod["id"], pdf_path=pdf_path)
+    return RedirectResponse(url="/modules?msg=added", status_code=303)
+
+
+@jobs_router.get("/modules/{module_id}/edit", response_class=HTMLResponse)
+async def module_edit_page(request: Request, module_id: str, _=Depends(require_login)):
+    mod = get_module(module_id)
+    if not mod:
+        raise HTTPException(status_code=404, detail="Module not found")
+    return templates.TemplateResponse(
+        "module_edit.html",
+        {"request": request, "session": request.session, "module": mod, "error": None},
+    )
+
+
+@jobs_router.post("/modules/{module_id}/edit", response_class=HTMLResponse)
+async def module_edit(
+    request: Request,
+    module_id: str,
+    title: str = Form(""),
+    module_number: str = Form(""),
+    module_summary: str = Form(""),
+    grade_level: str = Form(""),
+    standards_body: str = Form(""),
+    pdf_file: UploadFile | None = File(None),
+    _=Depends(require_login),
+):
+    mod = get_module(module_id)
+    if not mod:
+        raise HTTPException(status_code=404, detail="Module not found")
+    num = None
+    if module_number.strip():
+        try:
+            num = int(module_number.strip())
+        except ValueError:
+            pass
+    update_module(
+        module_id,
+        title=(title or mod["title"] or "").strip() or "Untitled",
+        module_number=num,
+        module_summary=(module_summary or "").strip(),
+        grade_level=(grade_level or "").strip(),
+        standards_body=(standards_body or "").strip(),
+    )
+    if pdf_file and pdf_file.filename and is_allowed_file(pdf_file.filename):
+        fn = _secure_filename(pdf_file.filename)
+        pdf_path = str(config.UPLOAD_DIR / f"module_{module_id}_{fn}")
+        config.UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+        with open(pdf_path, "wb") as buf:
+            shutil.copyfileobj(pdf_file.file, buf)
+        update_module(module_id, pdf_path=pdf_path)
+    return RedirectResponse(url="/modules?msg=updated", status_code=303)
+
+
+# ── Topic Management ─────────────────────────────────────────────────────────
+
+@jobs_router.get("/topics", response_class=HTMLResponse)
+async def topics_list(request: Request, _=Depends(require_login)):
+    """List all topics with module title and nav."""
+    topics = list_topics()
+    return templates.TemplateResponse(
+        "topics_list.html",
+        {"request": request, "session": request.session, "topics": topics},
+    )
+
+
+@jobs_router.get("/topics/add", response_class=HTMLResponse)
+async def topic_add_page(request: Request, _=Depends(require_login)):
+    modules = list_modules()
+    return templates.TemplateResponse(
+        "topic_add.html",
+        {"request": request, "session": request.session, "modules": modules, "error": None},
+    )
+
+
+@jobs_router.post("/topics/add", response_class=HTMLResponse)
+async def topic_add(
+    request: Request,
+    module_id: str = Form(""),
+    pdf_file: UploadFile | None = File(None),
+    _=Depends(require_login),
+):
+    mod_id = (module_id or "").strip()
+    if not mod_id:
+        modules = list_modules()
+        return templates.TemplateResponse(
+            "topic_add.html",
+            {"request": request, "session": request.session, "modules": modules, "error": "Please select a module."},
+        )
+    if not get_module(mod_id):
+        modules = list_modules()
+        return templates.TemplateResponse(
+            "topic_add.html",
+            {"request": request, "session": request.session, "modules": modules, "error": "Selected module not found."},
+        )
+    if not pdf_file or not pdf_file.filename or not is_allowed_file(pdf_file.filename):
+        modules = list_modules()
+        return templates.TemplateResponse(
+            "topic_add.html",
+            {"request": request, "session": request.session, "modules": modules, "error": "Please upload a valid PDF file."},
+        )
+    fn = _secure_filename(pdf_file.filename)
+    title = (fn or "Untitled").replace(".pdf", "").replace(".PDF", "").strip() or "Untitled"
+    topic = create_topic(title=title)
+    link_module_topic(mod_id, topic["id"])
+    pdf_path = str(config.UPLOAD_DIR / f"topic_{topic['id']}_{fn}")
+    config.UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    with open(pdf_path, "wb") as buf:
+        shutil.copyfileobj(pdf_file.file, buf)
+    update_topic_pdf_path(topic["id"], pdf_path)
+    return RedirectResponse(url="/topics?msg=added", status_code=303)
+
+
+@jobs_router.get("/topics/{topic_id}/edit", response_class=HTMLResponse)
+async def topic_edit_page(request: Request, topic_id: str, _=Depends(require_login)):
+    topic = get_topic(topic_id)
+    if not topic:
+        raise HTTPException(status_code=404, detail="Topic not found")
+    modules = list_modules()
+    current_module_id = get_module_id_for_topic(topic_id)
+    return templates.TemplateResponse(
+        "topic_edit.html",
+        {
+            "request": request,
+            "session": request.session,
+            "topic": topic,
+            "modules": modules,
+            "current_module_id": current_module_id or "",
+            "error": None,
+        },
+    )
+
+
+@jobs_router.post("/topics/{topic_id}/edit", response_class=HTMLResponse)
+async def topic_edit(
+    request: Request,
+    topic_id: str,
+    title: str = Form(""),
+    topic_number: str = Form(""),
+    topic_summary: str = Form(""),
+    module_id: str = Form(""),
+    pdf_file: UploadFile | None = File(None),
+    _=Depends(require_login),
+):
+    topic = get_topic(topic_id)
+    if not topic:
+        raise HTTPException(status_code=404, detail="Topic not found")
+    num = None
+    if topic_number.strip():
+        try:
+            num = int(topic_number.strip())
+        except ValueError:
+            pass
+    update_topic(
+        topic_id,
+        title=(title or topic.get("title") or "").strip() or "Untitled",
+        topic_number=num,
+        topic_summary=(topic_summary or "").strip(),
+    )
+    mod_id = (module_id or "").strip()
+    if mod_id and get_module(mod_id):
+        link_module_topic(mod_id, topic_id, sequence_number=1)
+    if pdf_file and pdf_file.filename and is_allowed_file(pdf_file.filename):
+        fn = _secure_filename(pdf_file.filename)
+        pdf_path = str(config.UPLOAD_DIR / f"topic_{topic_id}_{fn}")
+        config.UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+        with open(pdf_path, "wb") as buf:
+            shutil.copyfileobj(pdf_file.file, buf)
+        update_topic_pdf_path(topic_id, pdf_path)
+    return RedirectResponse(url="/topics?msg=updated", status_code=303)
 
 
 def _collect_upload_options() -> dict:

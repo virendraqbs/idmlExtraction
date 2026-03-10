@@ -14,6 +14,8 @@ env/
 # Environment variables
 .env
 
+# Local SQLite (app now uses MySQL cl_json_schema)
+*.db
 # Runtime directories
 uploads/
 outputs/
@@ -42,3 +44,6 @@ docs/S3_IMAGE_UPLOAD_PLAN.md
 docs/TIG_IMPLEMENTATION_PLAN.md
 verify_extraction_output/
 verify_image_extraction.py
+cl_json_schema.sql
+docs/SCHEMA_VS_OUTPUT_9b80ecc4.md
+docs/QA_SCHEMA_VS_OUTPUT.md

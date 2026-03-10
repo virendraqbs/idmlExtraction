@@ -162,6 +162,9 @@
     border: 1px solid #c7d2fe; background: #fff; color: #1e293b;
   }
   .upload-select-section .select-field select:disabled { background: #f1f5f9; color: #94a3b8; }
+  .upload-type-section { margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid #e2e8f0; }
+  .upload-srb-flow { display: none; }
+  .upload-srb-flow.visible { display: block; }
   .upload-upload-section { display: none; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e2e8f0; }
   .upload-upload-section.visible { display: block; }
 </style>
@@ -171,9 +174,14 @@
 <nav class="navbar navbar-expand navbar-custom sticky-top">
   <div class="container-fluid px-4">
     <a class="navbar-brand" href="/dashboard">CL <span>Pipeline</span></a>
+    <div class="navbar-nav me-auto mb-2 mb-lg-0 gap-2">
+      <a class="nav-link" href="/dashboard" style="font-size:14px">Dashboard</a>
+      <a class="nav-link" href="/modules" style="font-size:14px">Module Management</a>
+      <a class="nav-link" href="/topics" style="font-size:14px">Topic Management</a>
+      <a class="nav-link" href="/browse" style="font-size:14px">Browse All</a>
+    </div>
     <div class="d-flex align-items-center gap-3">
       <span class="text-muted" style="font-size:13px">{{ session.username }}</span>
-      <a href="/browse" class="btn btn-outline-secondary btn-sm">Browse All</a>
       <a href="/logout" class="btn btn-outline-secondary btn-sm">Sign Out</a>
     </div>
   </div>
@@ -209,8 +217,25 @@
         <p class="text-muted mb-0">Select resource, module, and topic, then upload a lesson PDF. The pipeline runs in the background.</p>
       </div>
       <form method="POST" action="/upload" enctype="multipart/form-data" id="upload-form">
+          <div class="upload-type-section upload-select-section">
+            <div class="select-title">1. Select content type</div>
+            <div class="select-row">
+              <div class="select-field">
+                <label for="upload-type">Content type</label>
+                <select id="upload-type">
+                  <option value="">— Select type —</option>
+                  <option value="SRB">SRB</option>
+                  <option value="TIG">TIG</option>
+                </select>
+              </div>
+            </div>
+            <input type="hidden" name="upload_type" id="hidden-upload-type" value="">
+          </div>
+          
+          <!-- SRB / TIG: resource, module, topic + PDF -->
+          <div id="upload-srb-flow" class="upload-srb-flow">
           <div class="upload-select-section">
-            <div class="select-title">1. Select resource, module &amp; topic</div>
+            <div class="select-title">2. SELECT RESOURCE, MODULE &amp; TOPIC</div>
             <div class="select-row">
               <div class="select-field">
                 <label for="select-resource">Resource</label>
@@ -239,9 +264,9 @@
             <input type="hidden" name="selected_topic_title" id="hidden-topic-title" value="">
           </div>
           <div class="upload-upload-section" id="upload-upload-section">
-            <div class="select-title" style="color:#64748b;margin-bottom:10px">2. Upload lesson PDF</div>
+            <div class="select-title" style="color:#64748b;margin-bottom:10px">3. Upload lesson PDF</div>
           <div class="drop-zone" id="drop-zone">
-            <input type="file" name="pdf_file" id="pdf-input" accept=".pdf" required>
+            <input type="file" name="pdf_file" id="pdf-input" accept=".pdf">
             <div class="drop-icon">&#128196;</div>
             <div class="drop-title">Drop PDF here or click to browse</div>
             <div class="drop-sub">PDF only, up to 100 MB</div>
@@ -257,6 +282,7 @@
             <button type="submit" class="btn btn-submit-upload w-100" id="submit-btn">
               Start Extraction &#8594;
             </button>
+          </div>
           </div>
           </div>
         </form>
@@ -352,6 +378,14 @@
 <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
 <script>
 $(document).ready(function() {
+  if (window.location.search.indexOf('msg=module_saved') !== -1) {
+    history.replaceState({}, '', window.location.pathname);
+    setTimeout(function() { showToast('Module saved', 'Module information has been saved to the database.', 'success'); }, 300);
+  }
+  if (window.location.search.indexOf('msg=topic_saved') !== -1) {
+    history.replaceState({}, '', window.location.pathname);
+    setTimeout(function() { showToast('Topic saved', 'Topic has been saved and linked to the module.', 'success'); }, 300);
+  }
   dtTable = $('#extractions-table-v2').DataTable({
     order: [[0, 'desc']],
     pageLength: 10,
@@ -403,9 +437,42 @@ dropZone.addEventListener('drop', e => {
   e.preventDefault(); dropZone.classList.remove('dragover');
   if (e.dataTransfer.files[0]) { fileInput.files = e.dataTransfer.files; showFilePreview(); }
 });
-document.getElementById('upload-form').addEventListener('submit', () => {
-  submitBtn.innerHTML = 'Uploading&hellip;';
-  submitBtn.disabled = true;
+const uploadTypeSelect = document.getElementById('upload-type');
+const hiddenUploadType = document.getElementById('hidden-upload-type');
+const uploadSrbFlow = document.getElementById('upload-srb-flow');
+
+function onUploadTypeChange() {
+  const val = uploadTypeSelect.value || '';
+  hiddenUploadType.value = val;
+  uploadSrbFlow.classList.remove('visible');
+  if (uploadUploadSection) uploadUploadSection.classList.remove('visible');
+  setHiddenSelection('', '', '', '', '', '');
+  if (val === 'SRB' || val === 'TIG') {
+    uploadSrbFlow.classList.add('visible');
+  }
+}
+
+if (uploadTypeSelect) {
+  uploadTypeSelect.addEventListener('change', onUploadTypeChange);
+}
+
+document.getElementById('upload-form').addEventListener('submit', function(e) {
+  const ut = (uploadTypeSelect && uploadTypeSelect.value) || '';
+  if (!ut) {
+    e.preventDefault();
+    alert('Please select a content type.');
+    return;
+  }
+  if (ut === 'SRB' || ut === 'TIG') {
+    if (!fileInput.files || !fileInput.files.length) {
+      e.preventDefault();
+      alert('Please select a PDF to extract.');
+      return;
+    }
+    submitBtn.innerHTML = 'Uploading&hellip;';
+    submitBtn.disabled = true;
+    return;
+  }
 });
 
 /* ── Resource → Module → Topic selection ── */
@@ -445,7 +512,7 @@ function onTopicChange() {
 }
 
 fetch('/api/source-structure').then(function(r) { return r.json(); }).then(function(data) {
-  sourceStructure = data;
+  sourceStructure = data || {};
   if (data.resource) {
     var opt = document.createElement('option');
     opt.value = data.resource.id;
