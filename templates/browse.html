@@ -44,6 +44,7 @@
         <thead>
           <tr>
             <th>#</th>
+            <th>Source file</th>
             <th>Job ID</th>
             <th>Status</th>
             <th>Pages</th>
@@ -57,6 +58,7 @@
           {% for f in folders %}
           <tr>
             <td>{{ loop.index }}</td>
+            <td>{{ f.filename or '—' }}</td>
             <td><span class="mono-id">{{ f.id }}</span></td>
             <td><span class="badge bg-success" style="font-size:11px;font-weight:500;padding:4px 10px;border-radius:4px;text-transform:uppercase;letter-spacing:0.3px">{{ f.status }}</span></td>
             <td class="text-center">{{ f.pages }}</td>
@@ -87,9 +89,9 @@ $(document).ready(function() {
       emptyTable: 'No extractions found.',
     },
     columnDefs: [
-      { targets: [2], className: 'text-center', orderable: false },
-      { targets: [3, 4, 5], className: 'text-center' },
-      { targets: [7], orderable: false, className: 'text-center' },
+      { targets: [3], className: 'text-center', orderable: false },
+      { targets: [4, 5, 6], className: 'text-center' },
+      { targets: [8], orderable: false, className: 'text-center' },
     ],
   });
 });

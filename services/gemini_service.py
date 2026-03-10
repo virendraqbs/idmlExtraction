@@ -87,6 +87,26 @@ practice_section_type rules (null when no such section is present):
   Reference to LiveHint, online platform, QR code       → INTERACTIVE_PRACTICE
   Section addressed to families / parents               → FAMILY_GUIDE
 
+═══ ACTIVITY TYPE DETECTION ═══
+Use these rules to set activity_type (pick the FIRST match):
+  ACTIVATE   → page_type SRB_LESSON_INTRODUCTION_ACTIVATE or activity is the opening/warm-up activity
+  EXPLORE    → page_type SRB_LESSON_EXPLORE; main investigation or problem-solving activity
+  REFLECT    → page_type SRB_LESSON_REFLECT; closing/reflection activity
+  KEY_TERMS  → section heading is "Key Terms", "Vocabulary", "Glossary Terms" or similar vocabulary list
+  KEY_IDEAS  → section heading is "Key Ideas", "Big Ideas", "Summary" or conceptual summary bullets
+  PRACTICE_QUESTIONS → section is numbered practice problems / exercises after the main lesson
+  PRACTICE_CONVERSATION_STARTERS → section provides discussion prompts or sentence starters for conversation
+  GAMES_AND_ADDITIONAL_RESOURCES → section lists games, optional activities, or supplemental resources
+Do NOT default to EXPLORE when a more specific type clearly applies.
+
+═══ DIRECTION LINES vs STEM TEXT ═══
+direction_lines: ONLY include standalone instructional directions that appear BEFORE the numbered tasks
+  and address the student as a group (e.g. "Work with your partner to...", "Use the graph to answer...").
+  A direction line is NEVER the same as a task's stem text.
+tasks[].stem_text: the exact question or problem text for ONE task/sub-task.
+RULE: If a sentence functions as BOTH a direction and the first task's stem, put it ONLY in stem_text.
+  Do NOT copy the same sentence into both direction_lines and stem_text.
+
 ═══ MODULE AND TOPIC SUMMARIES ═══
 When the page shows a module or topic overview (e.g. "About this module", "In this topic", summary paragraph under a module/topic heading), extract that text:
 - lesson.module_summary: summary or description of the module when visible.
@@ -135,8 +155,8 @@ Graph/response-area (keep):
     "standards": [{"code": "", "full_text": "", "domain": null, "cluster": null, "has_modeling_symbol": false}]
   },
   "activities": [{
-    "id": "", "activity_type": "ACTIVATE | EXPLORE | REFLECT | PRACTICE",
-    "activity_label": "", "title": "", "sequence_number": 1,
+    "id": "", "activity_type": "ACTIVATE | EXPLORE | REFLECT | KEY_TERMS | KEY_IDEAS | PRACTICE_QUESTIONS | PRACTICE_CONVERSATION_STARTERS | GAMES_AND_ADDITIONAL_RESOURCES",
+    "title": "", "sequence_number": 1,
     "habits_of_mind": [],
     "direction_lines": [{"sequence_number": 1, "text": ""}],
     "tasks": [{

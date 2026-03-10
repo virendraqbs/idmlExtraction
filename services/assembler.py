@@ -2,7 +2,7 @@
 services/assembler.py — Schema assembler service.
 
 Calls each build_*() helper from utils/schema_chunks.py in order,
-then writes all 18 JSON files via utils/file_utils.write_json().
+then writes all 19 JSON files via utils/file_utils.write_json().
 
 This is the only place that knows about:
   - the ORDER in which files are written
@@ -24,6 +24,7 @@ from utils.schema_chunks import (
     build_topic,
     build_lesson,
     build_activities_chunk,
+    build_activity_goals_chunk,
     build_standards_chunk,
     build_standards_blocks,
     build_images_chunk,
@@ -47,7 +48,7 @@ def assemble_schemas(
     module_meta: str | None = None,
 ) -> list[str]:
     """
-    Build and write all 18 CL-Json-Schema JSON files.
+    Build and write all 19 CL-Json-Schema JSON files (including 19_activity_goals.json).
 
     Args:
         pages:           Raw per-page dicts from GeminiService.extract_page()
@@ -98,6 +99,56 @@ def assemble_schemas(
         raw_activities=all_raw_activities,
     )
 
+    # Merge continuation activities: if an activity has no title AND same activityType
+    # as the immediately preceding activity, it is a page-overflow continuation.
+    # Merge its tasks, directions, and _habitsOfMind into the preceding activity.
+    merged_activities: list[dict] = []
+    tasks_by_act: dict[str, list[dict]] = {}
+    for t in tasks:
+        tasks_by_act.setdefault(t.get("activityId", ""), []).append(t)
+
+    for act in activities:
+        is_continuation = (
+            act.get("title") is None
+            and merged_activities
+            and act.get("activityType") == merged_activities[-1].get("activityType")
+        )
+        if is_continuation:
+            prev = merged_activities[-1]
+            # Re-parent tasks from this continuation activity to the previous one
+            continuation_task_ids = {ref["id"] for ref in (act.get("tasks") or [])}
+            for t in tasks:
+                if t.get("activityId") == act["id"]:
+                    t["activityId"] = prev["id"]
+            # Merge task references
+            existing_task_ids = {ref["id"] for ref in prev.get("tasks", [])}
+            for ref in act.get("tasks", []):
+                if ref["id"] not in existing_task_ids:
+                    prev["tasks"].append(ref)
+            # Merge directions (renumber)
+            existing_dir_count = len(prev.get("directions", []))
+            for i, d in enumerate(act.get("directions", []), existing_dir_count + 1):
+                d["sequenceNumber"] = i
+                prev["directions"].append(d)
+            # Merge habits_of_mind
+            prev_habits = prev.get("_habitsOfMind") or []
+            for h in (act.get("_habitsOfMind") or []):
+                if h not in prev_habits:
+                    prev_habits.append(h)
+            prev["_habitsOfMind"] = prev_habits
+            # Do NOT add continuation activity to merged list
+        else:
+            merged_activities.append(act)
+
+    activities = merged_activities
+
+    # Activity goals (from _habitsOfMind); patch activity["goals"] with refs
+    activity_goals, goal_refs_by_act_id = build_activity_goals_chunk(activities)
+    for act in activities:
+        act["goals"] = goal_refs_by_act_id.get(act["id"], [])
+        # Remove internal-only field used during assembly
+        act.pop("_habitsOfMind", None)
+
     # Practice sections (groups PRACTICE activities; uses page-level detection first)
     practice_sections = build_practice_sections_chunk(
         lesson_id=lesson_id, activities=activities, pages=pages,
@@ -105,7 +156,34 @@ def assemble_schemas(
 
     # Images, pages, prompts
     images   = build_images_chunk(pages=pages, image_manifest=image_manifest, out_dir=out_dir)
-    pg_list  = build_pages_chunk(pages=pages, resource_id=resource_id)
+
+    # Link images to activities by matching source page; populate activity["images"]
+    # and image["usage"]["usedInActivities"] with cross-references.
+    activities_by_page: dict[int, list[dict]] = {}
+    for act in activities:
+        pg = act.get("sourcePage")
+        if pg is not None:
+            activities_by_page.setdefault(pg, []).append(act)
+    for img in images:
+        img_page = img.get("sourcePage")
+        if img_page is None:
+            continue
+        acts_on_page = activities_by_page.get(img_page, [])
+        for act in acts_on_page:
+            # Add image reference to activity if not already present
+            img_ref = {"id": img["id"], "type": "IMAGE"}
+            if img_ref not in act["images"]:
+                act["images"].append(img_ref)
+            # Add activity reference to image usage
+            act_ref = {"id": act["id"], "type": "ACTIVITY"}
+            used_in = img["usage"]["usedInActivities"]
+            if act_ref not in used_in:
+                used_in.append(act_ref)
+
+    pg_list  = build_pages_chunk(
+        pages=pages, resource_id=resource_id,
+        lesson_id=lesson_id, activities=activities,
+    )
     prompts  = build_instructional_prompts_chunk(pages=pages, lesson_id=lesson_id)
     segments = build_instructional_segments(lesson_id=lesson_id, activities=activities)
 
@@ -119,6 +197,7 @@ def assemble_schemas(
     enums = build_enums(
         activities=activities, tasks=tasks, stems=stems,
         images=images, pages=pg_list, standards=standards,
+        goals=activity_goals,
     )
     resource = build_resource(
         resource_id=resource_id, module_id=module_id,
@@ -164,6 +243,7 @@ def assemble_schemas(
         ("16_practice_sections.json",    {"count": len(practice_sections),  "practiceSections":      practice_sections}),
         ("17_response_areas.json",       {"count": len(response_areas),     "responseAreas":         response_areas}),
         ("18_scaffolding.json",          {"count": len(scaffolding_items),  "scaffolding":           scaffolding_items}),
+        ("19_activity_goals.json",       {"count": len(activity_goals),     "goals":                 activity_goals}),
     ]
 
     files_written: list[str] = []

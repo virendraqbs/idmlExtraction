@@ -67,13 +67,14 @@ def build_enums(
     images: list[dict],
     pages: list[dict],
     standards: list[dict],
+    goals: list[dict] | None = None,
 ) -> dict:
     """
     02_enums.json
     Distinct enum values actually present in this extraction run.
     Useful for validation and UI filter-lists.
     """
-    return {
+    out: dict = {
         "activityTypes":   _unique(activities, "activityType"),
         "taskTypes":       _unique(tasks,      "taskType"),
         "stemTypes":       _unique(stems,      "stemType"),
@@ -81,6 +82,9 @@ def build_enums(
         "pageTypes":       _unique(pages,      "pageType"),
         "standardsBodies": _unique(standards,  "body"),
     }
+    if goals:
+        out["goalTypes"] = _unique(goals, "goalType")
+    return out
 
 
 def _unique(items: list[dict], key: str) -> list[str]:
@@ -114,11 +118,18 @@ def build_resource(
     if not title and source_filename:
         title = source_filename.replace(".pdf", "")
     return {
-        "id":           resource_id,
-        "resourceType": "STUDENT_RESOURCE_BOOK",
-        "title":        title or "Untitled Resource",
-        "gradeLevel":   lesson_meta.get("grade_level", "HS"),
-        "modules":      [{"id": module_id, "type": "MODULE"}],
+        "id":              resource_id,
+        "resourceType":    "STUDENT_RESOURCE_BOOK",
+        "title":           title or "Untitled Resource",
+        "subtitle":        None,
+        "gradeLevel":      lesson_meta.get("grade_level", "HS"),
+        "series":          None,
+        "edition":         None,
+        "publisher":       None,
+        "isbn":            None,
+        "pages":           [],
+        "modules":         [{"id": module_id, "type": "MODULE"}],
+        "standards":       [],
         "metadata": {
             "totalPages":  total_pages,
             "subjects":    ["Mathematics"],
@@ -185,11 +196,13 @@ def build_topic(
         "topicNumber":   lesson_meta.get("topic_number", 1),
         "title":         lesson_meta.get("topic_title", ""),
         "topicSummary":  topic_summary,
+        "images":        [],
         "lessons": [{
             "id":             lesson_id,
             "type":           "LESSON",
             "sequenceNumber": lesson_meta.get("lesson_number", 1),
         }],
+        "metadata":      {},
     }
 
 
@@ -213,17 +226,19 @@ def build_lesson(
         learning_goals = [learning_goals]
 
     return {
-        "id":            lesson_id,
+        "id":             lesson_id,
         "topicId":       topic_id,
         "lessonNumber":  lesson_meta.get("lesson_number"),
         "title":         lesson_meta.get("title"),
         "lessonSummary": lesson_meta.get("lesson_summary"),
+        "images":        [],
         "learningGoals": learning_goals,
         "standardsBlock": std_block_id if has_standards else None,
         "activities": [
             {"id": a["id"], "type": "ACTIVITY", "sequenceNumber": a["sequenceNumber"]}
             for a in activities
         ],
+        "metadata":      {},
     }
 
 
@@ -259,24 +274,69 @@ def build_activities_chunk(
             tasks, stems, response_areas, scaffolding, src_page,
         )
 
+        raw_direction_lines = raw_act.get("direction_lines") or []
+        directions = []
+        for i, line in enumerate(raw_direction_lines):
+            if isinstance(line, dict):
+                text = line.get("text") or line.get("direction_text") or ""
+                directions.append({
+                    "sequenceNumber": i + 1,
+                    "type": "DIRECTION_LINE",
+                    "text": text,
+                })
+            elif isinstance(line, str):
+                directions.append({
+                    "sequenceNumber": i + 1,
+                    "type": "DIRECTION_LINE",
+                    "text": line,
+                })
         activities.append({
             "id":             act_id,
             "lessonId":       lesson_id,
             "activityType":   raw_act.get("activity_type", "EXPLORE"),
-            "activityLabel":  raw_act.get("activity_label"),
             "title":          raw_act.get("title"),
             "sequenceNumber": raw_act.get("sequence_number", seq),
-            "habitsOfMind":   raw_act.get("habits_of_mind", []),
-            "directionLines": raw_act.get("direction_lines", []),
+            "directions":     directions,
             "tasks":          task_refs,
             "sourcePage":     src_page,
             "goals":          [],
             "scaffolding":    [],
             "images":         [],
             "metadata":       {},
+            # Internal-only fields used during assembly (stripped before final output if needed)
+            "_habitsOfMind":  raw_act.get("habits_of_mind", []),
         })
 
     return activities, tasks, stems, response_areas, scaffolding
+
+
+def build_activity_goals_chunk(activities: list[dict]) -> tuple[list[dict], dict[str, list[dict]]]:
+    """
+    19_activity_goals.json
+    Goal entities (e.g. HABITS_OF_MIND) per activity. Returns (goals_list, refs_by_activity_id)
+    so the assembler can set activity["goals"] from refs_by_activity_id[activity["id"]].
+    """
+    goals: list[dict] = []
+    refs_by_activity_id: dict[str, list[dict]] = {}
+    for act in activities:
+        act_id = act.get("id")
+        if not act_id:
+            continue
+        habits = act.get("_habitsOfMind") or []
+        if not habits:
+            refs_by_activity_id.setdefault(act_id, [])
+            continue
+        goal_items = [h if isinstance(h, str) else str(h) for h in habits]
+        goal_id = gen_id()
+        goals.append({
+            "id":         goal_id,
+            "activityId": act_id,
+            "goalType":   "HABITS_OF_MIND",
+            "goalItems":  goal_items,
+            "standards":  [],
+        })
+        refs_by_activity_id.setdefault(act_id, []).append({"id": goal_id, "type": "GOALS"})
+    return goals, refs_by_activity_id
 
 
 _VALID_TOOLS = {"CALCULATOR", "RULER", "PROTRACTOR", "COMPASS", "MANIPULATIVES"}
@@ -536,13 +596,14 @@ def build_standards_blocks(
         seq += 1
 
     block: dict[str, Any] = {
-        "id":         std_block_id,
-        "body":       sb_meta["body"],
-        "gradeLevel": sb_meta["gradeLevel"] or lesson_meta.get("grade_level", "HS"),
-        "title":      sb_meta["title"],
-        "standardsSubtitle": sb_meta["subtitle"],
+        "id":                    std_block_id,
+        "body":                  sb_meta["body"],
+        "gradeLevel":            sb_meta["gradeLevel"] or lesson_meta.get("grade_level", "HS"),
+        "title":                 sb_meta["title"],
+        "standardsSubtitle":     sb_meta["subtitle"],
         "conceptualOverlaySubtitle": sb_meta["conceptualOverlaySubtitle"],
-        "standards":  std_refs,
+        "standards":             std_refs,
+        "pageLocationHelpText":  None,
     }
     if sb_meta["bigIdeas"]:
         block["conceptualOverlays"] = [
@@ -754,23 +815,52 @@ def build_images_chunk(
 
 # ── 13 — Pages ────────────────────────────────────────────────────────────────
 
-def build_pages_chunk(*, pages: list[dict], resource_id: str) -> list[dict]:
+def build_pages_chunk(
+    *,
+    pages: list[dict],
+    resource_id: str,
+    lesson_id: str | None = None,
+    activities: list[dict] | None = None,
+) -> list[dict]:
     """
     13_pages.json
-    Page entities with layout metadata and content-order array.
+    Page entities with layout metadata and contentBlocks (references to
+    lesson/activities on this page). Pages reference content; they do not
+    duplicate activity content (that stays in 07_activities.json).
     pdfPageIndex is the 1-based page index within the PDF file itself.
     """
-    return [
-        {
-            "id":           gen_id(),
-            "resourceId":   resource_id,
-            "pageNumber":   page.get("page_number"),
-            "pdfPageIndex": page.get("_pdf_page_index"),
-            "pageType":     page.get("page_type", "UNKNOWN"),
-            "layout":       page.get("page_layout"),
-        }
-        for page in pages
-    ]
+    activities = activities or []
+    # Map page_number -> list of (sequenceNumber, activity) for ordering
+    by_page: dict[int | None, list[tuple[int, dict]]] = {}
+    for act in activities:
+        pn = act.get("sourcePage")
+        if pn is None:
+            continue
+        seq_raw = act.get("sequenceNumber")
+        seq = seq_raw if isinstance(seq_raw, int) else 0
+        by_page.setdefault(pn, []).append((seq, act))
+    for pn in by_page:
+        by_page[pn].sort(key=lambda x: x[0])
+
+    out: list[dict] = []
+    for page in pages:
+        pn = page.get("page_number") or page.get("_pdf_page_index")
+        content_blocks: list[dict] = []
+        if lesson_id:
+            content_blocks.append({"id": lesson_id, "type": "LESSON"})
+        for _seq, act in by_page.get(pn, []):
+            content_blocks.append({"id": act["id"], "type": "ACTIVITY"})
+        out.append({
+            "id":             gen_id(),
+            "resourceId":     resource_id,
+            "pageNumber":     pn,
+            "pdfPageIndex":   page.get("_pdf_page_index"),
+            "pageType":       page.get("page_type", "UNKNOWN"),
+            "layout":         page.get("page_layout"),
+            "contentBlocks":  content_blocks,
+            "metadata":       {},
+        })
+    return out
 
 
 # ── 14 — Instructional Prompts ────────────────────────────────────────────────
@@ -788,15 +878,17 @@ def build_instructional_prompts_chunk(
     for page in pages:
         page_num = page.get("page_number")
         for ip in page.get("instructional_prompts") or []:
+            display_style = ip.get("display_style", "BOX")
             prompts.append({
                 "id":                         gen_id(),
                 "studentContentReferenceId":  lesson_id,
                 "instructionalPromptType":    ip.get("prompt_type"),
-                "displayStyle":               ip.get("display_style", "BOX"),
+                "displayStyle":               display_style,
                 "title":                      ip.get("title"),
                 "content":                    ip.get("content"),
                 "contentItems":               ip.get("content_items", []),
                 "sourcePage":                 page_num,
+                "metadata":                   {"displayStyle": display_style} if display_style else {},
             })
     return prompts
 

@@ -142,7 +142,7 @@ class PipelineService:
 
             # ── Stage 4: Assemble schema files ────────────────────────────
             job.set_status(JobStatus.ASSEMBLING)
-            log_it("Stage 4: Assembling 18 JSON schema files...")
+            log_it("Stage 4: Assembling 19 JSON schema files...")
             job.progress = 90
 
             schema_files = assemble_schemas(

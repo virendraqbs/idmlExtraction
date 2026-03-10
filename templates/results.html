@@ -477,6 +477,7 @@ window.MathJax = {
           ('16_practice_sections.json',   'Practice',           'Practice sections',       'practice'),
           ('17_response_areas.json',      'Resp. Areas',        'Response area defs',      'resp-area'),
           ('18_scaffolding.json',         'Scaffolding',        'Scaffolding items',       'scaffolding'),
+          ('19_activity_goals.json',      'Activity Goals',     'Activity-level goals (e.g. Habits of Mind)', 'activityGoals'),
         ] %}
         {% for fname, label, desc, key in file_infos %}
           <div class="tab {{ 'active' if loop.first else '' }}"
@@ -667,8 +668,13 @@ function renderPageWebView(page, data) {
   if (page) {
     html += `<div class="editor-section">
       <span class="schema-tag">page ${pn}</span>
-      <h3>Page ${escapeHtml(String(pn))} — ${escapeHtml(page.pageType || 'Content')}</h3>
-    </div>`;
+      <h3>Page ${escapeHtml(String(pn))} — ${escapeHtml(page.pageType || 'Content')}</h3>`;
+    const contentBlocks = page.contentBlocks || [];
+    if (contentBlocks.length) {
+      const blockLabels = contentBlocks.map(function(b) { return b.type || 'Content'; });
+      html += '<p class="editor-page-meta">Content on this page: ' + escapeHtml(blockLabels.join(', ')) + '</p>';
+    }
+    html += '</div>';
   }
 
   const modSummary = (mod.moduleSummary || data.module?.moduleSummary || '').trim();
@@ -788,6 +794,26 @@ function renderPageWebView(page, data) {
       <h3>Activities (${pageActivities.length})</h3>
       ${pageActivities.map(a => renderActivityHtml(a)).join('')}
     </div>`;
+  }
+
+  const allActivityGoals = data.activityGoals || [];
+  const pageActivityIds = new Set((pageActivities || []).map(function(a) { return a.id; }));
+  const goalsOnPage = allActivityGoals.filter(function(g) { return pageActivityIds.has(g.activityId); });
+  if (goalsOnPage.length) {
+    html += '<div class="editor-section"><span class="schema-tag">activity_goals</span><h3>Activity Goals</h3>';
+    goalsOnPage.forEach(function(g) {
+      const typeLabel = (g.goalType || 'GOALS').replace(/_/g, ' ');
+      html += '<div class="editor-summary-block" style="margin-bottom:12px">';
+      html += '<strong style="font-size:12px;color:var(--primary)">' + escapeHtml(typeLabel) + '</strong>';
+      const items = g.goalItems || [];
+      if (items.length) {
+        html += '<ul class="editor-ref-list" style="margin-top:6px">';
+        items.forEach(function(item) { html += '<li>' + nl2br(escapeHtml(String(item))) + '</li>'; });
+        html += '</ul>';
+      }
+      html += '</div>';
+    });
+    html += '</div>';
   }
 
   if (pageImages.length) {
@@ -1685,7 +1711,7 @@ async function loadPanel(file, key) {
     const size = JSON.stringify(data).length;
     document.getElementById(`size-${key}`).textContent = size > 1024 ? `${(size/1024).toFixed(1)} KB` : `${size} B`;
     const countEl = document.getElementById(`count-${key}`);
-    const countableKeys = ['activities','tasks','stems','standards','standardsBlocks','images','pages','instructionalPrompts','instructionalSegments','practiceSections','responseAreas','scaffolding'];
+    const countableKeys = ['activities','tasks','stems','standards','standardsBlocks','images','pages','instructionalPrompts','instructionalSegments','practiceSections','responseAreas','scaffolding','goals'];
     for (const k of countableKeys) {
       if (data[k] && Array.isArray(data[k])) {
         countEl.textContent = data[k].length + ' items';

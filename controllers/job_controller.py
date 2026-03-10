@@ -90,11 +90,34 @@ def _resolve_output_and_pdf(job_id: str) -> tuple[Path | None, Path | None]:
 
 # ── Dashboard ─────────────────────────────────────────────────────────────────
 
+def _source_filename_for_folder(folder_id: str) -> str:
+    """Resolve display name for the source PDF: from job if available, else from uploads dir."""
+    job = job_repo.get(folder_id)
+    if job and job.filename and not _looks_like_uuid(job.filename):
+        return job.filename
+    if config.UPLOAD_DIR.exists():
+        prefix = folder_id + "_"
+        for f in config.UPLOAD_DIR.iterdir():
+            if f.is_file() and f.name.startswith(prefix):
+                return f.name[len(prefix):] or ""
+    return ""
+
+
+def _looks_like_uuid(s: str) -> bool:
+    if not s or len(s) < 30:
+        return False
+    s = s.strip().lower()
+    if len(s) == 36 and s.count("-") == 4:
+        return all(c in "0123456789abcdef-" for c in s)
+    return False
+
+
 def _enrich_folder(p: Path) -> dict:
-    """Read page/image counts from a completed output folder."""
+    """Read page/image counts and source filename from a completed output folder."""
     info: dict = {"id": p.name, "path": str(p), "pages": 0, "images": 0, "files": 0,
-                  "status": "Completed", "created": "", "has_report": False}
+                  "status": "Completed", "created": "", "has_report": False, "filename": ""}
     try:
+        info["filename"] = _source_filename_for_folder(p.name)
         info["files"] = sum(1 for f in p.iterdir() if f.suffix == ".json")
         info["created"] = time.strftime("%Y-%m-%d %H:%M", time.localtime(p.stat().st_mtime))
         info["has_report"] = (p / "extraction_report.json").exists()
@@ -931,7 +954,7 @@ def _resolve_editor_output(request: Request, job_id: str) -> Path:
 
 
 def _read_all_schemas(out: Path) -> dict:
-    """Read all 18 schema files and return as flat dict."""
+    """Read all 19 schema files and return as flat dict."""
     def read_json(name: str) -> dict | list:
         p = out / name
         if not p.exists():
@@ -957,6 +980,7 @@ def _read_all_schemas(out: Path) -> dict:
     practice_data = read_json("16_practice_sections.json") or {}
     resp_areas_data = read_json("17_response_areas.json") or {}
     scaffolding_data = read_json("18_scaffolding.json") or {}
+    activity_goals_data = read_json("19_activity_goals.json") or {}
 
     return {
         "primitives": primitives if isinstance(primitives, dict) else {},
@@ -977,6 +1001,7 @@ def _read_all_schemas(out: Path) -> dict:
         "practiceSections": practice_data.get("practiceSections", []) if isinstance(practice_data, dict) else [],
         "responseAreas": resp_areas_data.get("responseAreas", []) if isinstance(resp_areas_data, dict) else [],
         "scaffolding": scaffolding_data.get("scaffolding", []) if isinstance(scaffolding_data, dict) else [],
+        "activityGoals": activity_goals_data.get("goals", []) if isinstance(activity_goals_data, dict) else [],
     }
 
 
@@ -1072,6 +1097,7 @@ async def api_editor_payload(request: Request, job_id: str, _=Depends(require_lo
         "stems": flat["stems"],
         "images": flat["images"],
         "instructionalSegments": flat["instructionalSegments"],
+        "activityGoals": flat["activityGoals"],
     }
 
 

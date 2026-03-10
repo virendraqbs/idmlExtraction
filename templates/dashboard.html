@@ -37,7 +37,7 @@
     border-color: var(--primary); background: linear-gradient(180deg, rgba(124,58,237,0.06) 0%, rgba(124,58,237,0.02) 100%);
     box-shadow: 0 0 0 4px rgba(124,58,237,0.08);
   }
-  .drop-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .drop-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; z-index: 2; width: 100%; height: 100%; }
   .drop-icon {
     width: 52px; height: 52px; border-radius: 12px; background: rgba(124,58,237,0.1);
     display: flex; align-items: center; justify-content: center; font-size: 26px; margin-bottom: 12px;
@@ -304,10 +304,11 @@
       <a href="/browse" class="btn btn-sm btn-outline-primary" style="border-color:var(--primary);color:var(--primary)">View Grid</a>
     </div>
     <div class="card-body p-0">
-      <table id="extractions-table" class="table table-hover mb-0" style="width:100%">
+      <table id="extractions-table-v2" class="table table-hover mb-0" style="width:100%">
         <thead>
           <tr>
             <th>#</th>
+            <th>Source file</th>
             <th>Job ID</th>
             <th>Status</th>
             <th>Pages</th>
@@ -322,6 +323,7 @@
           {% for f in folders %}
           <tr>
             <td>{{ loop.index }}</td>
+            <td>{{ f.filename or '—' }}</td>
             <td><span class="mono-id">{{ f.id }}</span></td>
             <td><span class="badge badge-status bg-success">{{ f.status }}</span></td>
             <td class="text-center">{{ f.pages }}</td>
@@ -350,7 +352,7 @@
 <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
 <script>
 $(document).ready(function() {
-  dtTable = $('#extractions-table').DataTable({
+  dtTable = $('#extractions-table-v2').DataTable({
     order: [[0, 'desc']],
     pageLength: 10,
     lengthMenu: [10, 25, 50, 100],
@@ -360,10 +362,10 @@ $(document).ready(function() {
       emptyTable: 'No extractions yet. Upload a PDF above to get started.',
     },
     columnDefs: [
-      { targets: [2], className: 'text-center', orderable: false },
-      { targets: [3, 4, 5], className: 'text-center' },
-      { targets: [7], orderable: false, className: 'text-center' },
+      { targets: [3], className: 'text-center', orderable: false },
+      { targets: [4, 5, 6], className: 'text-center' },
       { targets: [8], orderable: false, className: 'text-center' },
+      { targets: [9], orderable: false, className: 'text-center' },
     ],
   });
 });
