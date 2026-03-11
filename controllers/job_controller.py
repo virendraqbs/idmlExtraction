@@ -18,15 +18,45 @@ import re
 import shutil
 import time
 import unicodedata
+import uuid
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from starlette.templating import Jinja2Templates
 
 from config import config
+from database import (
+    create_module,
+    create_topic,
+    get_module,
+    get_module_by_title,
+    get_module_id_for_topic,
+    get_resource_id_for_module,
+    get_topic,
+    get_topic_by_title,
+    link_module_topic,
+    link_resource_module,
+    list_modules,
+    list_modules_for_resource,
+    list_resources,
+    list_topics,
+    list_topics_for_module,
+    list_topics_with_module,
+    set_topic_module,
+    update_module,
+    update_topic,
+)
 from models.job import job_repo
+from services.content_output import (
+    build_module_schema_json,
+    build_topic_schema_json,
+    write_module_output,
+    write_topic_output,
+)
+from services.module_extractor import extract_module_from_pdf
 from services.pipeline_service import PipelineService
+from services.topic_extractor import extract_topic_from_pdf
 from utils.file_utils import is_allowed_file, read_json
 
 
@@ -43,6 +73,15 @@ async def require_login(request: Request):
 
 jobs_router = APIRouter()
 templates = Jinja2Templates(directory=str(config.BASE_DIR / "templates"))
+
+
+def _parse_module_title_from_filename(filename: str) -> str:
+    """e.g. SM5e_A1_SE_MI_M01 1.pdf -> Module 1."""
+    base = Path(filename).stem
+    m = re.search(r"M(\d{1,2})(?:\s|_|$)", base, re.IGNORECASE)
+    if m:
+        return f"Module {int(m.group(1))}"
+    return base.replace("_", " ").strip() or "Module"
 
 
 def _secure_filename(filename: str) -> str:
@@ -144,14 +183,393 @@ def _scan_output_folders() -> list[dict]:
     return folders
 
 
-@jobs_router.get("/dashboard", response_class=HTMLResponse)
-async def dashboard(request: Request, _=Depends(require_login)):
+def _dashboard_response(request: Request, error: str | None = None, msg: str | None = None):
+    """Render dashboard with optional error or success message."""
     jobs = [j.to_dict(include_logs=False) for j in job_repo.all()]
     folders = _scan_output_folders()
     return templates.TemplateResponse(
         "dashboard.html",
-        {"request": request, "session": request.session, "jobs": jobs, "folders": folders, "error": None},
+        {
+            "request": request,
+            "session": request.session,
+            "jobs": jobs,
+            "folders": folders,
+            "error": error,
+            "success_msg": msg,
+        },
     )
+
+
+@jobs_router.get("/dashboard", response_class=HTMLResponse)
+async def dashboard(request: Request, _=Depends(require_login)):
+    jobs = [j.to_dict(include_logs=False) for j in job_repo.all()]
+    folders = _scan_output_folders()
+    error = None
+    success_msg = None
+    if request.query_params.get("msg") == "module_saved":
+        success_msg = "Module saved successfully. Data was extracted from the PDF and stored in the system."
+    return templates.TemplateResponse(
+        "dashboard.html",
+        {"request": request, "session": request.session, "jobs": jobs, "folders": folders, "error": error, "success_msg": success_msg},
+    )
+
+
+@jobs_router.get("/api/topics")
+async def api_list_topics(request: Request, _=Depends(require_login)):
+    """Return topics: if module_id given, topics for that module; else all topics (id, title, topic_number)."""
+    module_id = (request.query_params.get("module_id") or "").strip()
+    if module_id:
+        topics = list_topics_for_module(module_id)
+    else:
+        topics = list_topics()
+    return JSONResponse(content=[{"id": t["id"], "title": t.get("title") or t["id"], "topic_number": t.get("topic_number")} for t in topics])
+
+
+@jobs_router.get("/api/modules")
+async def api_modules(request: Request, _=Depends(require_login)):
+    """Return modules for topic upload. If resource_id given, modules linked to that resource; else all modules."""
+    resource_id = (request.query_params.get("resource_id") or "").strip()
+    if resource_id:
+        modules = list_modules_for_resource(resource_id)
+        if not modules:
+            modules = list_modules()
+    else:
+        modules = list_modules()
+    return JSONResponse(content=[{"id": m["id"], "title": m.get("title") or m["id"], "module_number": m.get("module_number")} for m in modules])
+
+
+# ── Module Management ───────────────────────────────────────────────────────────
+
+def _modules_page_context(request: Request, modules: list, error: str | None = None, success_msg: str | None = None):
+    resources = list_resources()
+    if success_msg is None and request.query_params.get("msg") == "saved":
+        success_msg = "Module saved successfully."
+    return {
+        "request": request,
+        "session": request.session,
+        "modules": modules,
+        "resources": resources,
+        "error": error,
+        "success_msg": success_msg,
+    }
+
+
+@jobs_router.get("/modules", response_class=HTMLResponse)
+async def modules_list(request: Request, _=Depends(require_login)):
+    modules = list_modules()
+    return templates.TemplateResponse("modules_list.html", _modules_page_context(request, modules))
+
+
+@jobs_router.get("/modules/add", response_class=HTMLResponse)
+async def module_add_redirect(request: Request, _=Depends(require_login)):
+    return RedirectResponse(url="/modules", status_code=303)
+
+
+@jobs_router.post("/modules/add", response_class=HTMLResponse)
+async def module_add_submit(
+    request: Request,
+    pdf_file: UploadFile | None = File(None),
+    resource_id: str = Form(""),
+    api_key: str = Form(""),
+    _=Depends(require_login),
+):
+    api_key = (api_key or "").strip() or config.GEMINI_API_KEY
+    modules = list_modules()
+    if not resource_id or not resource_id.strip():
+        return templates.TemplateResponse(
+            "modules_list.html",
+            _modules_page_context(request, modules, error="Please select a resource."),
+        )
+    if not pdf_file or not pdf_file.filename:
+        return templates.TemplateResponse(
+            "modules_list.html",
+            _modules_page_context(request, modules, error="Please select a PDF file."),
+        )
+    if not is_allowed_file(pdf_file.filename):
+        return templates.TemplateResponse(
+            "modules_list.html",
+            _modules_page_context(request, modules, error="Please upload a valid PDF file."),
+        )
+    config.UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    filename = _secure_filename(pdf_file.filename)
+    temp_path = config.UPLOAD_DIR / f"_module_{filename}"
+    try:
+        with open(temp_path, "wb") as buf:
+            shutil.copyfileobj(pdf_file.file, buf)
+        extracted = extract_module_from_pdf(temp_path, api_key=api_key or None, max_pages=5)
+        title = (extracted.get("title") or "").strip() or _parse_module_title_from_filename(filename)
+        if get_module_by_title(title):
+            temp_path.unlink(missing_ok=True)
+            return templates.TemplateResponse(
+                "modules_list.html",
+                _modules_page_context(request, modules, error="Data already exists."),
+            )
+        mod = create_module(
+            title=title,
+            module_number=extracted.get("module_number"),
+            module_summary=extracted.get("module_summary") or "",
+            grade_level=extracted.get("grade_level") or "",
+            standards_body=extracted.get("standards_body") or "",
+            pdf_path=None,
+        )
+        pdf_dest = config.UPLOAD_DIR / f"module_{mod['id']}_{filename}"
+        shutil.move(str(temp_path), str(pdf_dest))
+        update_module(mod["id"], pdf_path=str(pdf_dest))
+        if resource_id and resource_id.strip():
+            link_resource_module(resource_id.strip(), mod["id"], sequence_number=1)
+        res_id = resource_id.strip() if resource_id and resource_id.strip() else str(uuid.uuid4())
+        module_json = build_module_schema_json(
+            module_id=mod["id"],
+            resource_id=res_id,
+            module_number=extracted.get("module_number") or 1,
+            title=title,
+            grade_level=extracted.get("grade_level") or "1",
+            module_summary=extracted.get("module_summary") or "",
+            standards_body=extracted.get("standards_body"),
+        )
+        write_module_output(module_json, title)
+        return RedirectResponse(url="/modules?msg=saved", status_code=303)
+    except Exception as e:
+        if temp_path.exists():
+            try:
+                temp_path.unlink()
+            except Exception:
+                pass
+        return templates.TemplateResponse(
+            "modules_list.html",
+            _modules_page_context(request, modules, error=str(e)),
+        )
+
+
+@jobs_router.get("/modules/{module_id}/edit", response_class=HTMLResponse)
+async def module_edit_page(request: Request, module_id: str, _=Depends(require_login)):
+    mod = get_module(module_id)
+    if not mod:
+        raise HTTPException(status_code=404, detail="Module not found")
+    return templates.TemplateResponse(
+        "module_edit.html",
+        {"request": request, "session": request.session, "module": mod},
+    )
+
+
+@jobs_router.post("/modules/{module_id}/edit", response_class=HTMLResponse)
+async def module_edit_submit(
+    request: Request,
+    module_id: str,
+    title: str = Form(""),
+    module_number: str = Form(""),
+    module_summary: str = Form(""),
+    grade_level: str = Form(""),
+    standards_body: str = Form(""),
+    _=Depends(require_login),
+):
+    mod = get_module(module_id)
+    if not mod:
+        raise HTTPException(status_code=404, detail="Module not found")
+    num = None
+    if module_number.strip():
+        try:
+            num = int(module_number.strip())
+        except ValueError:
+            pass
+    update_module(
+        module_id,
+        title=title.strip() or None,
+        module_number=num,
+        module_summary=module_summary.strip() or None,
+        grade_level=grade_level.strip() or None,
+        standards_body=standards_body.strip() or None,
+    )
+    mod = get_module(module_id)
+    if mod:
+        res_id = get_resource_id_for_module(module_id) or str(uuid.uuid4())
+        module_json = build_module_schema_json(
+            module_id=module_id,
+            resource_id=res_id,
+            module_number=mod.get("module_number") or 1,
+            title=(mod.get("title") or "").strip() or "Module",
+            grade_level=(mod.get("grade_level") or "").strip() or "1",
+            module_summary=(mod.get("module_summary") or "").strip() or "",
+            standards_body=(mod.get("standards_body") or "").strip() or None,
+        )
+        write_module_output(module_json, (mod.get("title") or "").strip() or "Module")
+    return RedirectResponse(url="/modules?msg=saved", status_code=303)
+
+
+# ── Topic Management ─────────────────────────────────────────────────────────────
+
+def _topics_page_context(request: Request, topics: list, error: str | None = None, success_msg: str | None = None):
+    resources = list_resources()
+    if success_msg is None and request.query_params.get("msg") == "saved":
+        success_msg = "Topic saved successfully."
+    return {
+        "request": request,
+        "session": request.session,
+        "topics": topics,
+        "resources": resources,
+        "error": error,
+        "success_msg": success_msg,
+    }
+
+
+@jobs_router.get("/topics", response_class=HTMLResponse)
+async def topics_list(request: Request, _=Depends(require_login)):
+    topics = list_topics_with_module()
+    return templates.TemplateResponse("topics_list.html", _topics_page_context(request, topics))
+
+
+@jobs_router.get("/topics/add", response_class=HTMLResponse)
+async def topic_add_redirect(request: Request, _=Depends(require_login)):
+    return RedirectResponse(url="/topics", status_code=303)
+
+
+def _parse_topic_title_from_filename(filename: str) -> str:
+    base = Path(filename).stem
+    m = re.search(r"T(\d{1,2})(?:\s|_|$)", base, re.IGNORECASE)
+    if m:
+        return f"Topic {int(m.group(1))}"
+    return base.replace("_", " ").strip() or "Topic"
+
+
+def _parse_topic_number_from_filename(filename: str) -> int | None:
+    m = re.search(r"T(\d{1,2})(?:\s|_|$)", Path(filename).stem, re.IGNORECASE)
+    return int(m.group(1)) if m else None
+
+
+@jobs_router.post("/topics/add", response_class=HTMLResponse)
+async def topic_add_submit(
+    request: Request,
+    resource_id: str = Form(""),
+    module_id: str = Form(""),
+    pdf_file: UploadFile | None = File(None),
+    title: str = Form(""),
+    topic_number: str = Form(""),
+    api_key: str = Form(""),
+    _=Depends(require_login),
+):
+    topics = list_topics_with_module()
+    if not resource_id or not resource_id.strip():
+        return templates.TemplateResponse(
+            "topics_list.html",
+            _topics_page_context(request, topics, error="Please select a resource."),
+        )
+    if not module_id or not module_id.strip():
+        return templates.TemplateResponse(
+            "topics_list.html",
+            _topics_page_context(request, topics, error="Please select a module."),
+        )
+    if not pdf_file or not pdf_file.filename:
+        return templates.TemplateResponse(
+            "topics_list.html",
+            _topics_page_context(request, topics, error="Please select a PDF file."),
+        )
+    if not is_allowed_file(pdf_file.filename):
+        return templates.TemplateResponse(
+            "topics_list.html",
+            _topics_page_context(request, topics, error="Please upload a valid PDF file."),
+        )
+    api_key = (api_key or "").strip() or config.GEMINI_API_KEY
+    config.UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    filename = _secure_filename(pdf_file.filename)
+    temp_path = config.UPLOAD_DIR / f"_topic_{filename}"
+    try:
+        with open(temp_path, "wb") as buf:
+            shutil.copyfileobj(pdf_file.file, buf)
+        extracted = extract_topic_from_pdf(temp_path, api_key=api_key or None, max_pages=5)
+        title_val = (title or "").strip() or (extracted.get("title") or "").strip() or _parse_topic_title_from_filename(filename)
+        if get_topic_by_title(title_val):
+            temp_path.unlink(missing_ok=True)
+            return templates.TemplateResponse(
+                "topics_list.html",
+                _topics_page_context(request, topics, error="Data already exists."),
+            )
+        num = extracted.get("topic_number")
+        if num is None and (topic_number or "").strip():
+            try:
+                num = int(topic_number.strip())
+            except ValueError:
+                num = None
+        num = num if num is not None else _parse_topic_number_from_filename(filename) or 1
+        topic_summary_val = (extracted.get("topic_summary") or "").strip()
+        topic = create_topic(title=title_val, topic_number=num, pdf_path=None)
+        pdf_dest = config.UPLOAD_DIR / f"topic_{topic['id']}_{filename}"
+        shutil.move(str(temp_path), str(pdf_dest))
+        update_topic(topic["id"], pdf_path=str(pdf_dest), topic_summary=topic_summary_val or None)
+        set_topic_module(topic["id"], module_id.strip(), sequence_number=1)
+        topic_json = build_topic_schema_json(
+            topic_id=topic["id"],
+            module_id=module_id.strip(),
+            topic_number=num,
+            title=title_val,
+            topic_summary=topic_summary_val,
+        )
+        write_topic_output(topic_json, title_val)
+        return RedirectResponse(url="/topics?msg=saved", status_code=303)
+    except Exception as e:
+        if temp_path.exists():
+            try:
+                temp_path.unlink()
+            except Exception:
+                pass
+        return templates.TemplateResponse(
+            "topics_list.html",
+            _topics_page_context(request, topics, error=str(e)),
+        )
+
+
+@jobs_router.get("/topics/{topic_id}/edit", response_class=HTMLResponse)
+async def topic_edit_page(request: Request, topic_id: str, _=Depends(require_login)):
+    topic = get_topic(topic_id)
+    if not topic:
+        raise HTTPException(status_code=404, detail="Topic not found")
+    modules = list_modules()
+    current_module_id = get_module_id_for_topic(topic_id)
+    return templates.TemplateResponse(
+        "topic_edit.html",
+        {"request": request, "session": request.session, "topic": topic, "modules": modules, "current_module_id": current_module_id or ""},
+    )
+
+
+@jobs_router.post("/topics/{topic_id}/edit", response_class=HTMLResponse)
+async def topic_edit_submit(
+    request: Request,
+    topic_id: str,
+    module_id: str = Form(""),
+    title: str = Form(""),
+    topic_number: str = Form(""),
+    topic_summary: str = Form(""),
+    _=Depends(require_login),
+):
+    topic = get_topic(topic_id)
+    if not topic:
+        raise HTTPException(status_code=404, detail="Topic not found")
+    num = None
+    if (topic_number or "").strip():
+        try:
+            num = int(topic_number.strip())
+        except ValueError:
+            pass
+    update_topic(
+        topic_id,
+        title=title.strip() or None,
+        topic_number=num,
+        topic_summary=topic_summary.strip() or None,
+    )
+    if module_id and module_id.strip():
+        set_topic_module(topic_id, module_id.strip(), sequence_number=1)
+    topic = get_topic(topic_id)
+    if topic:
+        mid = get_module_id_for_topic(topic_id) or module_id.strip() if module_id and module_id.strip() else ""
+        if mid:
+            topic_json = build_topic_schema_json(
+                topic_id=topic_id,
+                module_id=mid,
+                topic_number=topic.get("topic_number") or 1,
+                title=(topic.get("title") or "").strip() or "Topic",
+                topic_summary=(topic.get("topic_summary") or "").strip() or "",
+            )
+            write_topic_output(topic_json, (topic.get("title") or "").strip() or "Topic")
+    return RedirectResponse(url="/topics?msg=saved", status_code=303)
 
 
 @jobs_router.get("/browse", response_class=HTMLResponse)
@@ -218,6 +636,8 @@ async def upload(
         module_name=module_name,
         module_subtitle=module_subtitle,
         module_meta=module_meta.strip() or None,
+        selected_module_id=selected_module_id.strip() or None,
+        selected_topic_id=selected_topic_id.strip() or None,
     )
 
     pdf_path = config.UPLOAD_DIR / f"{job.id}_{filename}"
@@ -281,19 +701,14 @@ async def api_upload_options(request: Request, _=Depends(require_login)):
 
 
 def _load_source_structure() -> dict:
-    """Load resource/module/topic structure from sourceFile JSON (e.g. A1_Tagged Pdf.json)."""
-    path = config.BASE_DIR / "sourceFile" / "A1_Tagged Pdf.json"
-    if not path.exists():
-        return {"resource": None, "modules": []}
-    try:
-        return read_json(path)
-    except Exception:
-        return {"resource": None, "modules": []}
+    """Return resources from database for dashboard resource dropdown. Modules/topics loaded via /api/modules and /api/topics."""
+    resources = list_resources()
+    return {"resources": [{"id": r["id"], "title": r.get("title") or r["id"]} for r in resources]}
 
 
 @jobs_router.get("/api/source-structure")
 async def api_source_structure(request: Request, _=Depends(require_login)):
-    """Return resource and modules with topics for Extract PDF resource → module → topic selection."""
+    """Return resources from DB for Extract PDF resource → module → topic selection. Modules/topics loaded per selection."""
     return _load_source_structure()
 
 
@@ -627,6 +1042,70 @@ async def update_image_field(request: Request, job_id: str, _=Depends(require_lo
             pass
 
     return {"status": "updated", "imageId": image_id, "field": field, "value": value}
+
+
+@jobs_router.get("/api/gemini/status")
+async def api_gemini_status(request: Request, _=Depends(require_login)):
+    """Return Gemini API key validity + session usage stats."""
+    import google.generativeai as genai
+
+    api_key = config.GEMINI_API_KEY
+    key_valid = False
+    key_error = None
+
+    if api_key:
+        try:
+            genai.configure(api_key=api_key)
+            # list_models is lightweight — no generation tokens consumed
+            list(genai.list_models())
+            key_valid = True
+        except Exception as exc:
+            key_error = str(exc)
+
+    # Aggregate stats from disk (output folders) — survives server restarts
+    total_jobs = 0
+    pages_extracted = 0
+    failed_pages = 0
+    rate_limit_hits = 0
+    if config.OUTPUT_DIR.exists():
+        for p in config.OUTPUT_DIR.iterdir():
+            if not p.is_dir():
+                continue
+            pages_file = p / "13_pages.json"
+            report_file = p / "extraction_report.json"
+            if not pages_file.exists() and not report_file.exists():
+                continue
+            total_jobs += 1
+            if pages_file.exists():
+                try:
+                    pages_extracted += read_json(pages_file).get("count", 0)
+                except Exception:
+                    pass
+            if report_file.exists():
+                try:
+                    report = read_json(report_file)
+                    for r in (report if isinstance(report, list) else []):
+                        if r.get("status") == "failed":
+                            failed_pages += 1
+                        for err in r.get("errors", []):
+                            if any(k in err.lower() for k in ("429", "rate", "quota", "exhausted")):
+                                rate_limit_hits += 1
+                                break
+                except Exception:
+                    pass
+
+    return {
+        "configured": bool(api_key),
+        "key_valid": key_valid,
+        "key_error": key_error,
+        "model": config.GEMINI_MODEL,
+        "session": {
+            "total_jobs": total_jobs,
+            "pages_extracted": pages_extracted,
+            "failed_pages": failed_pages,
+            "rate_limit_hits": rate_limit_hits,
+        },
+    }
 
 
 @jobs_router.get("/api/s3/config")

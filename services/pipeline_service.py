@@ -23,6 +23,7 @@ from models.job import Job, JobStatus, job_repo
 from services.gemini_service import GeminiService
 from services.assembler import assemble_schemas
 from utils.image_extractor import extract_images_from_pdf
+from database import get_module, get_topic
 
 log = logging.getLogger(__name__)
 
@@ -145,6 +146,10 @@ class PipelineService:
             log_it("Stage 4: Assembling 19 JSON schema files...")
             job.progress = 90
 
+            # Fetch DB records for selected module/topic (if any)
+            db_module = get_module(job.selected_module_id) if job.selected_module_id else None
+            db_topic  = get_topic(job.selected_topic_id)   if job.selected_topic_id  else None
+
             schema_files = assemble_schemas(
                 pages=raw_pages,
                 out_dir=out_dir,
@@ -154,6 +159,8 @@ class PipelineService:
                 module_name=job.module_name,
                 module_subtitle=job.module_subtitle,
                 module_meta=job.module_meta,
+                db_module=db_module,
+                db_topic=db_topic,
             )
 
             # ── Stage 5: Done ─────────────────────────────────────────────

@@ -146,7 +146,6 @@ def build_module(
     resource_id: str,
     topic_id: str,
     lesson_meta: dict,
-    image_ids: list[str] | None = None,
     module_name_override: str | None = None,
     module_subtitle_override: str | None = None,
     module_meta_override: str | None = None,
@@ -154,6 +153,7 @@ def build_module(
     """
     04_module.json
     Module entity — sits between Resource and Topic.
+    Images belong to activities, not modules.
     """
     title = (module_name_override or lesson_meta.get("module_title") or "").strip() or ""
     module_summary = (module_subtitle_override or lesson_meta.get("module_summary") or "").strip() or ""
@@ -169,7 +169,6 @@ def build_module(
         "moduleNumber":   lesson_meta.get("module_number", 1),
         "title":          title,
         "moduleSummary":  module_summary,
-        "images":         [{"id": img_id, "type": "IMAGE"} for img_id in (image_ids or [])],
         "gradeLevel":     lesson_meta.get("grade_level", ""),
         "topics":         [{"id": topic_id, "type": "TOPIC", "sequenceNumber": 1}],
         "metadata":       metadata,
@@ -267,12 +266,27 @@ def build_activities_chunk(
     scaffolding:    list[dict] = []
 
     for seq, raw_act in enumerate(raw_activities, 1):
-        act_id    = gen_id()
-        src_page  = raw_act.get("_source_page")
-        task_refs = _build_tasks_for_activity(
-            act_id, raw_act.get("tasks") or [],
-            tasks, stems, response_areas, scaffolding, src_page,
-        )
+        act_id       = gen_id()
+        src_page     = raw_act.get("_source_page")
+        activity_type = raw_act.get("activity_type", "EXPLORE")
+
+        # For KEY_TERMS activities, Gemini emits each term as a task.
+        # Convert those task stem_texts into DIRECTION_LINE entries instead;
+        # no tasks/stems are generated for KEY_TERMS activities.
+        is_key_terms = activity_type == "KEY_TERMS"
+        if is_key_terms:
+            task_refs = []
+            extra_direction_terms = [
+                t.get("stem_text", "")
+                for t in (raw_act.get("tasks") or [])
+                if t.get("stem_text")
+            ]
+        else:
+            task_refs = _build_tasks_for_activity(
+                act_id, raw_act.get("tasks") or [],
+                tasks, stems, response_areas, scaffolding, src_page,
+            )
+            extra_direction_terms = []
 
         raw_direction_lines = raw_act.get("direction_lines") or []
         directions = []
@@ -290,21 +304,31 @@ def build_activities_chunk(
                     "type": "DIRECTION_LINE",
                     "text": line,
                 })
+
+        # Append key terms as direction lines (numbered after any existing directions)
+        offset = len(directions)
+        for j, term in enumerate(extra_direction_terms):
+            directions.append({
+                "sequenceNumber": offset + j + 1,
+                "type": "DIRECTION_LINE",
+                "text": term,
+            })
+
         activities.append({
             "id":             act_id,
             "lessonId":       lesson_id,
-            "activityType":   raw_act.get("activity_type", "EXPLORE"),
+            "activityType":   activity_type,
             "title":          raw_act.get("title"),
             "sequenceNumber": raw_act.get("sequence_number", seq),
             "directions":     directions,
             "tasks":          task_refs,
-            "sourcePage":     src_page,
             "goals":          [],
             "scaffolding":    [],
             "images":         [],
             "metadata":       {},
-            # Internal-only fields used during assembly (stripped before final output if needed)
+            # Internal-only fields used during assembly (stripped before writing output)
             "_habitsOfMind":  raw_act.get("habits_of_mind", []),
+            "_sourcePage":    src_page,
         })
 
     return activities, tasks, stems, response_areas, scaffolding
@@ -833,7 +857,7 @@ def build_pages_chunk(
     # Map page_number -> list of (sequenceNumber, activity) for ordering
     by_page: dict[int | None, list[tuple[int, dict]]] = {}
     for act in activities:
-        pn = act.get("sourcePage")
+        pn = act.get("_sourcePage")
         if pn is None:
             continue
         seq_raw = act.get("sequenceNumber")

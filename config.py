@@ -37,6 +37,13 @@ class Config:
     PDF_RENDER_DPI: int   = int(os.getenv("PDF_RENDER_DPI", "300"))
     ALLOWED_EXTENSIONS: frozenset = frozenset({"pdf"})
 
+    # ── MySQL (cl_module, cl_topic — database: cl_json_schema) ─────────────────
+    MYSQL_HOST: str     = os.getenv("MYSQL_HOST", "localhost")
+    MYSQL_PORT: int     = int(os.getenv("MYSQL_PORT", "3306"))
+    MYSQL_DATABASE: str = os.getenv("MYSQL_DATABASE", "cl_json_schema")
+    MYSQL_USER: str     = os.getenv("MYSQL_USER", "root")
+    MYSQL_PASSWORD: str = os.getenv("MYSQL_PASSWORD", "")
+
     # ── AWS / S3 ─────────────────────────────────────────────────────────────
     AWS_ACCESS_KEY_ID: str     = os.getenv("AWS_ACCESS_KEY_ID", "")
     AWS_SECRET_ACCESS_KEY: str = os.getenv("AWS_SECRET_ACCESS_KEY", "")
@@ -56,6 +63,8 @@ class Config:
     def init_dirs(cls) -> None:
         cls.UPLOAD_DIR.mkdir(exist_ok=True)
         cls.OUTPUT_DIR.mkdir(exist_ok=True)
+        (cls.OUTPUT_DIR / "modules").mkdir(exist_ok=True)
+        (cls.OUTPUT_DIR / "topics").mkdir(exist_ok=True)
 
 
 config = Config()

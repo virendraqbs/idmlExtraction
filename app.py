@@ -15,6 +15,7 @@ from starlette.staticfiles import StaticFiles
 
 from config import config
 from controllers import auth_router, jobs_router, NotAuthenticatedException
+from database import init_db
 
 logging.basicConfig(
     level=logging.INFO,
@@ -34,6 +35,7 @@ def create_app() -> FastAPI:
     )
 
     config.init_dirs()
+    init_db()
 
     static_dir = config.BASE_DIR / "static"
     if static_dir.exists():

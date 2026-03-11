@@ -13,6 +13,9 @@
   .navbar-custom { background: #fff; border-bottom: 1px solid #e5e7eb; }
   .navbar-custom .navbar-brand { font-weight: 700; font-size: 20px; }
   .navbar-custom .navbar-brand span { color: var(--primary); }
+  .navbar-custom .nav-link { color: #374151; padding: 0.35rem 0.6rem; border-radius: 6px; }
+  .navbar-custom .nav-link:hover { color: var(--primary); background: rgba(124,58,237,0.08); }
+  .navbar-custom .nav-link.active { color: var(--primary); font-weight: 600; }
   .page { max-width: 1260px; margin: 0 auto; padding: 28px 24px; }
   .mono-id { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; color: #374151; }
   table.dataTable thead th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: #6b7280; font-weight: 600; }
@@ -25,9 +28,15 @@
 <nav class="navbar navbar-expand navbar-custom sticky-top">
   <div class="container-fluid px-4">
     <a class="navbar-brand" href="/dashboard">CL <span>Pipeline</span></a>
+    <div class="navbar-nav me-auto mb-2 mb-lg-0 gap-2">
+      <a class="nav-link" href="/dashboard" style="font-size:14px">Dashboard</a>
+      <a class="nav-link" href="/modules" style="font-size:14px">Module Management</a>
+      <a class="nav-link" href="/topics" style="font-size:14px">Topic Management</a>
+      <a class="nav-link active" href="/browse" style="font-size:14px">Browse All</a>
+    </div>
     <div class="d-flex align-items-center gap-3">
-      <a href="/dashboard" class="btn btn-outline-secondary btn-sm">&#8592; Dashboard</a>
-      <a href="/dashboard" class="btn btn-primary btn-sm" style="background:var(--primary);border-color:var(--primary)">+ New Job</a>
+      <a href="/dashboard" class="btn btn-outline-secondary btn-sm">+ New Job</a>
+      <a href="/logout" class="btn btn-outline-secondary btn-sm">Sign Out</a>
     </div>
   </div>
 </nav>
