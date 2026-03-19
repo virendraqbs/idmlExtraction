@@ -213,6 +213,7 @@ def assemble_schemas(
     pg_list  = build_pages_chunk(
         pages=pages, resource_id=resource_id,
         lesson_id=lesson_id, activities=activities,
+        lesson_meta=lesson_meta,
     )
     prompts  = build_instructional_prompts_chunk(pages=pages, lesson_id=lesson_id)
     segments = build_instructional_segments(lesson_id=lesson_id, activities=activities)
@@ -249,7 +250,7 @@ def assemble_schemas(
     )
 
     # Identify banner/cover images from the intro or standards page (first lesson page)
-    _INTRO_PAGE_TYPES = {"SRB_LESSON_INTRODUCTION_ACTIVATE", "STANDARDS_PAGE"}
+    _INTRO_PAGE_TYPES = {"SRB_LESSON_INTRODUCTION_ACTIVATE"}
     _BANNER_POSITIONS = {"TOP_CENTER", "TOP_LEFT", "TOP_RIGHT", "FULL_WIDTH"}
     _BANNER_IMAGE_TYPES = {"LESSON_COVER", "MODULE_COVER", "TOPIC_COVER", "DECORATIVE", "INSTRUCTIONAL"}
     intro_page_nums = {

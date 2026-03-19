@@ -94,8 +94,7 @@ Set page_type using the FIRST matching rule:
   SRB_LESSON_EXPLORE              → main investigation / problem-solving pages with EXPLORE activities
   SRB_LESSON_EXPLORE_CONTINUED    → continuation of an EXPLORE activity from the previous page (no new activity title at top)
   SRB_LESSON_REFLECT              → closing reflection page(s)
-  SPB_PRACTICE                    → independent practice / take-home practice page
-  STANDARDS_PAGE                  → page showing only state/national educational standards (no lesson activities)
+  SRB_LESSON_PRACTICE             → independent practice / take-home practice page in a Student Resource Book
   NON_CONTENT                     → table of contents, glossary, blank page
   UNKNOWN                         → cannot determine
 
@@ -155,7 +154,7 @@ Graph/response-area (keep):
 ═══ RETURN EXACTLY THIS JSON ═══
 {
   "page_number": null,
-  "page_type": "SRB_LESSON_INTRODUCTION_ACTIVATE | SRB_LESSON_EXPLORE | SRB_LESSON_EXPLORE_CONTINUED | SRB_LESSON_REFLECT | SPB_PRACTICE | STANDARDS_PAGE | NON_CONTENT | UNKNOWN",
+  "page_type": "SRB_LESSON_INTRODUCTION_ACTIVATE | SRB_LESSON_EXPLORE | SRB_LESSON_EXPLORE_CONTINUED | SRB_LESSON_REFLECT | SRB_LESSON_PRACTICE | NON_CONTENT | UNKNOWN",
   "lesson": {
     "lesson_number": null, "title": null, "lesson_summary": null,
     "learning_goals": [], "module_title": null, "module_number": null,
