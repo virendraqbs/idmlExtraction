@@ -167,6 +167,10 @@ def assemble_schemas(
 
     activities = merged_activities
 
+    # Re-assign globally sequential sequence numbers after merging
+    for i, act in enumerate(activities, 1):
+        act["sequenceNumber"] = i
+
     # Activity goals (from _habitsOfMind); patch activity["goals"] with refs
     activity_goals, goal_refs_by_act_id = build_activity_goals_chunk(activities)
     for act in activities:
@@ -230,6 +234,7 @@ def assemble_schemas(
         source_filename=source_filename, lesson_meta=lesson_meta,
         total_pages=len(pages), extracted_at=extracted_at,
         book_name_override=book_name,
+        pages=pg_list,
     )
     module = build_module(
         module_id=module_id, resource_id=resource_id,
@@ -242,10 +247,31 @@ def assemble_schemas(
         topic_id=topic_id, module_id=module_id,
         lesson_id=lesson_id, lesson_meta=lesson_meta,
     )
+
+    # Identify banner/cover images from the intro or standards page (first lesson page)
+    _INTRO_PAGE_TYPES = {"SRB_LESSON_INTRODUCTION_ACTIVATE", "STANDARDS_PAGE"}
+    _BANNER_POSITIONS = {"TOP_CENTER", "TOP_LEFT", "TOP_RIGHT", "FULL_WIDTH"}
+    _BANNER_IMAGE_TYPES = {"LESSON_COVER", "MODULE_COVER", "TOPIC_COVER", "DECORATIVE", "INSTRUCTIONAL"}
+    intro_page_nums = {
+        p.get("page_number")
+        for p in pages
+        if p.get("page_type") in _INTRO_PAGE_TYPES
+    }
+    banner_image_refs = [
+        {"id": img["id"], "type": "IMAGE"}
+        for img in images
+        if img.get("sourcePage") in intro_page_nums
+        and (
+            img.get("imageType") in {"LESSON_COVER", "MODULE_COVER", "TOPIC_COVER"}
+            or img.get("position") in _BANNER_POSITIONS
+        )
+    ]
+
     lesson = build_lesson(
         lesson_id=lesson_id, topic_id=topic_id,
         std_block_id=std_block_id, lesson_meta=lesson_meta,
         activities=activities, has_standards=bool(std_blocks),
+        banner_images=banner_image_refs,
     )
 
     # ── Write files ───────────────────────────────────────────────────────────

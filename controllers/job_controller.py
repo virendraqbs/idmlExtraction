@@ -1580,6 +1580,62 @@ async def api_editor_payload(request: Request, job_id: str, _=Depends(require_lo
     }
 
 
+# ── Content field update ──────────────────────────────────────────────────────
+
+_CONTENT_FILE_MAP: dict[str, tuple[str, str, str | None]] = {
+    # fileKey → (filename, mode, list_key)  mode: "single" | "list"
+    "lesson":       ("06_lesson.json",                 "single", None),
+    "module":       ("04_module.json",                 "single", None),
+    "topic":        ("05_topic.json",                  "single", None),
+    "activity":     ("07_activities.json",             "list",   "activities"),
+    "prompt":       ("14_instructional_prompts.json",  "list",   "instructionalPrompts"),
+    "activityGoal": ("19_activity_goals.json",         "list",   "goals"),
+}
+
+
+@jobs_router.post("/api/results/{job_id}/update-content")
+async def update_content(request: Request, job_id: str, _=Depends(require_login)):
+    """Update text fields in a content entity (lesson, module, topic, activity, prompt, activityGoal)."""
+    out = _resolve_editor_output(request, job_id)
+    body = await request.json()
+    file_key: str = body.get("fileKey", "")
+    entity_id: str = body.get("entityId", "")
+    fields: dict = body.get("fields", {})
+
+    if file_key not in _CONTENT_FILE_MAP:
+        raise HTTPException(status_code=400, detail=f"Unknown fileKey: {file_key!r}")
+    if not fields:
+        raise HTTPException(status_code=400, detail="No fields provided")
+
+    fname, mode, list_key = _CONTENT_FILE_MAP[file_key]
+    fpath = out / fname
+    if not fpath.exists():
+        raise HTTPException(status_code=404, detail=f"{fname} not found")
+
+    with open(fpath, encoding="utf-8") as fh:
+        data = json.load(fh)
+
+    if mode == "single":
+        entity = data
+    else:
+        items: list = data.get(list_key, [])
+        entity = next((x for x in items if x.get("id") == entity_id), None)
+        if entity is None:
+            raise HTTPException(status_code=404, detail=f"Entity {entity_id!r} not found in {fname}")
+
+    for k, v in fields.items():
+        # directionLines arrives as list[str] from the front-end — convert to objects
+        if k == "directionLines" and isinstance(v, list) and v and isinstance(v[0], str):
+            v = [{"text": t, "sequenceNumber": i + 1, "directionType": "DIRECTION_LINE"}
+                 for i, t in enumerate(v)]
+        entity[k] = v
+
+    with open(fpath, "w", encoding="utf-8") as fh:
+        json.dump(data, fh, ensure_ascii=False, indent=2)
+
+    return {"ok": True}
+
+
 # ── Generic result file API (after /editor so it doesn't shadow it) ───────────
 
 @jobs_router.get("/api/results/{job_id}/{filename}")

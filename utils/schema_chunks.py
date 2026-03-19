@@ -12,6 +12,7 @@ Naming convention:
 from __future__ import annotations
 
 import os
+import re
 import time
 import uuid
 from pathlib import Path
@@ -27,6 +28,21 @@ def gen_id() -> str:
 def now_iso() -> str:
     """Return current UTC time as ISO-8601 string."""
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+
+# Matches generic placeholder names like "Module 1", "Topic 2", "Lesson 3",
+# "Module", "Topic", "Lesson" (with or without a trailing number/whitespace).
+_GENERIC_NAME_RE = re.compile(
+    r"^\s*(module|topic|lesson|unit|chapter|section)\s*\d*\s*$",
+    re.IGNORECASE,
+)
+
+
+def _strip_generic_name(value: str | None) -> str | None:
+    """Return None if value is a generic placeholder name (e.g. 'Module 1')."""
+    if value and isinstance(value, str) and _GENERIC_NAME_RE.match(value.strip()):
+        return None
+    return value
 
 
 # ── 01 — Primitives ───────────────────────────────────────────────────────────
@@ -109,6 +125,7 @@ def build_resource(
     total_pages: int,
     extracted_at: str,
     book_name_override: str | None = None,
+    pages: list[dict] | None = None,
 ) -> dict:
     """
     03_resource.json
@@ -117,6 +134,10 @@ def build_resource(
     title = (book_name_override or source_filename or "").strip()
     if not title and source_filename:
         title = source_filename.replace(".pdf", "")
+    page_refs = [
+        {"id": p["id"], "type": "PAGE", "pageNumber": p.get("pageNumber")}
+        for p in (pages or [])
+    ]
     return {
         "id":              resource_id,
         "resourceType":    "STUDENT_RESOURCE_BOOK",
@@ -127,7 +148,7 @@ def build_resource(
         "edition":         None,
         "publisher":       None,
         "isbn":            None,
-        "pages":           [],
+        "pages":           page_refs,
         "modules":         [{"id": module_id, "type": "MODULE"}],
         "standards":       [],
         "metadata": {
@@ -215,10 +236,12 @@ def build_lesson(
     lesson_meta: dict,
     activities: list[dict],
     has_standards: bool,
+    banner_images: list[dict] | None = None,
 ) -> dict:
     """
     06_lesson.json
     Lesson entity with learning goals and activity references.
+    banner_images: list of {"id": ..., "type": "IMAGE"} refs for the lesson banner/cover image(s).
     """
     learning_goals = lesson_meta.get("learning_goals") or []
     if isinstance(learning_goals, str):
@@ -230,7 +253,7 @@ def build_lesson(
         "lessonNumber":  lesson_meta.get("lesson_number"),
         "title":         lesson_meta.get("title"),
         "lessonSummary": lesson_meta.get("lesson_summary"),
-        "images":        [],
+        "images":        banner_images or [],
         "learningGoals": learning_goals,
         "standardsBlock": std_block_id if has_standards else None,
         "activities": [
@@ -337,8 +360,9 @@ def build_activities_chunk(
 def build_activity_goals_chunk(activities: list[dict]) -> tuple[list[dict], dict[str, list[dict]]]:
     """
     19_activity_goals.json
-    Goal entities (e.g. HABITS_OF_MIND) per activity. Returns (goals_list, refs_by_activity_id)
-    so the assembler can set activity["goals"] from refs_by_activity_id[activity["id"]].
+    One goal entry per activity. Activities with habits_of_mind get goalType HABITS_OF_MIND;
+    all others get goalType ACTIVITY_GOAL with an empty goalItems list so every activity
+    is represented. Returns (goals_list, refs_by_activity_id).
     """
     goals: list[dict] = []
     refs_by_activity_id: dict[str, list[dict]] = {}
@@ -347,15 +371,12 @@ def build_activity_goals_chunk(activities: list[dict]) -> tuple[list[dict], dict
         if not act_id:
             continue
         habits = act.get("_habitsOfMind") or []
-        if not habits:
-            refs_by_activity_id.setdefault(act_id, [])
-            continue
         goal_items = [h if isinstance(h, str) else str(h) for h in habits]
         goal_id = gen_id()
         goals.append({
             "id":         goal_id,
             "activityId": act_id,
-            "goalType":   "HABITS_OF_MIND",
+            "goalType":   "HABITS_OF_MIND" if goal_items else "ACTIVITY_GOAL",
             "goalItems":  goal_items,
             "standards":  [],
         })
@@ -521,7 +542,6 @@ def build_stem(
         "stemText":         raw_task.get("stem_text", ""),
         "ancillaryText":    raw_task.get("ancillary_text"),
         "responseAreaType": raw_task.get("response_area_type"),
-        "hasGraph":         raw_task.get("has_graph", False),
         "subTasks":         raw_task.get("sub_tasks", []),
         "image":            None,
         "responseArea":     response_area_id,
@@ -1037,7 +1057,11 @@ def extract_lesson_meta(pages: list[dict]) -> dict:
             if f not in meta or meta[f] in (None, [], ""):
                 val = les.get(f)
                 if val not in (None, [], ""):
-                    meta[f] = val
+                    # Strip generic placeholder names for title fields
+                    if f in ("title", "module_title", "topic_title"):
+                        val = _strip_generic_name(val)
+                    if val not in (None, [], ""):
+                        meta[f] = val
         if len(meta) == len(fields) and all(meta.get(f) not in (None, [], "") for f in fields):
             break   # all fields filled — no need to keep scanning
 

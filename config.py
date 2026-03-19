@@ -44,6 +44,16 @@ class Config:
     MYSQL_USER: str     = os.getenv("MYSQL_USER", "root")
     MYSQL_PASSWORD: str = os.getenv("MYSQL_PASSWORD", "")
 
+    # ── LDAP ─────────────────────────────────────────────────────────────────
+    LDAP_ENABLED: bool  = os.getenv("LDAP_ENABLED", "false").lower() == "true"
+    LDAP_HOST: str      = os.getenv("LDAP_HOST", "")
+    LDAP_PORT: int      = int(os.getenv("LDAP_PORT", "389"))
+    LDAP_USE_SSL: bool  = os.getenv("LDAP_USE_SSL", "false").lower() == "true"
+    LDAP_BIND_DN: str   = os.getenv("LDAP_BIND_DN", "")   # service-account DN for user lookup
+    LDAP_BIND_PASS: str = os.getenv("LDAP_BIND_PASS", "")
+    LDAP_BASE_DN: str   = os.getenv("LDAP_BASE_DN", "")   # e.g. dc=example,dc=com
+    LDAP_USER_FILTER: str = os.getenv("LDAP_USER_FILTER", "(sAMAccountName={username})")  # AD default
+
     # ── AWS / S3 ─────────────────────────────────────────────────────────────
     AWS_ACCESS_KEY_ID: str     = os.getenv("AWS_ACCESS_KEY_ID", "")
     AWS_SECRET_ACCESS_KEY: str = os.getenv("AWS_SECRET_ACCESS_KEY", "")

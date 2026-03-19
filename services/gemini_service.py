@@ -29,12 +29,13 @@ You receive ONE page image. Extract EVERYTHING visible — text, math, images, g
 - Math expressions: wrap ALL inline math in $...$ and display math in $$...$$.
 - Preserve EXACT wording. For multi-line text join with \\n.
 
-═══ STANDARDS PAGE DETECTION ═══
-A page is a STANDARDS_PAGE if it shows educational standards for a state or national body.
-Indicators: a bold header like "California High School", "Texas", a state flag/seal image,
-sections titled "Big Ideas", "Standards", "Interpreting Functions", numbered standard items, etc.
+═══ STANDARDS BLOCK EXTRACTION ═══
+Whenever a page shows educational standards (whether on a STANDARDS_PAGE or embedded in
+SRB_LESSON_INTRODUCTION_ACTIVATE), fully populate the standards_block object.
+Indicators: bold header like "California High School", state flag/seal, sections titled
+"Big Ideas", "Standards", numbered standard items, etc.
 
-For STANDARDS_PAGE pages you MUST fully populate the standards_block object:
+For pages containing a standards block you MUST fully populate the standards_block object:
 - title: the main heading (e.g. "California High School")
 - standards_body: one of CCSS | CA_CCSS | TEKS | BEST  (infer from context)
 - grade_level: e.g. "HS", "K", "3" — infer from the header
@@ -86,6 +87,17 @@ practice_section_type rules (null when no such section is present):
   "Practice and Apply" / "Independent Practice" heading → LESSON_PRACTICE
   Reference to LiveHint, online platform, QR code       → INTERACTIVE_PRACTICE
   Section addressed to families / parents               → FAMILY_GUIDE
+
+═══ PAGE TYPE DETECTION ═══
+Set page_type using the FIRST matching rule:
+  SRB_LESSON_INTRODUCTION_ACTIVATE → the FIRST lesson content page; contains the lesson title, learning goals, standards block, and/or the opening warm-up/activate activity (Key Terms + Activate section). This is always page 1 of any lesson.
+  SRB_LESSON_EXPLORE              → main investigation / problem-solving pages with EXPLORE activities
+  SRB_LESSON_EXPLORE_CONTINUED    → continuation of an EXPLORE activity from the previous page (no new activity title at top)
+  SRB_LESSON_REFLECT              → closing reflection page(s)
+  SPB_PRACTICE                    → independent practice / take-home practice page
+  STANDARDS_PAGE                  → page showing only state/national educational standards (no lesson activities)
+  NON_CONTENT                     → table of contents, glossary, blank page
+  UNKNOWN                         → cannot determine
 
 ═══ ACTIVITY TYPE DETECTION ═══
 Use these rules to set activity_type (pick the FIRST match):
@@ -143,7 +155,7 @@ Graph/response-area (keep):
 ═══ RETURN EXACTLY THIS JSON ═══
 {
   "page_number": null,
-  "page_type": "SRB_LESSON_INTRODUCTION | SRB_LESSON_ACTIVATE | SRB_LESSON_EXPLORE | SRB_LESSON_EXPLORE_CONTINUED | SRB_LESSON_REFLECT | SPB_PRACTICE | STANDARDS_PAGE | NON_CONTENT | UNKNOWN",
+  "page_type": "SRB_LESSON_INTRODUCTION_ACTIVATE | SRB_LESSON_EXPLORE | SRB_LESSON_EXPLORE_CONTINUED | SRB_LESSON_REFLECT | SPB_PRACTICE | STANDARDS_PAGE | NON_CONTENT | UNKNOWN",
   "lesson": {
     "lesson_number": null, "title": null, "lesson_summary": null,
     "learning_goals": [], "module_title": null, "module_number": null,
