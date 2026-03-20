@@ -77,13 +77,13 @@ def build_primitives(
     consumers can look up IDs without parsing the full entity files.
     """
     return {
-        "resourceId":       resource_id,
-        "moduleId":         module_id,
-        "topicId":          topic_id,
-        "lessonId":         lesson_id,
-        "standardsBlockId": std_block_id,
-        "totalPages":       total_pages,
-        "extractedAt":      extracted_at,
+        "resource_id":        resource_id,
+        "module_id":          module_id,
+        "topic_id":           topic_id,
+        "lesson_id":          lesson_id,
+        "standards_block_id": std_block_id,
+        "total_pages":        total_pages,
+        "extracted_at":       extracted_at,
     }
 
 
