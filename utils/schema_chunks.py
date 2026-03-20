@@ -187,7 +187,9 @@ def build_module(
     Images belong to activities, not modules.
     """
     raw_title = (module_name_override or lesson_meta.get("module_title") or "").strip()
-    title = _strip_entity_number_prefix(raw_title) if raw_title else ""
+    # Strip "Module N: " prefix, then discard if still a generic placeholder (e.g. "Module 1")
+    stripped = _strip_entity_number_prefix(raw_title) if raw_title else ""
+    title = _strip_generic_name(stripped) or ""
     # Use null for empty summary — empty string is invalid (issue #5)
     raw_summary = (module_subtitle_override or lesson_meta.get("module_summary") or "").strip()
     module_summary = raw_summary or None
@@ -229,7 +231,8 @@ def build_topic(
         "id":           topic_id,
         "moduleId":     module_id,
         "topicNumber":  lesson_meta.get("topic_number", 1),
-        "title":        lesson_meta.get("topic_title", ""),
+        # Safety net: discard generic placeholders like "Topic 1" even if they reached here
+        "title":        _strip_generic_name(lesson_meta.get("topic_title") or "") or "",
         "topicSummary": topic_summary,
         "images":       [],
         # sequenceNumber not required in topic's lesson references (issue #7)
