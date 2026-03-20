@@ -624,7 +624,9 @@ async def upload(
     # Prefer selected resource/module titles from dropdowns for extraction metadata
     book_name = (book_name or selected_resource_title or "").strip() or None
     module_name = (module_name or selected_module_title or "").strip() or None
-    module_subtitle = (module_subtitle or selected_topic_title or "").strip() or None
+    # module_subtitle is the module summary — do NOT source it from selected_topic_title
+    # (topic title is a different field; DB will provide topic data via selected_topic_id)
+    module_subtitle = module_subtitle.strip() or None
 
     filename = _secure_filename(pdf_file.filename)
     job = job_repo.create(

@@ -215,6 +215,7 @@ def assemble_schemas(
         lesson_id=lesson_id, activities=activities,
         lesson_meta=lesson_meta,
     )
+
     prompts  = build_instructional_prompts_chunk(pages=pages, lesson_id=lesson_id)
     segments = build_instructional_segments(lesson_id=lesson_id, activities=activities)
 
@@ -237,11 +238,16 @@ def assemble_schemas(
         book_name_override=book_name,
         pages=pg_list,
     )
+    # When a DB module is selected, its title and summary are already in lesson_meta
+    # (set above at lines 86-95). Passing form overrides on top would overwrite them,
+    # so suppress overrides when DB data is present.
+    effective_module_name     = None if db_module else module_name
+    effective_module_subtitle = None if db_module else module_subtitle
     module = build_module(
         module_id=module_id, resource_id=resource_id,
         topic_id=topic_id, lesson_meta=lesson_meta,
-        module_name_override=module_name,
-        module_subtitle_override=module_subtitle,
+        module_name_override=effective_module_name,
+        module_subtitle_override=effective_module_subtitle,
         module_meta_override=module_meta,
     )
     topic = build_topic(
