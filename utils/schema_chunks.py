@@ -258,10 +258,15 @@ def build_lesson(
     if isinstance(learning_goals, str):
         learning_goals = [learning_goals]
 
+    _VALID_LESSON_TYPES = {"CONCEPT_LESSON", "RE-ENGAGEMENT_LESSON"}
+    raw_lesson_type = (lesson_meta.get("lesson_type") or "").upper().replace(" ", "_")
+    lesson_type = raw_lesson_type if raw_lesson_type in _VALID_LESSON_TYPES else "CONCEPT_LESSON"
+
     return {
-        "id":             lesson_id,
+        "id":            lesson_id,
         "topicId":       topic_id,
         "lessonNumber":  lesson_meta.get("lesson_number"),
+        "lessonType":    lesson_type,
         "title":         lesson_meta.get("title"),
         "lessonSummary": lesson_meta.get("lesson_summary"),
         "images":        banner_images or [],
@@ -1026,6 +1031,7 @@ def extract_lesson_meta(pages: list[dict]) -> dict:
         "lesson_number", "title", "lesson_summary", "learning_goals",
         "module_title", "module_number", "topic_title", "topic_number",
         "grade_level", "module_summary", "topic_summary", "standards_body",
+        "lesson_type",
     ]
     meta: dict[str, Any] = {}
     for page in pages:

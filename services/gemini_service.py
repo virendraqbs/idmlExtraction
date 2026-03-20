@@ -118,6 +118,11 @@ tasks[].stem_text: the exact question or problem text for ONE task/sub-task.
 RULE: If a sentence functions as BOTH a direction and the first task's stem, put it ONLY in stem_text.
   Do NOT copy the same sentence into both direction_lines and stem_text.
 
+═══ LESSON TYPE ═══
+Set lesson.lesson_type using the FIRST matching rule:
+  RE-ENGAGEMENT_LESSON → page or heading explicitly labels the lesson as a "Re-Engagement" or "Re-Teaching" lesson
+  CONCEPT_LESSON       → all other lessons (default)
+
 ═══ MODULE AND TOPIC SUMMARIES ═══
 When the page shows a module or topic overview (e.g. "About this module", "In this topic", summary paragraph under a module/topic heading), extract that text:
 - lesson.module_summary: summary or description of the module when visible.
@@ -158,7 +163,8 @@ Graph/response-area (keep):
   "lesson": {
     "lesson_number": null, "title": null, "lesson_summary": null,
     "learning_goals": [], "module_title": null, "module_number": null,
-    "topic_title": null, "topic_number": null, "module_summary": null, "topic_summary": null
+    "topic_title": null, "topic_number": null, "module_summary": null, "topic_summary": null,
+    "lesson_type": "CONCEPT_LESSON | RE-ENGAGEMENT_LESSON"
   },
   "standards_block": {
     "title": null, "standards_body": null, "grade_level": null,
