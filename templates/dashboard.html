@@ -77,8 +77,27 @@
         <p class="text-muted mb-0">Select resource, module, and topic, then upload a lesson PDF. The pipeline runs in the background. For module and topic uploads, use <a href="/modules">Module Management</a> and <a href="/topics">Topic Management</a>.</p>
       </div>
       <form method="POST" action="/upload" enctype="multipart/form-data" id="upload-form">
+          <input type="hidden" name="book_type" id="hidden-book-type" value="SRB">
+
+          <!-- Step 1: Content type selector -->
+          <div class="upload-type-section" style="margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid #e2e8f0">
+            <div class="select-title" style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#4338ca;text-transform:uppercase;margin-bottom:12px">1. Select content type</div>
+            <div style="display:flex;gap:12px">
+              <label class="type-option" id="type-srb" style="flex:1;border:2px solid #7c3aed;border-radius:10px;padding:14px 16px;cursor:pointer;background:#f5f3ff;transition:all 0.15s">
+                <input type="radio" name="_book_type_radio" value="SRB" checked style="display:none">
+                <div style="font-weight:700;font-size:14px;color:#5b21b6;margin-bottom:3px">&#128218; Student Resource Book</div>
+                <div style="font-size:12px;color:#7c3aed">SRB — Lesson activities, tasks, standards</div>
+              </label>
+              <label class="type-option" id="type-tig" style="flex:1;border:2px solid #e2e8f0;border-radius:10px;padding:14px 16px;cursor:pointer;background:#fff;transition:all 0.15s">
+                <input type="radio" name="_book_type_radio" value="TIG" style="display:none">
+                <div style="font-weight:700;font-size:14px;color:#374151;margin-bottom:3px">&#128203; Teacher Implementation Guide</div>
+                <div style="font-size:12px;color:#6b7280">TIG — Activities, instructional segments &amp; prompts</div>
+              </label>
+            </div>
+          </div>
+
           <div class="upload-select-section">
-            <div class="select-title">1. Select resource, module &amp; topic</div>
+            <div class="select-title">2. Select resource, module &amp; topic</div>
             <div class="select-row">
               <div class="select-field">
                 <label for="select-resource">Resource</label>
@@ -107,7 +126,7 @@
             <input type="hidden" name="selected_topic_title" id="hidden-topic-title" value="">
           </div>
           <div class="upload-upload-section" id="upload-upload-section">
-            <div class="select-title" style="color:#64748b;margin-bottom:10px">2. Upload lesson PDF</div>
+            <div class="select-title" style="color:#64748b;margin-bottom:10px">3. Upload PDF</div>
           <div class="drop-zone" id="drop-zone">
             <input type="file" name="pdf_file" id="pdf-input" accept=".pdf" required>
             <div class="drop-icon">&#128196;</div>
@@ -235,6 +254,22 @@ $(document).ready(function() {
       { targets: [8], orderable: false, className: 'text-center' },
       { targets: [9], orderable: false, className: 'text-center' },
     ],
+  });
+});
+
+/* ── SRB / TIG type selector ── */
+const hiddenBookType = document.getElementById('hidden-book-type');
+const typeOptions = document.querySelectorAll('.type-option');
+typeOptions.forEach(function(label) {
+  label.addEventListener('click', function() {
+    const val = label.querySelector('input[type=radio]').value;
+    hiddenBookType.value = val;
+    typeOptions.forEach(function(l) {
+      const selected = l.querySelector('input[type=radio]').value === val;
+      l.style.border      = selected ? '2px solid #7c3aed' : '2px solid #e2e8f0';
+      l.style.background  = selected ? '#f5f3ff' : '#fff';
+      l.querySelector('div').style.color = selected ? '#5b21b6' : '#374151';
+    });
   });
 });
 

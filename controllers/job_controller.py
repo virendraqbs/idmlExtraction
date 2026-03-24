@@ -594,6 +594,7 @@ async def upload(
     request: Request,
     pdf_file: UploadFile | None = File(None),
     api_key: str = Form(""),
+    book_type: str = Form("SRB"),
     book_name: str = Form(""),
     module_name: str = Form(""),
     module_subtitle: str = Form(""),
@@ -628,6 +629,10 @@ async def upload(
     # (topic title is a different field; DB will provide topic data via selected_topic_id)
     module_subtitle = module_subtitle.strip() or None
 
+    book_type = book_type.strip().upper()
+    if book_type not in ("SRB", "TIG"):
+        book_type = "SRB"
+
     filename = _secure_filename(pdf_file.filename)
     job = job_repo.create(
         filename=filename,
@@ -640,6 +645,7 @@ async def upload(
         module_meta=module_meta.strip() or None,
         selected_module_id=selected_module_id.strip() or None,
         selected_topic_id=selected_topic_id.strip() or None,
+        book_type=book_type,
     )
 
     pdf_path = config.UPLOAD_DIR / f"{job.id}_{filename}"
