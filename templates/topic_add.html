@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Add Topic — CL Pipeline</title>
+<title>CL Pipeline — Upload Topic PDF</title>
 <link rel="stylesheet" href="/static/css/theme.css">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <style>
@@ -12,13 +12,14 @@
   .navbar-custom { background: #fff; border-bottom: 1px solid #e5e7eb; }
   .navbar-custom .navbar-brand { font-weight: 700; font-size: 20px; }
   .navbar-custom .navbar-brand span { color: var(--primary); }
-  .page { max-width: 640px; margin: 0 auto; padding: 28px 24px; }
-  .card-add { background: #fff; border-radius: 14px; border: 1px solid #e8eaf0; box-shadow: 0 4px 20px rgba(0,0,0,0.06); padding: 28px 32px; }
+  .navbar-custom .nav-link { color: #374151; padding: 0.35rem 0.6rem; border-radius: 6px; }
+  .navbar-custom .nav-link:hover { color: var(--primary); background: rgba(124,58,237,0.08); }
+  .navbar-custom .nav-link.active { color: var(--primary); font-weight: 600; }
+  .page { max-width: 720px; margin: 0 auto; padding: 28px 24px; }
+  .upload-card { background: #fff; border: 1px solid #e8eaf0; border-radius: 14px; padding: 28px 32px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); }
   .drop-zone { border: 2px dashed #d1d5db; border-radius: 12px; padding: 36px 24px; text-align: center; cursor: pointer; position: relative; background: #fafbfc; min-height: 140px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-  .drop-zone:hover, .drop-zone.dragover { border-color: var(--primary); background: rgba(124,58,237,0.06); }
+  .drop-zone:hover { border-color: var(--primary); background: rgba(124,58,237,0.06); }
   .drop-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; z-index: 2; width: 100%; height: 100%; }
-  .btn-submit { background: linear-gradient(135deg, var(--primary) 0%, #6d28d9 100%); color: #fff; border: none; padding: 12px 24px; border-radius: 10px; font-weight: 600; }
-  .btn-submit:hover { color: #fff; opacity: 0.95; }
 </style>
 </head>
 <body>
@@ -28,57 +29,61 @@
     <div class="navbar-nav me-auto mb-2 mb-lg-0 gap-2">
       <a class="nav-link" href="/dashboard" style="font-size:14px">Dashboard</a>
       <a class="nav-link" href="/modules" style="font-size:14px">Module Management</a>
-      <a class="nav-link active" href="/topics" style="font-size:14px; font-weight:600">Topic Management</a>
+      <a class="nav-link active" href="/topics" style="font-size:14px">Topic Management</a>
       <a class="nav-link" href="/browse" style="font-size:14px">Browse All</a>
     </div>
     <div class="d-flex align-items-center gap-3">
-      <span class="text-muted" style="font-size:13px">{{ session.username }}</span>
+      {% if session %}<span class="text-muted" style="font-size:13px">{{ session.username }}</span>{% endif %}
+      <a href="/topics" class="btn btn-outline-secondary btn-sm">← Back to list</a>
       <a href="/logout" class="btn btn-outline-secondary btn-sm">Sign Out</a>
     </div>
   </div>
 </nav>
-
 <div class="page">
-  {% if error %}
-  <div class="alert alert-danger">{{ error }}</div>
-  {% endif %}
-
-  <div class="card card-add">
-    <h5 class="mb-3">Add Topic</h5>
-    <p class="text-muted small mb-4">Select a module and upload a PDF. The topic title will be taken from the filename.</p>
+  {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+  <div class="mb-4">
+    <nav aria-label="breadcrumb"><ol class="breadcrumb" style="font-size:13px"><li class="breadcrumb-item"><a href="/dashboard">Dashboard</a></li><li class="breadcrumb-item"><a href="/topics">Topic Management</a></li><li class="breadcrumb-item active">Upload Topic PDF</li></ol></nav>
+    <h4 class="fw-bold">Upload Topic PDF</h4>
+    <p class="text-muted" style="font-size:14px">Select a module, then upload a topic PDF. The topic will be linked to the chosen module.</p>
+  </div>
+  <div class="upload-card">
     <form method="POST" action="/topics/add" enctype="multipart/form-data">
-      <div class="mb-4">
-        <label for="module_id" class="form-label">Module <span class="text-danger">*</span></label>
-        <select class="form-select" id="module_id" name="module_id" required>
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Module <span class="text-danger">*</span></label>
+        <select name="module_id" class="form-select" required>
           <option value="">— Select module —</option>
           {% for m in modules %}
-          <option value="{{ m.id }}">{% if m.module_number %}Module {{ m.module_number }}: {% endif %}{{ m.title or m.id }}</option>
+          <option value="{{ m.id }}">{{ m.title or m.id }}{% if m.module_number %} (Module {{ m.module_number }}){% endif %}</option>
           {% endfor %}
         </select>
       </div>
-      <div class="mb-4">
-        <label class="form-label">PDF <span class="text-danger">*</span></label>
-        <div class="drop-zone" id="drop-zone" onclick="document.getElementById('pdf-input').click()">
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Title (optional)</label>
+        <input type="text" name="title" class="form-control" placeholder="Leave empty to derive from filename">
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Topic number (optional)</label>
+        <input type="number" name="topic_number" class="form-control" placeholder="e.g. 1" min="1">
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Topic PDF <span class="text-danger">*</span></label>
+        <div class="drop-zone" id="drop-zone">
           <input type="file" name="pdf_file" id="pdf-input" accept=".pdf" required>
-          <div class="mb-2" style="font-size:28px">&#128196;</div>
-          <div class="fw-semibold text-dark">Drop PDF here or click to browse</div>
-          <div class="small text-muted">PDF only, up to 100 MB</div>
+          <div style="font-size:26px;margin-bottom:8px">&#128196;</div>
+          <div class="fw-semibold">Drop PDF here or click to browse</div>
+          <div class="text-muted small">PDF only, up to 100 MB</div>
         </div>
       </div>
-      <div>
-        <button type="submit" class="btn btn-submit">Save Topic</button>
-        <a href="/topics" class="btn btn-outline-secondary ms-2">Cancel</a>
-      </div>
+      <button type="submit" class="btn btn-primary" style="background:var(--primary);border-color:var(--primary)">Upload topic</button>
     </form>
   </div>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+(function(){
   var dz = document.getElementById('drop-zone');
   var inp = document.getElementById('pdf-input');
-  dz.addEventListener('dragover', function(e) { e.preventDefault(); dz.classList.add('dragover'); });
-  dz.addEventListener('dragleave', function() { dz.classList.remove('dragover'); });
-  dz.addEventListener('drop', function(e) { e.preventDefault(); dz.classList.remove('dragover'); if (e.dataTransfer.files.length) inp.files = e.dataTransfer.files; });
+  if (dz && inp) dz.addEventListener('click', function(){ inp.click(); });
+})();
 </script>
 </body>
 </html>

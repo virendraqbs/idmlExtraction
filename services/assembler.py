@@ -46,6 +46,8 @@ def assemble_schemas(
     module_name: str | None = None,
     module_subtitle: str | None = None,
     module_meta: str | None = None,
+    db_module: dict | None = None,
+    db_topic: dict | None = None,
 ) -> list[str]:
     """
     Build and write all 19 CL-Json-Schema JSON files (including 19_activity_goals.json).
@@ -60,6 +62,8 @@ def assemble_schemas(
         module_name:     Optional user-provided module title override.
         module_subtitle: Optional user-provided module subtitle.
         module_meta:     Optional user-provided module meta (JSON string or text).
+        db_module:       DB record for the selected module (overrides generated ID + metadata).
+        db_topic:        DB record for the selected topic (overrides generated ID + metadata).
 
     Returns:
         List of filenames written (18 items).
@@ -67,14 +71,35 @@ def assemble_schemas(
     extracted_at = now_iso()
 
     # ── Canonical document-level IDs ──────────────────────────────────────────
+    # Use DB IDs when a module/topic was selected from the dropdown.
     resource_id  = gen_id()
-    module_id    = gen_id()
-    topic_id     = gen_id()
+    module_id    = db_module["id"] if db_module else gen_id()
+    topic_id     = db_topic["id"]  if db_topic  else gen_id()
     lesson_id    = gen_id()
     std_block_id = gen_id()
 
     # ── Shared metadata extracted from pages ──────────────────────────────────
     lesson_meta = extract_lesson_meta(pages)
+
+    # ── Override lesson_meta with DB module/topic fields when selected ─────────
+    if db_module:
+        if db_module.get("title"):
+            lesson_meta["module_title"] = db_module["title"]
+        if db_module.get("module_number") is not None:
+            lesson_meta["module_number"] = db_module["module_number"]
+        if db_module.get("grade_level"):
+            lesson_meta["grade_level"] = db_module["grade_level"]
+        if db_module.get("standards_body"):
+            lesson_meta["standards_body"] = db_module["standards_body"]
+        if db_module.get("module_summary"):
+            lesson_meta["module_summary"] = db_module["module_summary"]
+    if db_topic:
+        if db_topic.get("title"):
+            lesson_meta["topic_title"] = db_topic["title"]
+        if db_topic.get("topic_number") is not None:
+            lesson_meta["topic_number"] = db_topic["topic_number"]
+        if db_topic.get("topic_summary"):
+            lesson_meta["topic_summary"] = db_topic["topic_summary"]
 
     # ── Build entity lists (order matters — activities produces tasks+stems) ──
 
@@ -142,12 +167,17 @@ def assemble_schemas(
 
     activities = merged_activities
 
+    # Re-assign globally sequential sequence numbers after merging
+    for i, act in enumerate(activities, 1):
+        act["sequenceNumber"] = i
+
     # Activity goals (from _habitsOfMind); patch activity["goals"] with refs
     activity_goals, goal_refs_by_act_id = build_activity_goals_chunk(activities)
     for act in activities:
         act["goals"] = goal_refs_by_act_id.get(act["id"], [])
-        # Remove internal-only field used during assembly
+        # Remove internal-only fields used during assembly
         act.pop("_habitsOfMind", None)
+        act.pop("_sourcePage", None)
 
     # Practice sections (groups PRACTICE activities; uses page-level detection first)
     practice_sections = build_practice_sections_chunk(
@@ -161,7 +191,7 @@ def assemble_schemas(
     # and image["usage"]["usedInActivities"] with cross-references.
     activities_by_page: dict[int, list[dict]] = {}
     for act in activities:
-        pg = act.get("sourcePage")
+        pg = act.get("_sourcePage")
         if pg is not None:
             activities_by_page.setdefault(pg, []).append(act)
     for img in images:
@@ -183,7 +213,9 @@ def assemble_schemas(
     pg_list  = build_pages_chunk(
         pages=pages, resource_id=resource_id,
         lesson_id=lesson_id, activities=activities,
+        lesson_meta=lesson_meta,
     )
+
     prompts  = build_instructional_prompts_chunk(pages=pages, lesson_id=lesson_id)
     segments = build_instructional_segments(lesson_id=lesson_id, activities=activities)
 
@@ -204,24 +236,49 @@ def assemble_schemas(
         source_filename=source_filename, lesson_meta=lesson_meta,
         total_pages=len(pages), extracted_at=extracted_at,
         book_name_override=book_name,
+        pages=pg_list,
     )
-    # Module only gets module-level images; lesson images stay on activities/pages
+    # When a DB module is selected, its title and summary are already in lesson_meta
+    # (set above at lines 86-95). Passing form overrides on top would overwrite them,
+    # so suppress overrides when DB data is present.
+    effective_module_name     = None if db_module else module_name
+    effective_module_subtitle = None if db_module else module_subtitle
     module = build_module(
         module_id=module_id, resource_id=resource_id,
         topic_id=topic_id, lesson_meta=lesson_meta,
-        image_ids=[],
-        module_name_override=module_name,
-        module_subtitle_override=module_subtitle,
+        module_name_override=effective_module_name,
+        module_subtitle_override=effective_module_subtitle,
         module_meta_override=module_meta,
     )
     topic = build_topic(
         topic_id=topic_id, module_id=module_id,
         lesson_id=lesson_id, lesson_meta=lesson_meta,
     )
+
+    # Identify banner/cover images from the intro or standards page (first lesson page)
+    _INTRO_PAGE_TYPES = {"SRB_LESSON_INTRODUCTION_ACTIVATE"}
+    _BANNER_POSITIONS = {"TOP_CENTER", "TOP_LEFT", "TOP_RIGHT", "FULL_WIDTH"}
+    _BANNER_IMAGE_TYPES = {"LESSON_COVER", "MODULE_COVER", "TOPIC_COVER", "DECORATIVE", "INSTRUCTIONAL"}
+    intro_page_nums = {
+        p.get("page_number")
+        for p in pages
+        if p.get("page_type") in _INTRO_PAGE_TYPES
+    }
+    banner_image_refs = [
+        {"id": img["id"], "type": "IMAGE"}
+        for img in images
+        if img.get("sourcePage") in intro_page_nums
+        and (
+            img.get("imageType") in {"LESSON_COVER", "MODULE_COVER", "TOPIC_COVER"}
+            or img.get("position") in _BANNER_POSITIONS
+        )
+    ]
+
     lesson = build_lesson(
         lesson_id=lesson_id, topic_id=topic_id,
         std_block_id=std_block_id, lesson_meta=lesson_meta,
         activities=activities, has_standards=bool(std_blocks),
+        banner_images=banner_image_refs,
     )
 
     # ── Write files ───────────────────────────────────────────────────────────

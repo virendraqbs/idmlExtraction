@@ -5,169 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CL Pipeline — Dashboard</title>
 <link rel="stylesheet" href="/static/css/theme.css">
+<link rel="stylesheet" href="/static/css/dashboard.css">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css" rel="stylesheet">
-<style>
-  :root { --primary: #7c3aed; --primary-rgb: 124,58,237; }
-  body { background: #f8f9fc; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
-
-  .navbar-custom { background: #fff; border-bottom: 1px solid #e5e7eb; }
-  .navbar-custom .navbar-brand { font-weight: 700; font-size: 20px; }
-  .navbar-custom .navbar-brand span { color: var(--primary); }
-
-  .page { max-width: 1260px; margin: 0 auto; padding: 28px 24px; }
-
-  /* Upload Card — centered on the page */
-  .upload-card {
-    background: #fff; border: 1px solid #e8eaf0; border-radius: 14px;
-    padding: 28px 32px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); margin-bottom: 28px;
-    max-width: 720px; margin-left: auto; margin-right: auto; width: 100%;
-  }
-  .upload-card .upload-inner { max-width: 100%; }
-  .upload-card h5 { font-weight: 700; font-size: 1.15rem; margin-bottom: 6px; color: #1f2937; }
-  .upload-card .text-muted { font-size: 13px; line-height: 1.5; color: #6b7280; }
-
-  .drop-zone {
-    border: 2px dashed #d1d5db; border-radius: 12px; padding: 36px 24px;
-    text-align: center; cursor: pointer; transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
-    position: relative; background: linear-gradient(180deg, #fafbfc 0%, #f3f4f6 100%);
-    min-height: 152px; display: flex; flex-direction: column; align-items: center; justify-content: center;
-  }
-  .drop-zone:hover, .drop-zone.dragover {
-    border-color: var(--primary); background: linear-gradient(180deg, rgba(124,58,237,0.06) 0%, rgba(124,58,237,0.02) 100%);
-    box-shadow: 0 0 0 4px rgba(124,58,237,0.08);
-  }
-  .drop-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; z-index: 2; width: 100%; height: 100%; }
-  .drop-icon {
-    width: 52px; height: 52px; border-radius: 12px; background: rgba(124,58,237,0.1);
-    display: flex; align-items: center; justify-content: center; font-size: 26px; margin-bottom: 12px;
-    color: var(--primary); transition: background 0.2s, transform 0.2s;
-  }
-  .drop-zone:hover .drop-icon { background: rgba(124,58,237,0.16); transform: scale(1.02); }
-  .drop-zone .drop-title { font-size: 15px; font-weight: 600; color: #374151; margin-bottom: 4px; }
-  .drop-zone .drop-sub { font-size: 12px; color: #9ca3af; }
-
-  .file-preview {
-    display: none; margin-top: 14px; padding: 14px 18px; border-radius: 10px;
-    background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border: 1px solid #bbf7d0;
-    align-items: center; gap: 12px;
-  }
-  .file-preview.visible { display: flex; }
-  .file-preview-name { font-size: 14px; font-weight: 600; flex: 1; word-break: break-all; color: #166534; }
-  .file-preview-size { font-size: 12px; color: #16a34a; font-weight: 500; }
-  .file-preview-remove { border: none; background: none; color: #9ca3af; font-size: 20px; cursor: pointer; padding: 2px 6px; border-radius: 6px; transition: color 0.2s, background 0.2s; }
-  .file-preview-remove:hover { color: #ef4444; background: rgba(239,68,68,0.08); }
-
-  .submit-row { display: none; margin-top: 16px; }
-  .submit-row.visible { display: block; }
-  .submit-row .btn-submit-upload {
-    padding: 14px 20px; font-size: 15px; font-weight: 600; border-radius: 10px;
-    background: linear-gradient(135deg, var(--primary) 0%, #6d28d9 100%); border: none;
-    color: #fff; transition: box-shadow 0.2s, transform 0.05s;
-  }
-  .submit-row .btn-submit-upload:hover { box-shadow: 0 4px 14px rgba(124,58,237,0.4); color: #fff; }
-  .submit-row .btn-submit-upload:active { transform: scale(0.99); }
-
-  /* Stats */
-  .stat-card { border-radius: 10px; border: 1px solid #e5e7eb; background: #fff; text-align: center; padding: 18px 12px; }
-  .stat-num { font-size: 28px; font-weight: 700; }
-  .stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #6b7280; margin-top: 2px; }
-
-  /* DataTable overrides */
-  .dataTables_wrapper .dataTables_filter input { border-radius: 6px; border: 1px solid #d1d5db; padding: 6px 12px; font-size: 13px; }
-  .dataTables_wrapper .dataTables_length select { border-radius: 6px; border: 1px solid #d1d5db; padding: 4px 8px; font-size: 13px; }
-  table.dataTable thead th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: #6b7280; font-weight: 600; }
-  table.dataTable tbody td { font-size: 13px; vertical-align: middle; }
-  .mono-id { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; color: #374151; }
-
-  /* Status badges */
-  .badge-status { font-size: 11px; font-weight: 500; padding: 4px 10px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.3px; }
-  .badge-done { background: #dcfce7; color: #166534; }
-  .badge-extracting, .badge-rendering, .badge-assembling, .badge-health_check { background: #ede9fe; color: #5b21b6; }
-  .badge-error { background: #fee2e2; color: #991b1b; }
-  .badge-queued { background: #f3f4f6; color: #6b7280; }
-
-  /* Progress bar in table */
-  .progress-sm { height: 6px; border-radius: 3px; }
-
-  /* Toast */
-  .toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; }
-
-  /* Extraction report modal */
-  .report-modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 10000; display: none; align-items: center; justify-content: center; }
-  .report-modal-backdrop.show { display: flex; }
-  .report-modal { background: #fff; border-radius: 12px; width: 680px; max-width: 95vw; max-height: 85vh; overflow: hidden; box-shadow: 0 12px 40px rgba(0,0,0,0.2); display: flex; flex-direction: column; }
-  .report-modal-header { padding: 16px 20px; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: space-between; }
-  .report-modal-header h6 { margin: 0; font-weight: 700; font-size: 15px; }
-  .report-modal-body { padding: 16px 20px; overflow-y: auto; flex: 1; }
-  .report-modal-close { border: none; background: none; font-size: 22px; color: #6b7280; cursor: pointer; line-height: 1; }
-  .report-modal-close:hover { color: #111; }
-
-  .report-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  .report-table th { text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; color: #6b7280; font-weight: 600; padding: 8px 10px; border-bottom: 2px solid #e5e7eb; text-align: left; }
-  .report-table td { padding: 8px 10px; border-bottom: 1px solid #f3f4f6; vertical-align: top; }
-  .report-table tr:last-child td { border-bottom: none; }
-  .report-status-ok { color: #16a34a; font-weight: 600; }
-  .report-status-failed { color: #dc2626; font-weight: 600; }
-  .report-errors { font-size: 11px; color: #6b7280; font-family: 'SF Mono', 'Fira Code', monospace; margin-top: 4px; }
-  .report-badge { display: inline-block; font-size: 10px; padding: 2px 6px; border-radius: 3px; font-weight: 600; }
-  .report-badge-retry { background: #fef3c7; color: #92400e; }
-  .btn-log { border: none; background: none; cursor: pointer; font-size: 16px; color: #6b7280; padding: 2px 6px; border-radius: 4px; transition: all 0.15s; }
-  .btn-log:hover { background: #f3f4f6; color: var(--primary); }
-
-  /* Active job cards */
-  .active-job-card {
-    background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px 20px;
-    border-left: 4px solid var(--primary); margin-bottom: 10px;
-  }
-  .active-job-card .job-name { font-weight: 600; font-size: 14px; }
-  .active-job-card .job-meta { font-size: 12px; color: #6b7280; margin-top: 4px; }
-
-  /* Upload intro (above form) */
-  .upload-intro { margin-bottom: 24px; }
-  .upload-intro .intro-icon {
-    width: 56px; height: 56px; border-radius: 14px; background: rgba(124,58,237,0.12);
-    display: flex; align-items: center; justify-content: center; font-size: 28px;
-    margin-bottom: 16px; color: var(--primary);
-  }
-  .upload-intro h5 { font-weight: 700; font-size: 1.15rem; margin-bottom: 8px; color: #1f2937; }
-  .upload-intro .intro-desc { font-size: 13px; color: #6b7280; line-height: 1.55; margin-bottom: 20px; }
-  .upload-intro .how-list { list-style: none; padding: 0; margin: 0; }
-  .upload-intro .how-list li {
-    font-size: 12px; color: #4b5563; padding: 6px 0 6px 24px; position: relative;
-    border-left: 2px solid #e5e7eb; margin-left: 6px;
-  }
-  .upload-intro .how-list li::before {
-    content: ''; position: absolute; left: -8px; top: 14px;
-    width: 6px; height: 6px; border-radius: 50%; background: var(--primary);
-  }
-  .upload-intro .how-list li:first-child { padding-top: 0; }
-  .upload-intro .how-list li:last-child { border-left-color: transparent; padding-bottom: 0; }
-
-  /* Resource → Module → Topic selection (required before upload) */
-  .upload-select-section {
-    margin-bottom: 24px; padding: 20px 22px; border-radius: 12px;
-    background: linear-gradient(180deg, #f0f4ff 0%, #e8eeff 100%);
-    border: 1px solid #c7d2fe;
-  }
-  .upload-select-section .select-title {
-    font-size: 11px; font-weight: 700; letter-spacing: 1.2px; color: #4338ca;
-    text-transform: uppercase; margin-bottom: 14px;
-  }
-  .upload-select-section .select-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 12px; }
-  @media (max-width: 768px) { .upload-select-section .select-row { grid-template-columns: 1fr; } }
-  .upload-select-section .select-field label { display: block; font-size: 12px; font-weight: 600; color: #334155; margin-bottom: 6px; }
-  .upload-select-section .select-field select {
-    width: 100%; padding: 10px 12px; font-size: 13px; border-radius: 8px;
-    border: 1px solid #c7d2fe; background: #fff; color: #1e293b;
-  }
-  .upload-select-section .select-field select:disabled { background: #f1f5f9; color: #94a3b8; }
-  .upload-type-section { margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid #e2e8f0; }
-  .upload-srb-flow { display: none; }
-  .upload-srb-flow.visible { display: block; }
-  .upload-upload-section { display: none; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e2e8f0; }
-  .upload-upload-section.visible { display: block; }
-</style>
 </head>
 <body>
 
@@ -181,6 +21,10 @@
       <a class="nav-link" href="/browse" style="font-size:14px">Browse All</a>
     </div>
     <div class="d-flex align-items-center gap-3">
+      <button class="btn btn-outline-secondary btn-sm" id="quota-btn" onclick="openQuotaModal()" title="Gemini API status">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16" style="margin-right:4px;vertical-align:-1px"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/><path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0"/></svg>
+        Gemini
+      </button>
       <span class="text-muted" style="font-size:13px">{{ session.username }}</span>
       <a href="/logout" class="btn btn-outline-secondary btn-sm">Sign Out</a>
     </div>
@@ -203,9 +47,25 @@
   </div>
 </div>
 
+<!-- Gemini Quota Modal -->
+<div class="report-modal-backdrop" id="quota-modal-backdrop">
+  <div class="report-modal" style="max-width:500px">
+    <div class="report-modal-header">
+      <h6>Gemini API Status</h6>
+      <button class="report-modal-close" id="quota-modal-close">&times;</button>
+    </div>
+    <div class="report-modal-body" id="quota-modal-body">
+      <div style="text-align:center;padding:32px;color:#9ca3af">Loading…</div>
+    </div>
+  </div>
+</div>
+
 <div class="page">
   {% if error %}
   <div class="alert alert-danger" role="alert">{{ error }}</div>
+  {% endif %}
+  {% if success_msg %}
+  <div class="alert alert-success" role="alert">{{ success_msg }}</div>
   {% endif %}
 
   <!-- Upload -->
@@ -214,7 +74,7 @@
       <div class="upload-intro">
         <div class="intro-icon">&#128196;</div>
         <h5>Extract PDF</h5>
-        <p class="text-muted mb-0">Select resource, module, and topic, then upload a lesson PDF. The pipeline runs in the background.</p>
+        <p class="text-muted mb-0">Select resource, module, and topic, then upload a lesson PDF. The pipeline runs in the background. For module and topic uploads, use <a href="/modules">Module Management</a> and <a href="/topics">Topic Management</a>.</p>
       </div>
       <form method="POST" action="/upload" enctype="multipart/form-data" id="upload-form">
           <div class="upload-type-section upload-select-section">
@@ -475,8 +335,7 @@ document.getElementById('upload-form').addEventListener('submit', function(e) {
   }
 });
 
-/* ── Resource → Module → Topic selection ── */
-let sourceStructure = { resource: null, modules: [] };
+/* ── Resource → Module → Topic selection (from database) ── */
 const selectResource = document.getElementById('select-resource');
 const selectModule = document.getElementById('select-module');
 const selectTopic = document.getElementById('select-topic');
@@ -511,20 +370,18 @@ function onTopicChange() {
   }
 }
 
+// Load resources from database
 fetch('/api/source-structure').then(function(r) { return r.json(); }).then(function(data) {
-  sourceStructure = data || {};
-  if (data.resource) {
+  var resources = data.resources || [];
+  resources.forEach(function(r) {
     var opt = document.createElement('option');
-    opt.value = data.resource.id;
-    opt.textContent = data.resource.title;
+    opt.value = r.id;
+    opt.textContent = r.title || r.id;
     selectResource.appendChild(opt);
-  }
-  if (data.modules && data.modules.length > 0 && data.resource) {
-    selectResource.value = data.resource.id;
-    selectResource.dispatchEvent(new Event('change'));
-  }
+  });
 }).catch(function() {});
 
+// On resource change: load modules for this resource from DB
 selectResource.addEventListener('change', function() {
   selectModule.innerHTML = '<option value="">— Select module —</option>';
   selectModule.disabled = true;
@@ -532,37 +389,42 @@ selectResource.addEventListener('change', function() {
   selectTopic.disabled = true;
   uploadUploadSection.classList.remove('visible');
   setHiddenSelection('', '', '', '', '', '');
-  if (!sourceStructure.modules || !this.value) return;
-  sourceStructure.modules.forEach(function(m) {
-    var opt = document.createElement('option');
-    opt.value = m.id;
-    opt.textContent = 'Module ' + (m.moduleNumber || '') + (m.title ? ': ' + m.title : '');
-    selectModule.appendChild(opt);
-  });
-  selectModule.disabled = false;
+  var rid = this.value;
+  if (!rid) return;
+  fetch('/api/modules?resource_id=' + encodeURIComponent(rid)).then(function(r) { return r.json(); }).then(function(list) {
+    (list || []).forEach(function(m) {
+      var opt = document.createElement('option');
+      opt.value = m.id;
+      opt.textContent = (m.module_number ? 'Module ' + m.module_number + ': ' : '') + (m.title || m.id);
+      selectModule.appendChild(opt);
+    });
+    selectModule.disabled = false;
+  }).catch(function() { selectModule.disabled = false; });
 });
 
+// On module change: load topics for this module from DB
 selectModule.addEventListener('change', function() {
   selectTopic.innerHTML = '<option value="">— Select topic —</option>';
   selectTopic.disabled = true;
   uploadUploadSection.classList.remove('visible');
   setHiddenSelection('', '', '', '', '', '');
-  if (!this.value) return;
-  var mod = sourceStructure.modules.find(function(m) { return m.id === selectModule.value; });
-  if (!mod || !mod.topics) return;
-  mod.topics.forEach(function(t) {
-    var opt = document.createElement('option');
-    opt.value = t.id;
-    opt.textContent = 'Topic ' + (t.topicNumber || '') + (t.title ? ': ' + t.title : '');
-    selectTopic.appendChild(opt);
-  });
-  selectTopic.disabled = false;
+  var mid = this.value;
+  if (!mid) return;
+  fetch('/api/topics?module_id=' + encodeURIComponent(mid)).then(function(r) { return r.json(); }).then(function(list) {
+    (list || []).forEach(function(t) {
+      var opt = document.createElement('option');
+      opt.value = t.id;
+      opt.textContent = (t.topic_number ? 'Topic ' + t.topic_number + ': ' : '') + (t.title || t.id);
+      selectTopic.appendChild(opt);
+    });
+    selectTopic.disabled = false;
+  }).catch(function() { selectTopic.disabled = false; });
 });
 
 selectTopic.addEventListener('change', onTopicChange);
 
 /* ── Background job polling + toast notifications ── */
-const completedSet = new Set();
+const completedSet = new Set([{% for f in folders %}'{{ f.id }}'{% if not loop.last %},{% endif %}{% endfor %}]);
 let pollTimer = null;
 
 function showToast(title, body, type) {
@@ -635,6 +497,7 @@ function addCompletedRow(job) {
     : '<span style="color:#d1d5db">—</span>';
   dtTable.row.add([
     rowCount,
+    job.filename || '—',
     '<span class="mono-id">' + shortId + '</span>',
     '<span class="badge badge-status bg-success">Completed</span>',
     job.total || '—',
@@ -681,6 +544,86 @@ function pollJobs() {
 }
 
 pollJobs();
+
+/* ── Gemini quota modal ── */
+var quotaBackdrop = document.getElementById('quota-modal-backdrop');
+var quotaBody = document.getElementById('quota-modal-body');
+
+document.getElementById('quota-modal-close').addEventListener('click', function() { quotaBackdrop.classList.remove('show'); });
+quotaBackdrop.addEventListener('click', function(e) { if (e.target === quotaBackdrop) quotaBackdrop.classList.remove('show'); });
+
+var QUOTA_LIMITS = {
+  'gemini-2.5-flash':   { rpm: 10,  rpd: 250,  note: 'Free tier' },
+  'gemini-2.5-pro':     { rpm: 5,   rpd: 25,   note: 'Free tier' },
+  'gemini-1.5-flash':   { rpm: 15,  rpd: 1500, note: 'Free tier' },
+  'gemini-1.5-pro':     { rpm: 2,   rpd: 50,   note: 'Free tier' },
+};
+
+function openQuotaModal() {
+  quotaBody.innerHTML = '<div style="text-align:center;padding:32px;color:#9ca3af">Checking API status…</div>';
+  quotaBackdrop.classList.add('show');
+
+  fetch('/api/gemini/status')
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      var keyStatusHtml;
+      if (!d.configured) {
+        keyStatusHtml = '<span style="color:#dc2626;font-weight:600">Not configured</span> <span style="color:#9ca3af;font-size:12px">— set GEMINI_API_KEY in .env</span>';
+      } else if (d.key_valid) {
+        keyStatusHtml = '<span style="color:#16a34a;font-weight:600">&#10003; Valid</span>';
+      } else {
+        keyStatusHtml = '<span style="color:#dc2626;font-weight:600">&#10007; Invalid</span>'
+          + (d.key_error ? '<div style="color:#dc2626;font-size:11px;margin-top:4px;word-break:break-all">' + d.key_error + '</div>' : '');
+      }
+
+      var model = d.model || '—';
+      var limits = QUOTA_LIMITS[model];
+      var limitsHtml = limits
+        ? '<div style="display:flex;gap:24px;margin-top:4px">'
+            + '<span><strong>' + limits.rpm + '</strong> <span style="color:#9ca3af;font-size:12px">req/min</span></span>'
+            + '<span><strong>' + limits.rpd + '</strong> <span style="color:#9ca3af;font-size:12px">req/day</span></span>'
+            + '<span style="color:#9ca3af;font-size:12px;align-self:center">' + limits.note + '</span>'
+          + '</div>'
+        : '<div style="color:#9ca3af;font-size:12px;margin-top:4px">Limits not available for this model</div>';
+
+      var s = d.session || {};
+      var rateLimitBadge = s.rate_limit_hits > 0
+        ? '<span style="background:#fef2f2;color:#dc2626;border-radius:4px;padding:1px 7px;font-size:12px;font-weight:600">' + s.rate_limit_hits + ' rate-limit hit' + (s.rate_limit_hits > 1 ? 's' : '') + '</span>'
+        : '<span style="background:#f0fdf4;color:#16a34a;border-radius:4px;padding:1px 7px;font-size:12px">No rate-limit errors</span>';
+
+      quotaBody.innerHTML =
+        '<div style="display:flex;flex-direction:column;gap:18px">'
+
+        + '<div style="background:#f8fafc;border-radius:8px;padding:14px 16px">'
+        +   '<div style="font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:#9ca3af;margin-bottom:6px">API Key</div>'
+        +   keyStatusHtml
+        + '</div>'
+
+        + '<div style="background:#f8fafc;border-radius:8px;padding:14px 16px">'
+        +   '<div style="font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:#9ca3af;margin-bottom:6px">Model</div>'
+        +   '<div style="font-weight:600;font-family:monospace">' + model + '</div>'
+        +   limitsHtml
+        +   '<div style="margin-top:8px;font-size:11px;color:#9ca3af">Limits shown are approximate free-tier values. <a href="https://ai.google.dev/pricing" target="_blank" style="color:inherit;text-decoration:underline">See current pricing</a></div>'
+        + '</div>'
+
+        + '<div style="background:#f8fafc;border-radius:8px;padding:14px 16px">'
+        +   '<div style="font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:#9ca3af;margin-bottom:10px">Session Usage</div>'
+        +   '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
+        +     '<div><div style="font-size:22px;font-weight:700">' + (s.total_jobs || 0) + '</div><div style="font-size:12px;color:#6b7280">Jobs run</div></div>'
+        +     '<div><div style="font-size:22px;font-weight:700">' + (s.pages_extracted || 0) + '</div><div style="font-size:12px;color:#6b7280">Pages extracted</div></div>'
+        +     '<div><div style="font-size:22px;font-weight:700;color:' + (s.failed_pages > 0 ? '#dc2626' : '#374151') + '">' + (s.failed_pages || 0) + '</div><div style="font-size:12px;color:#6b7280">Failed pages</div></div>'
+        +     '<div style="display:flex;flex-direction:column;justify-content:center">' + rateLimitBadge + '</div>'
+        +   '</div>'
+        + '</div>'
+
+        + '<div style="font-size:11px;color:#9ca3af;text-align:center">Quota remaining is not exposed by the Gemini API. Check <a href="https://aistudio.google.com" target="_blank" style="color:inherit;text-decoration:underline">Google AI Studio</a> for live quota usage.</div>'
+
+        + '</div>';
+    })
+    .catch(function() {
+      quotaBody.innerHTML = '<div style="text-align:center;padding:32px;color:#dc2626">Failed to fetch API status.</div>';
+    });
+}
 
 /* ── Extraction report modal ── */
 var reportBackdrop = document.getElementById('report-modal-backdrop');

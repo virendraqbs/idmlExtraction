@@ -17,6 +17,7 @@ Returns a manifest keyed by pdf_page_index for the assembler.
 from __future__ import annotations
 
 import logging
+import uuid
 from pathlib import Path
 
 import fitz  # PyMuPDF
@@ -294,7 +295,7 @@ def extract_images_from_pdf(
                 continue
 
             seq += 1
-            rel_path = f"images/page_{page_num}_img_{seq}.png"
+            rel_path = f"images/{uuid.uuid4()}.png"
             pix.save(str(out_dir / rel_path))
 
             entry = {
@@ -337,7 +338,7 @@ def extract_images_from_pdf(
                     continue
 
                 seq += 1
-                rel_path = f"images/page_{page_num}_img_{seq}.png"
+                rel_path = f"images/{uuid.uuid4()}.png"
                 pix.save(str(out_dir / rel_path))
 
                 entry = {

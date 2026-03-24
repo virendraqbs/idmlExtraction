@@ -44,6 +44,12 @@ docs/S3_IMAGE_UPLOAD_PLAN.md
 docs/TIG_IMPLEMENTATION_PLAN.md
 verify_extraction_output/
 verify_image_extraction.py
+.claude/
+Lesson 1/
 cl_json_schema.sql
-docs/SCHEMA_VS_OUTPUT_9b80ecc4.md
+database.py
 docs/QA_SCHEMA_VS_OUTPUT.md
+docs/SCHEMA_VS_OUTPUT_9b80ecc4.md
+output_module.json
+Feedback/
+docs/TIG_SCHEMA_GAP_ANALYSIS.md

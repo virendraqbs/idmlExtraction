@@ -46,6 +46,9 @@ class Job:
     module_name:  Optional[str] = None
     module_subtitle: Optional[str] = None
     module_meta:  Optional[str] = None
+    # DB IDs selected from dropdowns — used to pull module/topic from database
+    selected_module_id: Optional[str] = None
+    selected_topic_id:  Optional[str] = None
 
     # ── Helpers ───────────────────────────────────────────────────────────────
     def log(self, msg: str) -> None:
@@ -108,6 +111,8 @@ class JobRepository:
         module_name: Optional[str] = None,
         module_subtitle: Optional[str] = None,
         module_meta: Optional[str] = None,
+        selected_module_id: Optional[str] = None,
+        selected_topic_id: Optional[str] = None,
     ) -> Job:
         job = Job(
             id=str(uuid.uuid4()),
@@ -119,6 +124,8 @@ class JobRepository:
             module_name=module_name or None,
             module_subtitle=module_subtitle or None,
             module_meta=module_meta or None,
+            selected_module_id=selected_module_id or None,
+            selected_topic_id=selected_topic_id or None,
         )
         self._store[job.id] = job
         return job

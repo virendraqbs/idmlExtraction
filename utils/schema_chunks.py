@@ -12,6 +12,7 @@ Naming convention:
 from __future__ import annotations
 
 import os
+import re
 import time
 import uuid
 from pathlib import Path
@@ -27,6 +28,35 @@ def gen_id() -> str:
 def now_iso() -> str:
     """Return current UTC time as ISO-8601 string."""
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+
+# Matches generic placeholder names like "Module 1", "Topic 2", "Lesson 3",
+# "Module", "Topic", "Lesson" (with or without a trailing number/whitespace).
+_GENERIC_NAME_RE = re.compile(
+    r"^\s*(module|topic|lesson|unit|chapter|section)\s*\d*\s*$",
+    re.IGNORECASE,
+)
+
+# Matches "Module 1: ", "Topic 3: " etc. prefixes in titles
+_ENTITY_NUMBER_PREFIX_RE = re.compile(
+    r"^(module|topic|lesson|unit|chapter|section)\s+\d+\s*:\s*",
+    re.IGNORECASE,
+)
+
+
+def _strip_generic_name(value: str | None) -> str | None:
+    """Return None if value is a generic placeholder name (e.g. 'Module 1')."""
+    if value and isinstance(value, str) and _GENERIC_NAME_RE.match(value.strip()):
+        return None
+    return value
+
+
+def _strip_entity_number_prefix(value: str) -> str:
+    """Strip 'Module N: ', 'Topic N: ', 'Lesson N: ' prefixes from titles.
+
+    e.g. 'Module 1: Searching for Patterns' → 'Searching for Patterns'
+    """
+    return _ENTITY_NUMBER_PREFIX_RE.sub("", value).strip()
 
 
 # ── 01 — Primitives ───────────────────────────────────────────────────────────
@@ -47,13 +77,13 @@ def build_primitives(
     consumers can look up IDs without parsing the full entity files.
     """
     return {
-        "resource_id":       resource_id,
-        "module_id":         module_id,
-        "topic_id":          topic_id,
-        "lesson_id":         lesson_id,
+        "resource_id":        resource_id,
+        "module_id":          module_id,
+        "topic_id":           topic_id,
+        "lesson_id":          lesson_id,
         "standards_block_id": std_block_id,
-        "total_pages":       total_pages,
-        "extracted_at":      extracted_at,
+        "total_pages":        total_pages,
+        "extracted_at":       extracted_at,
     }
 
 
@@ -78,7 +108,8 @@ def build_enums(
         "activityTypes":   _unique(activities, "activityType"),
         "taskTypes":       _unique(tasks,      "taskType"),
         "stemTypes":       _unique(stems,      "stemType"),
-        "imageTypes":      _unique(images,     "imageType"),
+        # UNREVIEWED is a pipeline-internal marker, not a schema-valid imageType
+        "imageTypes":      [t for t in _unique(images, "imageType") if t != "UNREVIEWED"],
         "pageTypes":       _unique(pages,      "pageType"),
         "standardsBodies": _unique(standards,  "body"),
     }
@@ -109,6 +140,7 @@ def build_resource(
     total_pages: int,
     extracted_at: str,
     book_name_override: str | None = None,
+    pages: list[dict] | None = None,
 ) -> dict:
     """
     03_resource.json
@@ -117,23 +149,22 @@ def build_resource(
     title = (book_name_override or source_filename or "").strip()
     if not title and source_filename:
         title = source_filename.replace(".pdf", "")
+    page_refs = [
+        {"id": p["id"], "type": "PAGE", "pageNumber": p.get("pageNumber")}
+        for p in (pages or [])
+    ]
     return {
-        "id":              resource_id,
-        "resourceType":    "STUDENT_RESOURCE_BOOK",
-        "title":           title or "Untitled Resource",
-        "subtitle":        None,
-        "gradeLevel":      lesson_meta.get("grade_level", "HS"),
-        "series":          None,
-        "edition":         None,
-        "publisher":       None,
-        "isbn":            None,
-        "pages":           [],
-        "modules":         [{"id": module_id, "type": "MODULE"}],
-        "standards":       [],
+        "id":           resource_id,
+        "resourceType": "STUDENT_RESOURCE_BOOK",
+        "title":        title or "Untitled Resource",
+        "gradeLevel":   lesson_meta.get("grade_level", "HS"),
+        "pages":        page_refs,
+        # type field omitted — can only be a module (issue #2)
+        "modules":      [{"id": module_id}],
+        "standards":    [],
         "metadata": {
-            "totalPages":  total_pages,
-            "subjects":    ["Mathematics"],
-            "extractedAt": extracted_at,
+            "totalPages": total_pages,
+            "subjects":   ["Mathematics"],
         },
     }
 
@@ -146,7 +177,6 @@ def build_module(
     resource_id: str,
     topic_id: str,
     lesson_meta: dict,
-    image_ids: list[str] | None = None,
     module_name_override: str | None = None,
     module_subtitle_override: str | None = None,
     module_meta_override: str | None = None,
@@ -154,25 +184,30 @@ def build_module(
     """
     04_module.json
     Module entity — sits between Resource and Topic.
+    Images belong to activities, not modules.
     """
-    title = (module_name_override or lesson_meta.get("module_title") or "").strip() or ""
-    module_summary = (module_subtitle_override or lesson_meta.get("module_summary") or "").strip() or ""
+    raw_title = (module_name_override or lesson_meta.get("module_title") or "").strip()
+    # Strip "Module N: " prefix, then discard if still a generic placeholder (e.g. "Module 1")
+    stripped = _strip_entity_number_prefix(raw_title) if raw_title else ""
+    title = _strip_generic_name(stripped) or ""
+    # Use null for empty summary — empty string is invalid (issue #5)
+    raw_summary = (module_subtitle_override or lesson_meta.get("module_summary") or "").strip()
+    module_summary = raw_summary or None
     metadata: dict[str, Any] = {"localizationInfo": {"language": "en"}}
-    if module_subtitle_override:
-        metadata["subtitle"] = module_subtitle_override
     if module_meta_override:
         metadata["userMeta"] = module_meta_override
     return {
-        "id":             module_id,
-        "resourceId":     resource_id,
-        "standardsBody":  lesson_meta.get("standards_body"),
-        "moduleNumber":   lesson_meta.get("module_number", 1),
-        "title":          title,
-        "moduleSummary":  module_summary,
-        "images":         [{"id": img_id, "type": "IMAGE"} for img_id in (image_ids or [])],
-        "gradeLevel":     lesson_meta.get("grade_level", ""),
-        "topics":         [{"id": topic_id, "type": "TOPIC", "sequenceNumber": 1}],
-        "metadata":       metadata,
+        "id":            module_id,
+        "resourceId":    resource_id,
+        "standardsBody": lesson_meta.get("standards_body"),
+        "moduleNumber":  lesson_meta.get("module_number", 1),
+        "title":         title,
+        "moduleSummary": module_summary,
+        # Default to "HS" — grade level extraction often returns raw number (issue from diff)
+        "gradeLevel":    lesson_meta.get("grade_level", "HS"),
+        # type field omitted — can only be a topic (issue #3)
+        "topics":        [{"id": topic_id, "sequenceNumber": 1}],
+        "metadata":      metadata,
     }
 
 
@@ -189,20 +224,19 @@ def build_topic(
     05_topic.json
     Topic entity — groups lessons within a module.
     """
-    topic_summary = (lesson_meta.get("topic_summary") or "").strip() or ""
+    # Use null for empty summary — empty string is invalid (issue #6)
+    raw_summary = (lesson_meta.get("topic_summary") or "").strip()
+    topic_summary = raw_summary or None
     return {
-        "id":            topic_id,
-        "moduleId":      module_id,
-        "topicNumber":   lesson_meta.get("topic_number", 1),
-        "title":         lesson_meta.get("topic_title", ""),
-        "topicSummary":  topic_summary,
-        "images":        [],
-        "lessons": [{
-            "id":             lesson_id,
-            "type":           "LESSON",
-            "sequenceNumber": lesson_meta.get("lesson_number", 1),
-        }],
-        "metadata":      {},
+        "id":           topic_id,
+        "moduleId":     module_id,
+        "topicNumber":  lesson_meta.get("topic_number", 1),
+        # Safety net: discard generic placeholders like "Topic 1" even if they reached here
+        "title":        _strip_generic_name(lesson_meta.get("topic_title") or "") or "",
+        "topicSummary": topic_summary,
+        "images":       [],
+        # sequenceNumber not required in topic's lesson references (issue #7)
+        "lessons": [{"id": lesson_id, "type": "LESSON"}],
     }
 
 
@@ -216,22 +250,29 @@ def build_lesson(
     lesson_meta: dict,
     activities: list[dict],
     has_standards: bool,
+    banner_images: list[dict] | None = None,
 ) -> dict:
     """
     06_lesson.json
     Lesson entity with learning goals and activity references.
+    banner_images: list of {"id": ..., "type": "IMAGE"} refs for the lesson banner/cover image(s).
     """
     learning_goals = lesson_meta.get("learning_goals") or []
     if isinstance(learning_goals, str):
         learning_goals = [learning_goals]
 
+    _VALID_LESSON_TYPES = {"CONCEPT_LESSON", "RE-ENGAGEMENT_LESSON"}
+    raw_lesson_type = (lesson_meta.get("lesson_type") or "").upper().replace(" ", "_")
+    lesson_type = raw_lesson_type if raw_lesson_type in _VALID_LESSON_TYPES else "CONCEPT_LESSON"
+
     return {
-        "id":             lesson_id,
+        "id":            lesson_id,
         "topicId":       topic_id,
         "lessonNumber":  lesson_meta.get("lesson_number"),
+        "lessonType":    lesson_type,
         "title":         lesson_meta.get("title"),
         "lessonSummary": lesson_meta.get("lesson_summary"),
-        "images":        [],
+        "images":        banner_images or [],
         "learningGoals": learning_goals,
         "standardsBlock": std_block_id if has_standards else None,
         "activities": [
@@ -267,12 +308,27 @@ def build_activities_chunk(
     scaffolding:    list[dict] = []
 
     for seq, raw_act in enumerate(raw_activities, 1):
-        act_id    = gen_id()
-        src_page  = raw_act.get("_source_page")
-        task_refs = _build_tasks_for_activity(
-            act_id, raw_act.get("tasks") or [],
-            tasks, stems, response_areas, scaffolding, src_page,
-        )
+        act_id       = gen_id()
+        src_page     = raw_act.get("_source_page")
+        activity_type = raw_act.get("activity_type", "EXPLORE")
+
+        # For KEY_TERMS activities, Gemini emits each term as a task.
+        # Convert those task stem_texts into DIRECTION_LINE entries instead;
+        # no tasks/stems are generated for KEY_TERMS activities.
+        is_key_terms = activity_type == "KEY_TERMS"
+        if is_key_terms:
+            task_refs = []
+            extra_direction_terms = [
+                t.get("stem_text", "")
+                for t in (raw_act.get("tasks") or [])
+                if t.get("stem_text")
+            ]
+        else:
+            task_refs = _build_tasks_for_activity(
+                act_id, raw_act.get("tasks") or [],
+                tasks, stems, response_areas, scaffolding, src_page,
+            )
+            extra_direction_terms = []
 
         raw_direction_lines = raw_act.get("direction_lines") or []
         directions = []
@@ -290,21 +346,31 @@ def build_activities_chunk(
                     "type": "DIRECTION_LINE",
                     "text": line,
                 })
+
+        # Append key terms as direction lines (numbered after any existing directions)
+        offset = len(directions)
+        for j, term in enumerate(extra_direction_terms):
+            directions.append({
+                "sequenceNumber": offset + j + 1,
+                "type": "DIRECTION_LINE",
+                "text": term,
+            })
+
         activities.append({
             "id":             act_id,
             "lessonId":       lesson_id,
-            "activityType":   raw_act.get("activity_type", "EXPLORE"),
+            "activityType":   activity_type,
             "title":          raw_act.get("title"),
             "sequenceNumber": raw_act.get("sequence_number", seq),
             "directions":     directions,
             "tasks":          task_refs,
-            "sourcePage":     src_page,
             "goals":          [],
             "scaffolding":    [],
             "images":         [],
             "metadata":       {},
-            # Internal-only fields used during assembly (stripped before final output if needed)
+            # Internal-only fields used during assembly (stripped before writing output)
             "_habitsOfMind":  raw_act.get("habits_of_mind", []),
+            "_sourcePage":    src_page,
         })
 
     return activities, tasks, stems, response_areas, scaffolding
@@ -313,8 +379,9 @@ def build_activities_chunk(
 def build_activity_goals_chunk(activities: list[dict]) -> tuple[list[dict], dict[str, list[dict]]]:
     """
     19_activity_goals.json
-    Goal entities (e.g. HABITS_OF_MIND) per activity. Returns (goals_list, refs_by_activity_id)
-    so the assembler can set activity["goals"] from refs_by_activity_id[activity["id"]].
+    One goal entry per activity. Activities with habits_of_mind get goalType HABITS_OF_MIND;
+    all others get goalType ACTIVITY_GOAL with an empty goalItems list so every activity
+    is represented. Returns (goals_list, refs_by_activity_id).
     """
     goals: list[dict] = []
     refs_by_activity_id: dict[str, list[dict]] = {}
@@ -323,15 +390,12 @@ def build_activity_goals_chunk(activities: list[dict]) -> tuple[list[dict], dict
         if not act_id:
             continue
         habits = act.get("_habitsOfMind") or []
-        if not habits:
-            refs_by_activity_id.setdefault(act_id, [])
-            continue
         goal_items = [h if isinstance(h, str) else str(h) for h in habits]
         goal_id = gen_id()
         goals.append({
             "id":         goal_id,
             "activityId": act_id,
-            "goalType":   "HABITS_OF_MIND",
+            "goalType":   "HABITS_OF_MIND" if goal_items else "ACTIVITY_GOAL",
             "goalItems":  goal_items,
             "standards":  [],
         })
@@ -465,14 +529,17 @@ def build_task(
     task_type = raw_task_type if raw_task_type in _VALID_TASK_TYPES else (
         "OPEN_ENDED" if has_resp else "SHORT_ANSWER"
     )
+    # Blank task numbers default to "1" — "0" is invalid per schema (issue #8)
+    raw_task_number = raw_task.get("task_number", "")
+    task_number = raw_task_number if raw_task_number else "1"
     return {
         "id":          task_id,
         "activityId":  act_id,
-        "taskNumber":  raw_task.get("task_number", ""),
+        "taskNumber":  task_number,
         "taskType":    task_type,
         "stems":       [{"id": stem_id, "type": "STEM", "sequenceNumber": 1}],
         "scaffolding": scaffolding_refs or [],
-        "sourcePage":  source_page,
+        # sourcePage removed — pipeline-internal field, not part of output schema
     }
 
 
@@ -490,19 +557,22 @@ def build_stem(
     09_stems.json  (single stem entity — called inside build_activities_chunk)
     """
     has_resp = raw_task.get("has_response_area", False)
-    return {
-        "id":               stem_id,
-        "taskId":           task_id,
-        "stemType":         "TEXT_WITH_RESPONSE_AREA" if has_resp else "TEXT_ONLY",
-        "stemText":         raw_task.get("stem_text", ""),
-        "ancillaryText":    raw_task.get("ancillary_text"),
-        "responseAreaType": raw_task.get("response_area_type"),
-        "hasGraph":         raw_task.get("has_graph", False),
-        "subTasks":         raw_task.get("sub_tasks", []),
-        "image":            None,
-        "responseArea":     response_area_id,
-        "sourcePage":       source_page,
+    stem: dict = {
+        "id":           stem_id,
+        "taskId":       task_id,
+        "stemType":     "TEXT_WITH_RESPONSE_AREA" if has_resp else "TEXT_ONLY",
+        "stemText":     raw_task.get("stem_text", ""),
+        "image":        None,
+        "responseArea": response_area_id,
+        # responseAreaType removed — redundant with responseArea object (diff analysis)
+        # subTasks removed — sub-tasks are promoted to top-level stems during review
+        # sourcePage removed — pipeline-internal field
     }
+    # Only include ancillaryText when present (avoid null noise)
+    ancillary = raw_task.get("ancillary_text")
+    if ancillary is not None:
+        stem["ancillaryText"] = ancillary
+    return stem
 
 
 # ── 10 — Standards ────────────────────────────────────────────────────────────
@@ -528,15 +598,15 @@ def build_standards_chunk(
                 continue
             seen_codes.add(code)
             standards.append({
-                "id":               gen_id(),
-                "body":             sb.get("standards_body", "CA_CCSS"),
-                "code":             code,
-                "gradeLevel":       sb.get("grade_level", "HS"),
-                "fullText":         std.get("full_text", ""),
-                "domain":           std.get("domain"),
-                "cluster":          std.get("cluster"),
-                "description":      std.get("full_text", ""),
-                "hasModelingSymbol": std.get("has_modeling_symbol", False),
+                "id":          gen_id(),
+                "body":        sb.get("standards_body", "CA_CCSS"),
+                "code":        code,
+                "gradeLevel":  sb.get("grade_level", "HS"),
+                "fullText":    std.get("full_text", ""),
+                "domain":      std.get("domain"),
+                "cluster":     std.get("cluster"),
+                "description": std.get("full_text", ""),
+                # hasModelingSymbol removed — not part of output schema (diff analysis)
             })
 
     return standards
@@ -592,18 +662,19 @@ def build_standards_blocks(
     seq = 1
     std_refs = []
     for s in standards:
-        std_refs.append({"id": s["id"], "code": s["code"], "sequenceNumber": seq})
+        # code removed from ref; type added — aligns with schema (diff analysis)
+        std_refs.append({"id": s["id"], "type": "STANDARDS", "sequenceNumber": seq})
         seq += 1
 
     block: dict[str, Any] = {
-        "id":                    std_block_id,
-        "body":                  sb_meta["body"],
-        "gradeLevel":            sb_meta["gradeLevel"] or lesson_meta.get("grade_level", "HS"),
-        "title":                 sb_meta["title"],
-        "standardsSubtitle":     sb_meta["subtitle"],
+        "id":                        std_block_id,
+        "body":                      sb_meta["body"],
+        "gradeLevel":                sb_meta["gradeLevel"] or lesson_meta.get("grade_level", "HS"),
+        "title":                     sb_meta["title"],
+        "standardsSubtitle":         sb_meta["subtitle"],
         "conceptualOverlaySubtitle": sb_meta["conceptualOverlaySubtitle"],
-        "standards":             std_refs,
-        "pageLocationHelpText":  None,
+        "standards":                 std_refs,
+        # pageLocationHelpText removed — always null, not required (diff analysis)
     }
     if sb_meta["bigIdeas"]:
         block["conceptualOverlays"] = [
@@ -694,57 +765,29 @@ def build_images_chunk(
                     "unit":   "PIXELS",
                 }
 
+            image_type = raw_img.get("image_type", "INSTRUCTIONAL")
+            raw_decorative = acc.get("is_decorative", raw_img.get("is_decorative", False))
+            # ICON type is functional — marking it decorative is contradictory (issue #9)
+            is_decorative = False if image_type == "ICON" else bool(raw_decorative)
             img = {
-                "id":               gen_id(),
-                "imageType":        raw_img.get("image_type", "INSTRUCTIONAL"),
-                "technicalArtType": raw_img.get("technical_art_type"),
-                "filename":         raw_img.get("filename", ""),
-                "filepath":         image_path,
-                "url":              None,
-                "sourceFilename":   None,
-                "sourceFileUrl":    None,
-                "altText":          raw_img.get("alt_text", ""),
-                "caption":          raw_img.get("caption"),
-                "title":            raw_img.get("title"),
-                "dimensions":       dimensions,
-                "format":           raw_img.get("format"),
-                "fileSize":         _file_size(out_dir, image_path),
+                "id":        gen_id(),
+                "imageType": image_type,
+                "filename":  raw_img.get("filename", ""),
+                "filepath":  image_path,
+                "altText":   raw_img.get("alt_text", ""),
+                "dimensions": dimensions,
+                "fileSize":  _file_size(out_dir, image_path),
                 "usage": {
                     "usedInPages":      [page_num] if page_num is not None else [],
                     "usedInActivities": [],
                     "usedInTasks":      [],
                     "isReusable":       False,
                 },
-                "accessibility":    {
-                    "isDecorative":    acc.get("is_decorative", raw_img.get("is_decorative", False)),
-                    "longDescription": acc.get("long_description"),
-                    "transcriptUrl":   None,
+                "accessibility": {
+                    "isDecorative": is_decorative,
                 },
-                "copyright": {
-                    "holder":      None,
-                    "year":        None,
-                    "license":     None,
-                    "attribution": None,
-                    "source":      None,
-                },
-                "metadata": {
-                    "createdDate":      None,
-                    "lastModifiedDate": None,
-                    "creator":          None,
-                    "tags":             [],
-                    "notes":            None,
-                },
-                # Extended fields (not in base schema — used by pipeline/UI)
-                "description":      raw_img.get("description", ""),
-                "position":         raw_img.get("position"),
-                "containsGraph":    raw_img.get("contains_graph", False),
-                "isResponseArea":   raw_img.get("is_response_area", False),
-                "responseAreaType": raw_img.get("response_area_type"),
-                "graphDetails":     raw_img.get("graph_details"),
-                "sourcePage":       page_num,
-                "pdfPageIndex":     pdf_idx,
-                "imagePath":        image_path,
-                "pageImagePath":    page_image_path,
+                # sourcePage kept as internal field for activity/page cross-linking in assembler
+                "sourcePage": page_num,
             }
             images.append(img)
 
@@ -757,56 +800,25 @@ def build_images_chunk(
                 continue
 
             img = {
-                "id":               gen_id(),
-                "imageType":        "UNREVIEWED",
-                "technicalArtType": None,
-                "filename":         "",
-                "filepath":         ext["path"],
-                "url":              None,
-                "sourceFilename":   None,
-                "sourceFileUrl":    None,
-                "altText":          "",
-                "caption":          None,
-                "title":            None,
-                "dimensions":       {"width": ext.get("width"), "height": ext.get("height"), "unit": "PIXELS"},
-                "format":           "PNG",
-                "fileSize":         _file_size(out_dir, ext["path"]),
+                "id":        gen_id(),
+                # UNREVIEWED flags images needing manual classification
+                "imageType": "UNREVIEWED",
+                "filename":  "",
+                "filepath":  ext["path"],
+                "altText":   "",
+                "dimensions": {"width": ext.get("width"), "height": ext.get("height"), "unit": "PIXELS"},
+                "fileSize":  _file_size(out_dir, ext["path"]),
                 "usage": {
                     "usedInPages":      [page_num] if page_num is not None else [],
                     "usedInActivities": [],
                     "usedInTasks":      [],
                     "isReusable":       False,
                 },
-                "accessibility":    {
-                    "isDecorative":  False,
-                    "longDescription": None,
-                    "transcriptUrl": None,
+                "accessibility": {
+                    "isDecorative": False,
                 },
-                "copyright": {
-                    "holder":      None,
-                    "year":        None,
-                    "license":     None,
-                    "attribution": None,
-                    "source":      None,
-                },
-                "metadata": {
-                    "createdDate":      None,
-                    "lastModifiedDate": None,
-                    "creator":          None,
-                    "tags":             [],
-                    "notes":            None,
-                },
-                # Extended fields (not in base schema — used by pipeline/UI)
-                "description":      f"Extracted {ext.get('source', 'image')} — needs review",
-                "position":         None,
-                "containsGraph":    False,
-                "isResponseArea":   False,
-                "responseAreaType": None,
-                "graphDetails":     None,
-                "sourcePage":       page_num,
-                "pdfPageIndex":     pdf_idx,
-                "imagePath":        ext["path"],
-                "pageImagePath":    page_image_path,
+                # sourcePage kept as internal field for activity/page cross-linking in assembler
+                "sourcePage": page_num,
             }
             images.append(img)
 
@@ -815,12 +827,20 @@ def build_images_chunk(
 
 # ── 13 — Pages ────────────────────────────────────────────────────────────────
 
+_PAGE_TYPE_MAP = {
+    # Legacy page types → current schema values (diff analysis + issue #10)
+    "STANDARDS_PAGE": "SRB_LESSON_INTRODUCTION_ACTIVATE",
+    "SPB_PRACTICE":   "SRB_LESSON_PRACTICE",
+}
+
+
 def build_pages_chunk(
     *,
     pages: list[dict],
     resource_id: str,
     lesson_id: str | None = None,
     activities: list[dict] | None = None,
+    lesson_meta: dict | None = None,
 ) -> list[dict]:
     """
     13_pages.json
@@ -833,7 +853,7 @@ def build_pages_chunk(
     # Map page_number -> list of (sequenceNumber, activity) for ordering
     by_page: dict[int | None, list[tuple[int, dict]]] = {}
     for act in activities:
-        pn = act.get("sourcePage")
+        pn = act.get("_sourcePage")
         if pn is None:
             continue
         seq_raw = act.get("sequenceNumber")
@@ -850,15 +870,28 @@ def build_pages_chunk(
             content_blocks.append({"id": lesson_id, "type": "LESSON"})
         for _seq, act in by_page.get(pn, []):
             content_blocks.append({"id": act["id"], "type": "ACTIVITY"})
+        raw_page_type = page.get("page_type", "UNKNOWN")
+        # Remap legacy page types to current schema values
+        page_type = _PAGE_TYPE_MAP.get(raw_page_type, raw_page_type)
+
+        meta: dict[str, Any] = {
+            "pageNumberRepresentations": {"numeric": pn},
+        }
+        if lesson_meta:
+            meta["lessonContext"] = {
+                "topicNumber":  lesson_meta.get("topic_number"),
+                "topicTitle":   lesson_meta.get("topic_title"),
+                "lessonNumber": lesson_meta.get("lesson_number"),
+                "lessonTitle":  lesson_meta.get("title"),
+            }
+
         out.append({
-            "id":             gen_id(),
-            "resourceId":     resource_id,
-            "pageNumber":     pn,
-            "pdfPageIndex":   page.get("_pdf_page_index"),
-            "pageType":       page.get("page_type", "UNKNOWN"),
-            "layout":         page.get("page_layout"),
-            "contentBlocks":  content_blocks,
-            "metadata":       {},
+            "id":            gen_id(),
+            "resourceId":    resource_id,
+            "pageType":      page_type,
+            "contentBlocks": content_blocks,
+            "metadata":      meta,
+            # pdfPageIndex / pageNumber / layout removed — replaced by metadata (diff analysis)
         })
     return out
 
@@ -1001,6 +1034,7 @@ def extract_lesson_meta(pages: list[dict]) -> dict:
         "lesson_number", "title", "lesson_summary", "learning_goals",
         "module_title", "module_number", "topic_title", "topic_number",
         "grade_level", "module_summary", "topic_summary", "standards_body",
+        "lesson_type",
     ]
     meta: dict[str, Any] = {}
     for page in pages:
@@ -1013,7 +1047,11 @@ def extract_lesson_meta(pages: list[dict]) -> dict:
             if f not in meta or meta[f] in (None, [], ""):
                 val = les.get(f)
                 if val not in (None, [], ""):
-                    meta[f] = val
+                    # Strip generic placeholder names for title fields
+                    if f in ("title", "module_title", "topic_title"):
+                        val = _strip_generic_name(val)
+                    if val not in (None, [], ""):
+                        meta[f] = val
         if len(meta) == len(fields) and all(meta.get(f) not in (None, [], "") for f in fields):
             break   # all fields filled — no need to keep scanning
 
