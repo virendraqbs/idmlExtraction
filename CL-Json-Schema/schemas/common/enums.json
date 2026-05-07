@@ -1,0 +1,354 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "schemas/common/enums",
+  "title": "Resource & Content Type Enums",
+  "definitions": {
+
+    "Language": {
+      "type": "string",
+      "enum": [
+        "en",
+        "es",
+        "fr",
+        "de",
+        "zh",
+        "it"
+      ]
+    },
+
+    "Locale": {
+      "type": "string",
+      "enum": [
+        "en-US",
+        "es-US"
+      ]
+    },
+
+    "State": {
+        "type": "string",
+        "enum": [
+            "AL",
+            "AK",
+            "AZ",
+            "AR",
+            "CA",
+            "CO",
+            "CT",
+            "DE",
+            "FL",
+            "GA",
+            "HI",
+            "ID",
+            "IL",
+            "IN",
+            "IA",
+            "KS",
+            "KY",
+            "LA",
+            "ME",
+            "MD",
+            "MA",
+            "MI",
+            "MN",
+            "MS",
+            "MO",
+            "MT",
+            "NE",
+            "NV",
+            "NH",
+            "NJ",
+            "NM",
+            "NY",
+            "NC",
+            "ND",
+            "OH",
+            "OK",
+            "OR",
+            "PA",
+            "RI",
+            "SC",
+            "SD",
+            "TN",
+            "TX",
+            "UT",
+            "VT",
+            "VA",
+            "WA",
+            "WV",
+            "WI",
+            "WY"
+        ]
+        },
+
+    "StandardsBody": {
+      "type": "string",
+      "enum": [
+        "CCSS",
+        "CA_CCSS",
+        "TEKS",
+        "BEST"
+      ]
+    },
+
+    "ResourceType": {
+      "type": "string",
+      "enum": [
+        "STUDENT_RESOURCE_BOOK",
+        "STUDENT_PRACTICE_BOOK",
+        "TEACHER_IMPLEMENTATION_GUIDE"
+      ]
+    },
+
+    "PageType": {
+      "type": "string",
+      "enum": [
+        "SRB_TOC",
+        "SRB_APPENDIX",
+        "SRB_GLOSSARY",
+        "SRB_MODULE_INTRODUCTION",
+        "SRB_MODULE_INTRODUCTION_CONTINUED",
+        "SRB_TOPIC_TOC",
+        "SRB_TOPIC_SUMMARY",
+        "SRB_TOPIC_SUMMARY_CONTINUED",
+        "SRB_TOPIC_INTRODUCTION",
+        "SRB_TOPIC_STANDARDS_OVERVIEW",
+        "SRB_TOPIC_STANDARDS_OVERVIEW_CONTINUED",
+        "SRB_LESSON_INTRODUCTION_ACTIVATE",
+        "SRB_LESSON_EXPLORE",
+        "SRB_LESSON_EXPLORE_CONTINUED",
+        "SRB_LESSON_REFLECT",
+        "SPB_TOC",
+        "SPB_LESSON_PRACTICE",
+        "SPB_LESSON_PRACTICE_CONTINUED",
+        "TIG_TOC",
+        "TIG_STANDARDS_ALIGNMENT",
+        "TIG_COURSE_SEQUENCE",
+        "TIG_APPENDIX",
+        "TIG_MODULE_OVERVIEW",
+        "TIG_MODULE_OVERVIEW_CONTINUED",
+        "TIG_TOPIC_OVERVIEW",
+        "TIG_LESSON_OVERVIEW",
+        "TIG_LESSON_ACTIVATE",
+        "TIG_LESSON_EXPLORE",
+        "TIG_LESSON_EXPLORE_CONTINUED",
+        "TIG_LESSON_REFLECT",
+        "TIG_LESSON_REFLECT_CONTINUED",
+        "TIG_NOTES"
+      ]
+    },
+    
+    "ActivityType": {
+      "type": "string",
+      "enum": [
+        "ACTIVATE",
+        "EXPLORE",
+        "REFLECT",
+        "KEY_TERMS",
+        "KEY_IDEAS",
+        "PRACTICE_QUESTIONS",
+        "PRACTICE_CONVERSATION_STARTERS",
+        "GAMES_AND_ADDITIONAL_RESOURCES"
+      ]
+    },
+
+    "DirectionType": {
+      "type": "string",
+      "enum": [
+        "DIRECTION_LINE",
+        "STORY"
+      ]
+    },
+    
+    "TaskType": {
+      "type": "string",
+      "enum": [
+        "COMPLETION",
+        "CALCULATION",
+        "STRATEGY_ANALYSIS",
+        "MULTIPLE_CHOICE",
+        "SHORT_ANSWER",
+        "WORD_PROBLEM",
+        "OPEN_ENDED"
+      ]
+    },
+
+    "ResponseAreaType": {
+      "type": "string",
+      "enum": [
+        "STEM",
+        "OPEN_ENDED",
+        "CROSS_NUMBER_PUZZLE",
+        "NUMBER_LINE",
+        "GRID",
+        "ALGORITHM_WORKSPACE"
+      ]
+    },
+
+
+    "InstructionalSegmentType": {
+      "type": "string",
+      "enum": [
+        "INTRODUCTION",
+        "ABOUT_THE_MATH",
+        "LESSON_STRUCTURE_AND_PACING",
+        "SETTING_THE_STAGE",
+        "TASK",
+        "CLOSING",
+        "DIFFERENTIATION_STRATEGY",
+        "ONGOING_ASSESSMENT",
+        "LANGUAGE_LINK"
+      ]
+    },
+
+    "InstructionalPromptType": {
+      "type": "string",
+      "enum": [
+        "LEARNING_GOALS",
+        "LANGUAGE_GOALS",
+        "DAILY_MATH_ROUTINES",
+        "MULTILINGUAL_LEARNER_SUPPORT",
+        "TEACHER_STORY",
+        "HABITS_OF_MIND",
+        "STUDENT_LOOK_FORS",
+        "CULTIVATE_CONNECTIONS",
+        "STUDENT_EDITION_PAGE_IMAGE",
+        "MATERIALS_LIST",
+        "CONTENT_CONNECTION",
+        "COMMON_MISCONCEPTIONS"
+      ]
+    },
+
+    "PromptDisplayStyle": {
+      "type": "string",
+      "enum": [
+        "BOX",
+        "SIDEBAR",
+        "INLINE",
+        "CALLOUT"
+      ]
+    },
+
+    "LessonType": {
+      "type": "string",
+      "enum": [
+        "CONCEPT_LESSON",
+        "RE-ENGAGEMENT_LESSON"
+      ]
+    },
+
+    "ReferenceType": {
+      "type": "string",
+      "enum": [
+        "LESSON",
+        "ACTIVITY",
+        "TASK",
+        "STANDARDS_BLOCK",
+        "STANDARDS",
+        "INSTRUCTIONAL_GUIDE_PROMPT",
+        "GOALS",
+        "IMAGE",
+        "STEM",
+        "SCAFFOLDING",
+        "PAGES",
+        "INSTRUCTIONAL_SEGMENT",
+        "INSTRUCTIONAL_PROMPT",
+        "RESOURCE",
+        "MODULE",
+        "TOPIC"
+      ]
+    },
+
+    "GoalType": {
+      "type": "string",
+      "enum": [
+        "HABITS_OF_MIND",
+        "COMMON_CORE_LEARNING_GOAL",
+        "NGSS_PERFORMANCE_EXPECTATION"
+      ]
+    },
+
+    "StemType": {
+      "type": "string",
+      "enum": [
+        "TEXT_ONLY",
+        "TEXT_WITH_IMAGE",
+        "TEXT_WITH_RESPONSE_AREA"
+      ]
+    },
+
+    "scaffoldingType": {
+      "type": "string",
+      "enum": [
+        "CHARACTER_SUPPORT"
+      ]
+    },
+
+    "PracticeSectionType": {
+      "type": "string",
+      "enum": [
+        "LESSON_PRACTICE",
+        "FAMILY_GUIDE"
+      ]
+    },
+    
+    "ImageType": {
+      "type": "string",
+      "enum": [
+        "MODULE_COVER",
+        "TOPIC_COVER",
+        "LESSON_COVER",
+        "INSTRUCTIONAL",
+        "DECORATIVE",
+        "TECHNICAL_ART",
+        "CHARACTER_SUPPORT",
+        "MANIPULATIVE",
+        "ICON"
+      ]
+    },
+
+    "TechnicalArtType": {
+      "type": "string",
+      "enum": [
+        "NUMBER_LINES",
+        "BAR_GRAPHS",
+        "WOLS",
+        "SHAPES_OUTLINED",
+        "SHAPES_FILLED",
+        "SHAPES_3D",
+        "TABLES",
+        "CLOCKS",
+        "SHAPES_GRID",
+        "PLACE_VALUE",
+        "CROSS_NUMBER_PUZZLES",
+        "BAR_AND_LINE_GRAPHS",
+        "COUNTING_CHART",
+        "SPINNER_CHARTS",
+        "SHAPES_GRIDS_AND_COUNTERS",
+        "SHAPES_ANGLE_MEASUREMENTS"
+        ]
+    },
+
+    "RelationshipType": {
+      "type": "string",
+      "enum": [
+        "MIRRORS", 
+        "EXTENDS", 
+        "SUPPORTS", 
+        "ANSWERS", 
+        "REFERENCES"
+      ]
+    },
+
+    "Status": {
+      "type": "string",
+      "enum": [
+        "NOT_STARTED", 
+        "IN_PROGRESS", 
+        "COMPLETE", 
+        "REVIEWED", 
+        "PUBLISHED"
+      ]
+    }
+    
+  }
+}
