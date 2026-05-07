@@ -1,0 +1,7 @@
+{
+  "count": 2,
+  "activities": [
+    {"id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1", "sourcePage": 1, "title": "A1", "tasks": []},
+    {"id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2", "sourcePage": 2, "title": "A2", "tasks": []}
+  ]
+}
