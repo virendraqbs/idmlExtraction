@@ -74,7 +74,10 @@
     </div>
     <form method="POST" action="/modules/add" enctype="multipart/form-data">
       <div class="upload-select-section">
-        <div class="select-title">1. Select resource</div>
+        <div class="select-title d-flex justify-content-between align-items-center">
+          <span>1. Select resource</span>
+          <a href="/resources/add" class="btn btn-sm btn-outline-primary py-0" style="font-size:11px;text-transform:none;letter-spacing:0;font-weight:500">+ New Resource</a>
+        </div>
         <div class="select-field">
           <select name="resource_id" class="form-select" required>
             <option value="">— Select resource —</option>
