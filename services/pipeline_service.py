@@ -163,6 +163,30 @@ class PipelineService:
                 db_topic=db_topic,
             )
 
+            # NEW: build page-entity index in MySQL (post-assembly).
+            # Failure here must NOT fail the extraction job — JSON is canonical.
+            try:
+                from services.page_indexer import index_job_pages
+                report = index_job_pages(job.id, out_dir)
+                log_it(
+                    f"Indexed pages: {report.pages}, "
+                    f"activities={report.activities}, "
+                    f"tasks={report.tasks}, stems={report.stems}, "
+                    f"images={report.images}, "
+                    f"prompts={report.instructional_prompts}, "
+                    f"segments={report.instructional_segments}, "
+                    f"practice={report.practice_sections}, "
+                    f"scaffolding={report.scaffolding}, "
+                    f"response_areas={report.response_areas}, "
+                    f"lessons={report.lessons}, "
+                    f"skipped={report.skipped_no_source_page}"
+                )
+                if report.errors:
+                    for err in report.errors:
+                        log_it(f"page-index warning: {err}")
+            except Exception as ix_err:
+                log_it(f"page-index failed (non-fatal): {ix_err}")
+
             # ── Stage 5: Done ─────────────────────────────────────────────
             job.progress     = 100
             job.output_files = schema_files

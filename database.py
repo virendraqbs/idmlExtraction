@@ -427,3 +427,30 @@ def list_topics() -> list[dict[str, Any]]:
         return [_row_to_dict(r) or {} for r in rows]
     finally:
         conn.close()
+
+
+# ── Job-scoped helpers (used by services.page_indexer) ────────────────────────
+
+def get_or_create_resource_for_job(
+    out_dir_03_resource: dict[str, Any],
+) -> str:
+    """
+    Ensure a cl_resource row exists for this job's 03_resource.json content
+    and return its id. The id used is the JSON-side id (so re-extraction of
+    the same job lands on the same DB row).
+    """
+    rid = out_dir_03_resource["id"]
+    title = out_dir_03_resource.get("title") or "Untitled"
+    rtype = out_dir_03_resource.get("resourceType") or "STUDENT_RESOURCE_BOOK"
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT IGNORE INTO `cl_resource` (id, resource_type, title) "
+                "VALUES (%s, %s, %s)",
+                (rid, rtype, title),
+            )
+        conn.commit()
+        return rid
+    finally:
+        conn.close()
