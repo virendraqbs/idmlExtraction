@@ -159,8 +159,8 @@ def build_resource(
         "title":        title or "Untitled Resource",
         "gradeLevel":   lesson_meta.get("grade_level", "HS"),
         "pages":        page_refs,
-        # type field omitted — can only be a module (issue #2)
-        "modules":      [{"id": module_id}],
+        # Reference type required by canonical schema (ReferenceType.MODULE)
+        "modules":      [{"id": module_id, "type": "MODULE"}],
         "standards":    [],
         "metadata": {
             "totalPages": total_pages,
@@ -205,8 +205,8 @@ def build_module(
         "moduleSummary": module_summary,
         # Default to "HS" — grade level extraction often returns raw number (issue from diff)
         "gradeLevel":    lesson_meta.get("grade_level", "HS"),
-        # type field omitted — can only be a topic (issue #3)
-        "topics":        [{"id": topic_id, "sequenceNumber": 1}],
+        # Reference type required by canonical schema (ReferenceType.TOPIC)
+        "topics":        [{"id": topic_id, "type": "TOPIC", "sequenceNumber": 1}],
         "metadata":      metadata,
     }
 
