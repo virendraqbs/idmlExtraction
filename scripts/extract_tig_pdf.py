@@ -123,6 +123,22 @@ For each segment:
   student_content_reference_title: title of the activity/lesson this segment applies to (or null)
   directions: array of {sequence_number, text} — each instruction line or bullet
 
+═══ LESSON STRUCTURE AND PACING GUIDE ═══
+Some TIG_LESSON_OVERVIEW pages contain a "Lesson Structure and Pacing Guide"
+block — a vertical schedule of Sessions × Blocks. Each row has:
+  - Session (1, 2, 3, ...)
+  - Block name: "Activate" | "Explore and Develop" | "Reflect"
+  - Title (e.g., "Compose or Decompose?")
+  - Strategies — comma-or-line-separated tags
+    (e.g., "Explaining Their Thinking", "Real-World Problem Solving",
+    "Guided Practice", "Exit Ticket Application")
+  - Duration (e.g., "5 min", "30 min")
+  - Mode: "presentation" | "book"
+
+If the page contains this structured block, populate
+`lesson.lesson_structure_and_pacing_guide` with one entry per row.
+Otherwise leave it as an empty array.
+
 ═══ RETURN EXACTLY THIS JSON ═══
 {
   "page_number": null,
@@ -131,7 +147,17 @@ For each segment:
     "lesson_number": null, "title": null, "lesson_summary": null,
     "learning_goals": [],
     "module_title": null, "module_number": null,
-    "topic_title": null, "topic_number": null
+    "topic_title": null, "topic_number": null,
+    "lesson_structure_and_pacing_guide": [
+      {
+        "session": 1,
+        "block": "Activate | Explore and Develop | Reflect",
+        "title": "",
+        "strategies": [""],
+        "duration": "",
+        "mode": "presentation | book"
+      }
+    ]
   },
   "activities": [
     {
@@ -378,6 +404,7 @@ def assemble_tig_json(
         "learningGoals":  learning_goals,
         "standardsBlock": standards_block_id,
         "activities":     activity_refs,
+        "lessonStructureAndPacingGuide": _collect_pacing_guide(raw_pages),
         "metadata": {
             "moduleNumber": _coerce_int(module_number) if module_number else None,
             "moduleTitle":  module_title,
@@ -536,6 +563,63 @@ def _parse_title_from_filename(filename: str) -> str:
     if m:
         return f"Lesson {int(m.group(1))}"
     return Path(filename).stem.replace("_", " ").strip() or "Lesson"
+
+
+_PACING_BLOCK_VALUES = {
+    "ACTIVATE": "Activate",
+    "EXPLORE AND DEVELOP": "Explore and Develop",
+    "EXPLORE": "Explore and Develop",
+    "REFLECT": "Reflect",
+}
+
+
+def _collect_pacing_guide(raw_pages: list[dict]) -> list[dict]:
+    """Walk every page's lesson.lesson_structure_and_pacing_guide array,
+    normalize block + mode strings, drop placeholder rows."""
+    out: list[dict] = []
+    seen: set[tuple] = set()
+    for p in raw_pages:
+        rows = ((p.get("lesson") or {}).get("lesson_structure_and_pacing_guide") or [])
+        if not isinstance(rows, list):
+            continue
+        for r in rows:
+            if not isinstance(r, dict):
+                continue
+            block = (r.get("block") or "").strip()
+            block_norm = _PACING_BLOCK_VALUES.get(block.upper())
+            if not block_norm:
+                continue
+            try:
+                session_int = int(r.get("session"))
+            except (TypeError, ValueError):
+                continue
+            title = _str(r.get("title")) or ""
+            duration = _str(r.get("duration")) or ""
+            mode_raw = (r.get("mode") or "").strip().lower()
+            mode = mode_raw if mode_raw in ("presentation", "book") else None
+            strategies_raw = r.get("strategies") or []
+            if isinstance(strategies_raw, str):
+                strategies = [s.strip() for s in re.split(r",|\n", strategies_raw) if s.strip()]
+            elif isinstance(strategies_raw, list):
+                strategies = [str(s).strip() for s in strategies_raw if str(s).strip()]
+            else:
+                strategies = []
+            key = (session_int, block_norm, title)
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append({
+                "session":    session_int,
+                "block":      block_norm,
+                "title":      title,
+                "strategies": strategies,
+                "duration":   duration,
+                "mode":       mode,
+            })
+    block_order = ["Activate", "Explore and Develop", "Reflect"]
+    out.sort(key=lambda r: (r["session"],
+                            block_order.index(r["block"]) if r["block"] in block_order else 99))
+    return out
 
 
 # ─────────────────────────────────────────────────────────────────────────────

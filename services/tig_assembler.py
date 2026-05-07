@@ -133,6 +133,7 @@ def _build_output(
     lesson_title   = _str(lesson_meta.get("title")) or _title_from_filename(filename)
     lesson_summary = _str(lesson_meta.get("lesson_summary"))
     learning_goals = [g for g in (lesson_meta.get("learning_goals") or []) if g]
+    pacing_guide   = _collect_pacing_guide(raw_pages)
 
     # DB overrides
     if db_module:
@@ -204,6 +205,7 @@ def _build_output(
         "learningGoals": learning_goals,
         "standardsBlock": gen_id(),   # placeholder; no standards extraction for TIG
         "activities":    activity_refs,
+        "lessonStructureAndPacingGuide": pacing_guide,
         "metadata": {
             "moduleNumber": _int(module_number) if module_number else None,
             "moduleTitle":  module_title,
@@ -380,3 +382,66 @@ def _title_from_filename(filename: str) -> str:
     if m:
         return f"Lesson {int(m.group(1))}"
     return Path(filename).stem.replace("_", " ").strip() or "Lesson"
+
+
+# ── Lesson Structure and Pacing Guide ─────────────────────────────────────────
+
+_PACING_BLOCK_VALUES = {
+    "ACTIVATE": "Activate",
+    "EXPLORE AND DEVELOP": "Explore and Develop",
+    "EXPLORE": "Explore and Develop",  # tolerant alias
+    "REFLECT": "Reflect",
+}
+_PACING_MODE_VALUES = {"presentation", "book"}
+
+
+def _collect_pacing_guide(raw_pages: list[dict]) -> list[dict]:
+    """
+    Walk every page's lesson.lesson_structure_and_pacing_guide array,
+    normalize block + mode strings, drop placeholder rows where Gemini
+    returned the prompt template literally.
+    """
+    out: list[dict] = []
+    seen: set[tuple] = set()
+    for p in raw_pages:
+        rows = ((p.get("lesson") or {}).get("lesson_structure_and_pacing_guide") or [])
+        if not isinstance(rows, list):
+            continue
+        for r in rows:
+            if not isinstance(r, dict):
+                continue
+            block = (r.get("block") or "").strip()
+            block_norm = _PACING_BLOCK_VALUES.get(block.upper())
+            if not block_norm:
+                continue   # skip placeholder/UNKNOWN/None
+            session = r.get("session")
+            try:
+                session_int = int(session)
+            except (TypeError, ValueError):
+                continue
+            title = _str(r.get("title")) or ""
+            duration = _str(r.get("duration")) or ""
+            mode_raw = (r.get("mode") or "").strip().lower()
+            mode = mode_raw if mode_raw in _PACING_MODE_VALUES else None
+            strategies_raw = r.get("strategies") or []
+            if isinstance(strategies_raw, str):
+                strategies = [s.strip() for s in re.split(r",|\n", strategies_raw) if s.strip()]
+            elif isinstance(strategies_raw, list):
+                strategies = [str(s).strip() for s in strategies_raw if str(s).strip()]
+            else:
+                strategies = []
+            key = (session_int, block_norm, title)
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append({
+                "session":    session_int,
+                "block":      block_norm,
+                "title":      title,
+                "strategies": strategies,
+                "duration":   duration,
+                "mode":       mode,
+            })
+    out.sort(key=lambda r: (r["session"], ["Activate", "Explore and Develop", "Reflect"].index(r["block"])
+                            if r["block"] in ("Activate", "Explore and Develop", "Reflect") else 99))
+    return out
