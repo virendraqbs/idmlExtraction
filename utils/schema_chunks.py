@@ -774,6 +774,10 @@ def build_images_chunk(
                 "imageType": image_type,
                 "filename":  raw_img.get("filename", ""),
                 "filepath":  image_path,
+                # imagePath mirrors filepath. Editor reads imagePath; pre-fix
+                # pipeline only set filepath, so the editor showed every
+                # image as un-mapped until the user clicked "map" by hand.
+                "imagePath": image_path,
                 "altText":   raw_img.get("alt_text", ""),
                 "dimensions": dimensions,
                 "fileSize":  _file_size(out_dir, image_path),
@@ -805,6 +809,7 @@ def build_images_chunk(
                 "imageType": "UNREVIEWED",
                 "filename":  "",
                 "filepath":  ext["path"],
+                "imagePath": ext["path"],  # editor reads imagePath
                 "altText":   "",
                 "dimensions": {"width": ext.get("width"), "height": ext.get("height"), "unit": "PIXELS"},
                 "fileSize":  _file_size(out_dir, ext["path"]),
