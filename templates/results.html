@@ -822,7 +822,156 @@ function pdfIndexOf(page) {
   return pageNumberOf(page);
 }
 
+// Detect TIG-shape output (no merged hierarchy; lesson holds pacing guide).
+function isTigData(data) {
+  if (!data) return false;
+  const lesson = data.lesson || {};
+  return Array.isArray(lesson.lessonStructureAndPacingGuide)
+      || (Array.isArray(data.pages) && data.pages.some(p =>
+            (p.pageType || '').startsWith('TIG_')));
+}
+
+function renderTigPageView(page, data) {
+  const contentEl = document.getElementById('editor-content');
+  const pn = pageNumberOf(page);
+  const lesson = data.lesson || {};
+  const allActivities = data.activities || [];
+  const allPrompts = data.instructionalPrompts || [];
+  const allSegments = data.instructionalSegments || [];
+  const allPages = (data.pages || []).filter(p => p.pageType !== 'UNKNOWN' && p.pageType !== 'NON_CONTENT');
+  const firstPageNum = allPages.length ? pageNumberOf(allPages[0]) : null;
+  const isFirstPage = !pn || pn === firstPageNum;
+
+  let html = '';
+
+  if (page) {
+    html += `<div class="editor-section">
+      <span class="schema-tag">page ${pn}</span>
+      <h3>Page ${escapeHtml(String(pn))} — ${escapeHtml(page.pageType || 'Content')}</h3>`;
+    const blockLabels = (page.contentBlocks || []).map(b => b.type || 'Content');
+    if (blockLabels.length) {
+      html += '<p class="editor-page-meta">Content on this page: ' + escapeHtml(blockLabels.join(', ')) + '</p>';
+    }
+    html += '</div>';
+  }
+
+  // Lesson title + summary on first page only
+  if (isFirstPage && (lesson.title || lesson.lessonSummary)) {
+    html += '<div class="editor-section"><span class="schema-tag">lesson</span>';
+    html += '<h3>' + escapeHtml(lesson.title || 'Lesson') + '</h3>';
+    if (lesson.lessonSummary) html += '<p class="editor-summary">' + nl2br(escapeHtml(lesson.lessonSummary)) + '</p>';
+    html += '</div>';
+  }
+
+  // Lesson Structure and Pacing Guide
+  const pacing = lesson.lessonStructureAndPacingGuide || [];
+  if (isFirstPage && pacing.length) {
+    html += '<div class="editor-section"><span class="schema-tag">lesson_structure_and_pacing_guide</span>';
+    html += '<h3>Lesson Structure and Pacing Guide</h3>';
+    html += '<table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:8px">';
+    html += '<thead><tr style="text-align:left;background:#f3f4f6">' +
+            '<th style="padding:8px">Session</th><th style="padding:8px">Block</th>' +
+            '<th style="padding:8px">Title</th><th style="padding:8px">Strategies</th>' +
+            '<th style="padding:8px">Duration</th><th style="padding:8px">Mode</th></tr></thead><tbody>';
+    pacing.forEach(function(r) {
+      const strategies = (r.strategies || []).map(s => escapeHtml(s)).join(', ');
+      html += '<tr style="border-top:1px solid #e5e7eb">' +
+              '<td style="padding:8px">' + escapeHtml(String(r.session || '')) + '</td>' +
+              '<td style="padding:8px">' + escapeHtml(r.block || '') + '</td>' +
+              '<td style="padding:8px">' + nl2br(escapeHtml(r.title || '')) + '</td>' +
+              '<td style="padding:8px">' + strategies + '</td>' +
+              '<td style="padding:8px">' + escapeHtml(r.duration || '') + '</td>' +
+              '<td style="padding:8px">' + escapeHtml(r.mode || '') + '</td></tr>';
+    });
+    html += '</tbody></table></div>';
+  }
+
+  // Learning Goals
+  if (isFirstPage && (lesson.learningGoals || []).length) {
+    html += '<div class="editor-section"><span class="schema-tag">learning_goals</span>';
+    html += '<h3>My Learning Goals</h3><ul>';
+    lesson.learningGoals.forEach(g => { html += '<li>' + escapeHtml(g) + '</li>'; });
+    html += '</ul></div>';
+  }
+
+  // Activities — TIG activities are lesson-scoped (no sourcePage).
+  // Show on first page; on overview pages also show with teacher guidance.
+  const showActivities = isFirstPage || (page && (page.pageType || '').startsWith('TIG_LESSON_'));
+  if (showActivities && allActivities.length) {
+    html += '<div class="editor-section"><span class="schema-tag">activities</span>';
+    html += '<h3>Activities</h3>';
+    allActivities.forEach(a => {
+      html += '<div class="editor-block" style="border:1px solid #e5e7eb;border-radius:6px;padding:12px;margin-top:8px">';
+      html += '<div style="display:flex;gap:8px;align-items:center"><span class="activity-label">' +
+              escapeHtml(a.activityType || 'Activity') + '</span>';
+      html += '<strong>' + escapeHtml(a.title || '') + '</strong>';
+      const min = a.metadata && a.metadata.pacingEstimate && a.metadata.pacingEstimate.minutes;
+      if (min) html += '<span style="color:#6b7280;font-size:12px">~' + min + ' min</span>';
+      html += '</div>';
+      const tg = a.teacherGuidance || {};
+      if (tg.instructionalText) {
+        html += '<p style="margin:6px 0 0;color:#374151">' + nl2br(escapeHtml(tg.instructionalText)) + '</p>';
+      }
+      const dirs = a.directions || [];
+      if (dirs.length) {
+        html += '<ol style="margin:6px 0 0">';
+        dirs.forEach(d => { html += '<li>' + nl2br(escapeHtml(d.text || '')) + '</li>'; });
+        html += '</ol>';
+      }
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+
+  // Instructional Prompts grouped by type — first page only
+  if (isFirstPage && allPrompts.length) {
+    html += '<div class="editor-section"><span class="schema-tag">instructional_prompts</span>';
+    html += '<h3>Instructional Prompts</h3>';
+    allPrompts.forEach(p => {
+      html += '<div class="editor-block" style="border-left:3px solid #7c3aed;padding:8px 12px;margin-top:8px;background:#f9fafb">';
+      html += '<div style="display:flex;gap:8px;align-items:center">';
+      html += '<span class="task-type-badge">' + escapeHtml(p.instructionalPromptType || 'PROMPT') + '</span>';
+      if (p.title) html += '<strong>' + escapeHtml(p.title) + '</strong>';
+      html += '</div>';
+      if (p.content) html += '<p style="margin:6px 0 0">' + nl2br(escapeHtml(p.content)) + '</p>';
+      const items = p.contentItems || [];
+      if (items.length) {
+        html += '<ul style="margin:6px 0 0">';
+        items.forEach(it => { html += '<li>' + escapeHtml(it) + '</li>'; });
+        html += '</ul>';
+      }
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+
+  // Instructional Segments
+  if (isFirstPage && allSegments.length) {
+    html += '<div class="editor-section"><span class="schema-tag">instructional_segments</span>';
+    html += '<h3>Instructional Segments</h3>';
+    allSegments.forEach(s => {
+      html += '<div class="editor-block" style="border:1px solid #e5e7eb;border-radius:6px;padding:10px;margin-top:8px">';
+      html += '<span class="task-type-badge">' + escapeHtml(s.instructionalSegmentType || 'SEGMENT') + '</span>';
+      if (s.title) html += ' <strong>' + escapeHtml(s.title) + '</strong>';
+      const dirs = s.directions || [];
+      if (dirs.length) {
+        html += '<ol style="margin:6px 0 0">';
+        dirs.forEach(d => { html += '<li>' + nl2br(escapeHtml(d.text || '')) + '</li>'; });
+        html += '</ol>';
+      }
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+
+  contentEl.innerHTML = html || '<div class="editor-section"><p>No content for this page.</p></div>';
+}
+
 function renderPageWebView(page, data) {
+  // TIG-shape data uses different structure — render via dedicated path.
+  if (isTigData(data)) {
+    return renderTigPageView(page, data);
+  }
   const contentEl = document.getElementById('editor-content');
   const pn = pageNumberOf(page);
 
