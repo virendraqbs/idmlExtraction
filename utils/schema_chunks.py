@@ -863,7 +863,7 @@ def build_pages_chunk(
         by_page[pn].sort(key=lambda x: x[0])
 
     out: list[dict] = []
-    for page in pages:
+    for ordinal, page in enumerate(pages, start=1):
         pn = page.get("page_number") or page.get("_pdf_page_index")
         content_blocks: list[dict] = []
         if lesson_id:
@@ -888,10 +888,13 @@ def build_pages_chunk(
         out.append({
             "id":            gen_id(),
             "resourceId":    resource_id,
+            # pageNumber: printed book page (e.g. 465); pdfPageIndex: 1-based PDF position.
+            # Editor consumes both top-level fields; metadata still mirrors pageNumber.
+            "pageNumber":    pn,
+            "pdfPageIndex":  ordinal,
             "pageType":      page_type,
             "contentBlocks": content_blocks,
             "metadata":      meta,
-            # pdfPageIndex / pageNumber / layout removed — replaced by metadata (diff analysis)
         })
     return out
 

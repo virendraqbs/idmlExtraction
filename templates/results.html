@@ -805,9 +805,26 @@ function showRebuildIndexBanner(jobIdLocal) {
   }
 }
 
+// Resolve printed page number from top-level field or metadata fallback.
+// Pipeline sometimes emits pageNumber only inside metadata.pageNumberRepresentations.numeric.
+function pageNumberOf(page) {
+  if (!page) return null;
+  if (page.pageNumber != null) return page.pageNumber;
+  const meta = page.metadata || {};
+  const pnr = meta.pageNumberRepresentations || {};
+  return pnr.numeric != null ? pnr.numeric : null;
+}
+
+// Resolve PDF page index (1-based ordinal) — top-level or fall back to printed page number.
+function pdfIndexOf(page) {
+  if (!page) return null;
+  if (page.pdfPageIndex != null) return page.pdfPageIndex;
+  return pageNumberOf(page);
+}
+
 function renderPageWebView(page, data) {
   const contentEl = document.getElementById('editor-content');
-  const pn = page ? page.pageNumber : null;
+  const pn = pageNumberOf(page);
 
   const merged = data.merged || {};
   const res = merged.resource || data.resource || {};
@@ -1100,8 +1117,8 @@ function updateEditorPdf(page) {
   const img = document.getElementById('editor-page-img');
   const label = document.getElementById('editor-page-label');
   if (!label) return;
-  const pdfIdx = page ? (page.pdfPageIndex || page.pageNumber || null) : null;
-  const displayNum = page ? (page.pageNumber || pdfIdx) : null;
+  const pdfIdx = pdfIndexOf(page);
+  const displayNum = pageNumberOf(page) || pdfIdx;
   if (pdfIdx) {
     label.textContent = 'Page ' + displayNum;
     var pdfUrl = '/outputs/' + jobId + '/pdf#page=' + pdfIdx;
@@ -1225,9 +1242,7 @@ async function loadEditorView() {
     // Track image IDs visible on the current page for "Select all"
     window.pageImageIds = [];
 
-    let _pageSeq = 0;
-    async function onPageChange() {
-      const seq = ++_pageSeq;  // capture a per-invocation token
+    function onPageChange() {
       const idx = pageSelect.value;
       const page = idx === '' ? null : pages[Number(idx)];
       renderPageWebView(page, data);
@@ -1235,25 +1250,11 @@ async function loadEditorView() {
       // Snapshot current-page image IDs for "Select all on page"
       const merged2 = data.merged || {};
       const allImgs = merged2.images || data.images || [];
-      const pn = page ? page.pageNumber : null;
+      const pn = page ? pageNumberOf(page) : null;
       window.pageImageIds = (pn ? allImgs.filter(i => i.sourcePage === pn) : allImgs)
         .filter(i => i.imagePath)
         .map(i => i.id);
       updateSelectionBar();
-
-      // NEW: page-locked compare view via /api/results/{job}/page/{n}
-      const ordinal = idx === '' ? null : (Number(idx) + 1);  // pages[] index → 1-based ordinal
-      if (ordinal != null) {
-        const payload = await fetchPageComposed(jobId, ordinal);
-        // Discard if a newer page-change has fired since this fetch started.
-        if (seq !== _pageSeq) return;
-        if (payload && payload._missing) {
-          showRebuildIndexBanner(jobId);
-        } else if (payload) {
-          renderPageComposed(payload);
-        }
-        // payload === null: leave legacy render in place (graceful)
-      }
     }
 
     pageSelect.addEventListener('change', onPageChange);
