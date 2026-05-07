@@ -238,12 +238,63 @@ async def api_modules(request: Request, _=Depends(require_login)):
     return JSONResponse(content=[{"id": m["id"], "title": m.get("title") or m["id"], "module_number": m.get("module_number")} for m in modules])
 
 
+# ── Resource Management ─────────────────────────────────────────────────────────
+
+@jobs_router.get("/resources/add", response_class=HTMLResponse)
+async def resource_add_form(request: Request, _=Depends(require_login)):
+    return templates.TemplateResponse(
+        "resource_add.html",
+        {"request": request, "session": request.session, "form": {}, "error": None},
+    )
+
+
+@jobs_router.post("/resources/add", response_class=HTMLResponse)
+async def resource_add_submit(
+    request: Request,
+    title: str = Form(""),
+    resource_type: str = Form("STUDENT_RESOURCE_BOOK"),
+    subtitle: str = Form(""),
+    series: str = Form(""),
+    grade_level: str = Form(""),
+    publisher: str = Form(""),
+    _=Depends(require_login),
+):
+    from database import create_resource
+    form = {
+        "title": title,
+        "resource_type": resource_type,
+        "subtitle": subtitle,
+        "series": series,
+        "grade_level": grade_level,
+        "publisher": publisher,
+    }
+    try:
+        create_resource(
+            title=title,
+            resource_type=resource_type,
+            subtitle=subtitle,
+            series=series,
+            grade_level=grade_level,
+            publisher=publisher,
+        )
+    except ValueError as e:
+        return templates.TemplateResponse(
+            "resource_add.html",
+            {"request": request, "session": request.session, "form": form, "error": str(e)},
+        )
+    return RedirectResponse(url="/modules?msg=resource_created", status_code=303)
+
+
 # ── Module Management ───────────────────────────────────────────────────────────
 
 def _modules_page_context(request: Request, modules: list, error: str | None = None, success_msg: str | None = None):
     resources = list_resources()
-    if success_msg is None and request.query_params.get("msg") == "saved":
-        success_msg = "Module saved successfully."
+    if success_msg is None:
+        msg_kind = request.query_params.get("msg")
+        if msg_kind == "saved":
+            success_msg = "Module saved successfully."
+        elif msg_kind == "resource_created":
+            success_msg = "Resource created successfully."
     return {
         "request": request,
         "session": request.session,

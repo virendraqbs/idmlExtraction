@@ -611,3 +611,68 @@ def get_or_create_resource_for_job(
         return rid
     finally:
         conn.close()
+
+
+# ── Resource CRUD ─────────────────────────────────────────────────────────────
+
+def create_resource(
+    *,
+    title: str,
+    resource_type: str = "STUDENT_RESOURCE_BOOK",
+    subtitle: str | None = None,
+    series: str | None = None,
+    grade_level: str | None = None,
+    publisher: str | None = None,
+) -> dict[str, Any]:
+    """Insert a row into cl_resource. Returns the created row as dict.
+
+    Raises ValueError if title is blank or a row with the same
+    (title, resource_type) already exists.
+    """
+    title = (title or "").strip()
+    if not title:
+        raise ValueError("Resource title is required.")
+    rtype = (resource_type or "STUDENT_RESOURCE_BOOK").strip()
+    uid = str(uuid.uuid4())
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id FROM cl_resource WHERE title = %s AND resource_type = %s LIMIT 1",
+                (title, rtype),
+            )
+            if cur.fetchone():
+                raise ValueError(
+                    f"Resource '{title}' ({rtype}) already exists."
+                )
+            cur.execute(
+                """INSERT INTO cl_resource
+                   (id, resource_type, title, subtitle, series, grade_level, publisher)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+                (
+                    uid, rtype, title,
+                    (subtitle or "").strip() or None,
+                    (series or "").strip() or None,
+                    (grade_level or "").strip() or None,
+                    (publisher or "").strip() or None,
+                ),
+            )
+        conn.commit()
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM cl_resource WHERE id = %s", (uid,))
+            row = cur.fetchone()
+        return _row_to_dict(row) or {}
+    finally:
+        conn.close()
+
+
+def get_resource(resource_id: str) -> dict[str, Any] | None:
+    """Return one resource by id or None."""
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM cl_resource WHERE id = %s", (resource_id,))
+            row = cur.fetchone()
+        return _row_to_dict(row)
+    finally:
+        conn.close()
