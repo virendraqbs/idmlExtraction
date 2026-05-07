@@ -41,24 +41,107 @@ def _row_to_dict(row: dict[str, Any] | None) -> dict[str, Any] | None:
     return out
 
 
+def _alter_cl_activity_drop_source_page(cur) -> None:
+    """Drop cl_activity.source_page so activity rows stay page-agnostic."""
+    cur.execute(
+        "SELECT COUNT(*) AS c FROM information_schema.COLUMNS "
+        "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'cl_activity' "
+        "AND COLUMN_NAME = 'source_page'"
+    )
+    row = cur.fetchone()
+    if row and int(row["c"]) > 0:
+        cur.execute("ALTER TABLE `cl_activity` DROP COLUMN `source_page`")
+
+
+def _alter_cl_page_for_indexing(cur) -> None:
+    """Widen page_type to VARCHAR(64) and add job_id column for re-index isolation."""
+    # Widen page_type if it is still the narrow 8-value enum.
+    cur.execute(
+        "SELECT DATA_TYPE, COLUMN_TYPE FROM information_schema.COLUMNS "
+        "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'cl_page' "
+        "AND COLUMN_NAME = 'page_type'"
+    )
+    row = cur.fetchone()
+    if row and row["DATA_TYPE"] != "varchar":
+        cur.execute("ALTER TABLE `cl_page` MODIFY `page_type` VARCHAR(64) NULL")
+
+    # Add job_id column if missing.
+    cur.execute(
+        "SELECT COUNT(*) AS c FROM information_schema.COLUMNS "
+        "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'cl_page' "
+        "AND COLUMN_NAME = 'job_id'"
+    )
+    row = cur.fetchone()
+    if row and int(row["c"]) == 0:
+        cur.execute(
+            "ALTER TABLE `cl_page` ADD COLUMN `job_id` VARCHAR(64) NULL "
+            "COMMENT 'Extraction-snapshot key — scopes idempotent re-index'"
+        )
+        cur.execute("ALTER TABLE `cl_page` ADD INDEX `idx_job` (`job_id`)")
+
+
+def _create_cl_page_entity_map(cur) -> None:
+    """Create the polymorphic page→entity map table if it does not exist."""
+    cur.execute(
+        "SELECT COUNT(*) AS c FROM information_schema.TABLES "
+        "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'cl_page_entity_map'"
+    )
+    row = cur.fetchone()
+    if row and int(row["c"]) == 0:
+        cur.execute(
+            """
+            CREATE TABLE `cl_page_entity_map` (
+              `id`               CHAR(36) NOT NULL PRIMARY KEY,
+              `page_id`          CHAR(36) NOT NULL,
+              `entity_type`      VARCHAR(64) NOT NULL,
+              `entity_id`        CHAR(36) NOT NULL,
+              `sequence_in_page` SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+              `layout_region`    VARCHAR(32) NULL,
+              `is_continuation`  TINYINT(1) NOT NULL DEFAULT 0,
+              `continues_to_seq` SMALLINT UNSIGNED NULL,
+              `metadata`         JSON NULL,
+              `created_at`       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              UNIQUE KEY `uniq_page_entity` (`page_id`, `entity_type`, `entity_id`),
+              KEY `idx_entity` (`entity_type`, `entity_id`),
+              KEY `idx_page_seq` (`page_id`, `sequence_in_page`),
+              CONSTRAINT `fk_pem_page` FOREIGN KEY (`page_id`)
+                REFERENCES `cl_page`(`id`) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+              COMMENT='Polymorphic page→entity binding — order, layout, continuation'
+            """
+        )
+
+
 def init_db() -> None:
     """
-    Assume tables exist from cl_json_schema.sql. Optionally add pdf_path
-    to cl_module and cl_topic if missing (for app upload storage).
+    Assume tables exist from cl_json_schema.sql. Apply lightweight idempotent
+    schema patches needed by the application:
+      - pdf_path columns on cl_module / cl_topic (existing)
+      - drop cl_activity.source_page (page binding moved to cl_page_entity_map)
+      - widen cl_page.page_type and add job_id column
+      - create cl_page_entity_map table
     """
     conn = get_connection()
     try:
         with conn.cursor() as cur:
+            # Existing: pdf_path columns on cl_module / cl_topic
             for table, col in (("cl_module", "pdf_path"), ("cl_topic", "pdf_path")):
                 try:
                     cur.execute(
-                        f"ALTER TABLE `{table}` ADD COLUMN `{col}` VARCHAR(1024) NULL DEFAULT NULL"
+                        f"ALTER TABLE `{table}` ADD COLUMN `{col}` "
+                        f"VARCHAR(1024) NULL DEFAULT NULL"
                     )
                     conn.commit()
                 except pymysql.err.OperationalError as e:
-                    if e.args[0] != 1060:  # Duplicate column name
+                    if e.args[0] != 1060:  # 1060 = Duplicate column
                         raise
                     conn.rollback()
+
+            # New: page-index migrations
+            _alter_cl_activity_drop_source_page(cur)
+            _alter_cl_page_for_indexing(cur)
+            _create_cl_page_entity_map(cur)
+            conn.commit()
     finally:
         conn.close()
 
@@ -489,3 +572,30 @@ def list_topics_with_module() -> list[dict[str, Any]]:
 
 # Alias used by controllers; identical to get_topics_for_module.
 list_topics_for_module = get_topics_for_module
+
+
+# ── Job-scoped helpers (used by services.page_indexer) ────────────────────────
+
+def get_or_create_resource_for_job(
+    out_dir_03_resource: dict[str, Any],
+) -> str:
+    """
+    Ensure a cl_resource row exists for this job's 03_resource.json content
+    and return its id. The id used is the JSON-side id (so re-extraction of
+    the same job lands on the same DB row).
+    """
+    rid = out_dir_03_resource["id"]
+    title = out_dir_03_resource.get("title") or "Untitled"
+    rtype = out_dir_03_resource.get("resourceType") or "STUDENT_RESOURCE_BOOK"
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT IGNORE INTO `cl_resource` (id, resource_type, title) "
+                "VALUES (%s, %s, %s)",
+                (rid, rtype, title),
+            )
+        conn.commit()
+        return rid
+    finally:
+        conn.close()
