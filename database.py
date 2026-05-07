@@ -344,3 +344,148 @@ def list_topics() -> list[dict[str, Any]]:
         return [_row_to_dict(r) or {} for r in rows]
     finally:
         conn.close()
+
+
+# ── Resource ──────────────────────────────────────────────────────────────────
+
+def list_resources() -> list[dict[str, Any]]:
+    """Return all resources ordered by title."""
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM cl_resource ORDER BY title")
+            rows = cur.fetchall()
+        return [_row_to_dict(r) or {} for r in rows]
+    finally:
+        conn.close()
+
+
+def link_resource_module(resource_id: str, module_id: str, sequence_number: int = 1) -> None:
+    """Create or update resource–module mapping (cl_resource_module_map)."""
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """INSERT INTO cl_resource_module_map (id, resource_id, module_id, sequence_number)
+                   VALUES (%s, %s, %s, %s)
+                   ON DUPLICATE KEY UPDATE sequence_number = VALUES(sequence_number)""",
+                (str(uuid.uuid4()), resource_id, module_id, sequence_number),
+            )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def list_modules_for_resource(resource_id: str) -> list[dict[str, Any]]:
+    """Return modules linked to a resource, ordered by sequence_number."""
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT m.* FROM cl_module m
+                   JOIN cl_resource_module_map rm ON rm.module_id = m.id
+                   WHERE rm.resource_id = %s
+                   ORDER BY rm.sequence_number, m.module_number""",
+                (resource_id,),
+            )
+            rows = cur.fetchall()
+        return [_row_to_dict(r) or {} for r in rows]
+    finally:
+        conn.close()
+
+
+def get_resource_id_for_module(module_id: str) -> str | None:
+    """Return resource_id linked to this module, or None."""
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT resource_id FROM cl_resource_module_map "
+                "WHERE module_id = %s LIMIT 1",
+                (module_id,),
+            )
+            row = cur.fetchone()
+        return row["resource_id"] if row else None
+    finally:
+        conn.close()
+
+
+# ── Module by title ───────────────────────────────────────────────────────────
+
+def get_module_by_title(title: str) -> dict[str, Any] | None:
+    """Return module matching title (case-sensitive) or None."""
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM cl_module WHERE title = %s LIMIT 1", (title,))
+            row = cur.fetchone()
+        return _row_to_dict(row)
+    finally:
+        conn.close()
+
+
+# ── Topic by title ────────────────────────────────────────────────────────────
+
+def get_topic_by_title(title: str) -> dict[str, Any] | None:
+    """Return topic matching title (case-sensitive) or None."""
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM cl_topic WHERE title = %s LIMIT 1", (title,))
+            row = cur.fetchone()
+        return _row_to_dict(row)
+    finally:
+        conn.close()
+
+
+# ── Topic-Module assignment ───────────────────────────────────────────────────
+
+def set_topic_module(topic_id: str, module_id: str, sequence_number: int = 1) -> None:
+    """
+    Set THE module for a topic. Replaces any existing mapping for this topic
+    so a topic belongs to exactly one module.
+    """
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM cl_module_topic_map WHERE topic_id = %s",
+                (topic_id,),
+            )
+            cur.execute(
+                """INSERT INTO cl_module_topic_map
+                   (id, module_id, topic_id, sequence_number)
+                   VALUES (%s, %s, %s, %s)""",
+                (str(uuid.uuid4()), module_id, topic_id, sequence_number),
+            )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+# ── Listings ──────────────────────────────────────────────────────────────────
+
+def list_topics_with_module() -> list[dict[str, Any]]:
+    """
+    Return all topics joined with their parent module info. Differs from
+    list_topics() by including module_number and module title fields.
+    """
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT t.*, mt.module_id, mt.sequence_number AS module_sequence_number,
+                          m.title AS module_title, m.module_number
+                   FROM cl_topic t
+                   LEFT JOIN cl_module_topic_map mt ON mt.topic_id = t.id
+                   LEFT JOIN cl_module m ON m.id = mt.module_id
+                   ORDER BY m.module_number, mt.sequence_number, t.topic_number, t.title"""
+            )
+            rows = cur.fetchall()
+        return [_row_to_dict(r) or {} for r in rows]
+    finally:
+        conn.close()
+
+
+# Alias used by controllers; identical to get_topics_for_module.
+list_topics_for_module = get_topics_for_module
