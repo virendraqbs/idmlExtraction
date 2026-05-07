@@ -65,6 +65,22 @@
       },
       "description": "References to activities in this lesson (activate, explore, reflect)"
     },
+    "lessonStructureAndPacingGuide": {
+      "type": "array",
+      "description": "Per-session block schedule (TIG only). One row per Session × Block.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "session":    { "type": "integer", "minimum": 1, "description": "Session number" },
+          "block":      { "type": "string", "enum": ["Activate", "Explore and Develop", "Reflect"] },
+          "title":      { "type": "string" },
+          "strategies": { "type": "array", "items": { "type": "string" } },
+          "duration":   { "type": "string", "description": "e.g. '5 min'" },
+          "mode":       { "type": ["string", "null"], "enum": ["presentation", "book", null] }
+        },
+        "required": ["session", "block", "title"]
+      }
+    },
     "metadata": {
       "type": "object",
       "properties": {

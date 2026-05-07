@@ -106,6 +106,22 @@ For each:
   student_content_reference_title: activity title this segment belongs to (or null)
   directions: array of {sequence_number, text}
 
+═══ LESSON STRUCTURE AND PACING GUIDE ═══
+Some TIG_LESSON_OVERVIEW pages contain a "Lesson Structure and Pacing Guide"
+block — a vertical schedule of Sessions × Blocks. Each row has:
+  - Session (1, 2, 3, ...)
+  - Block name: "Activate" | "Explore and Develop" | "Reflect"
+  - Title (e.g., "Compose or Decompose?")
+  - Strategies — comma-or-line-separated tags
+    (e.g., "Explaining Their Thinking", "Real-World Problem Solving",
+    "Guided Practice", "Exit Ticket Application")
+  - Duration (e.g., "5 min", "30 min")
+  - Mode: "presentation" | "book"
+
+If the page contains this structured block, populate
+`lesson.lesson_structure_and_pacing_guide` with one entry per row.
+Otherwise leave it as an empty array.
+
 ═══ RETURN EXACTLY THIS JSON ═══
 {
   "page_number": null,
@@ -114,7 +130,17 @@ For each:
     "lesson_number": null, "title": null, "lesson_summary": null,
     "learning_goals": [],
     "module_title": null, "module_number": null,
-    "topic_title": null, "topic_number": null
+    "topic_title": null, "topic_number": null,
+    "lesson_structure_and_pacing_guide": [
+      {
+        "session": 1,
+        "block": "Activate | Explore and Develop | Reflect",
+        "title": "",
+        "strategies": [""],
+        "duration": "",
+        "mode": "presentation | book"
+      }
+    ]
   },
   "activities": [
     {
