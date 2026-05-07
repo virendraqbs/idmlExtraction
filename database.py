@@ -580,18 +580,30 @@ def get_or_create_resource_for_job(
     out_dir_03_resource: dict[str, Any],
 ) -> str:
     """
-    Ensure a cl_resource row exists for this job's 03_resource.json content
-    and return its id. The id used is the JSON-side id (so re-extraction of
-    the same job lands on the same DB row).
+    Return the cl_resource id for this job's 03_resource.json content.
+
+    Reuse an existing row when (title, resource_type) match — 03_resource.json
+    contains a fresh UUID per extraction, so PK-based dedupe was insufficient
+    and produced duplicate dropdown entries.
+
+    Insert a new row only when no match exists.
     """
     rid = out_dir_03_resource["id"]
-    title = out_dir_03_resource.get("title") or "Untitled"
+    title = (out_dir_03_resource.get("title") or "Untitled").strip()
     rtype = out_dir_03_resource.get("resourceType") or "STUDENT_RESOURCE_BOOK"
     conn = get_connection()
     try:
         with conn.cursor() as cur:
             cur.execute(
-                "INSERT IGNORE INTO `cl_resource` (id, resource_type, title) "
+                "SELECT id FROM `cl_resource` WHERE title = %s AND resource_type = %s "
+                "ORDER BY created_at LIMIT 1",
+                (title, rtype),
+            )
+            existing = cur.fetchone()
+            if existing:
+                return existing["id"]
+            cur.execute(
+                "INSERT INTO `cl_resource` (id, resource_type, title) "
                 "VALUES (%s, %s, %s)",
                 (rid, rtype, title),
             )
