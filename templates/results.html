@@ -706,6 +706,105 @@ function renderActivityHtml(a) {
   return html;
 }
 
+// ── Page-locked compare view: fetch composed payload from server ──────
+async function fetchPageComposed(jobIdLocal, n) {
+  try {
+    const resp = await fetch('/api/results/' + jobIdLocal + '/page/' + n);
+    if (resp.status === 404) {
+      return { _missing: true };
+    }
+    if (!resp.ok) {
+      console.warn('page api status', resp.status);
+      return null;
+    }
+    return await resp.json();
+  } catch (err) {
+    console.warn('page api fetch failed:', err);
+    return null;
+  }
+}
+
+function renderEntityByKind(kind, body) {
+  // Use existing renderers where available; JSON pretty-print fallback otherwise.
+  if (!body) return '';
+  if (kind === 'ACTIVITY') return renderActivityHtml(body);
+  if (kind === 'TASK')     return renderTaskHtml(body);
+  if (kind === 'STEM')     return renderStemHtml(body);
+  // No existing renderer for IMAGE / INSTRUCTIONAL_PROMPT / INSTRUCTIONAL_SEGMENT /
+  // PRACTICE_SECTION / SCAFFOLDING / STANDARDS_BLOCK / RESPONSE_AREA / LESSON.
+  // Show a labelled JSON block — readable, easy to extend later.
+  return '<details class="editor-section" style="background:#f7f7f7;border:1px solid #ddd">' +
+         '<summary style="cursor:pointer;font-weight:600">' + escapeHtml(kind) + '</summary>' +
+         '<pre style="white-space:pre-wrap;font-size:11px">' +
+         escapeHtml(JSON.stringify(body, null, 2)) +
+         '</pre></details>';
+}
+
+function renderPageComposed(payload) {
+  const host = document.getElementById('editor-content');
+  if (!host || !payload) return;
+  let html = '';
+
+  // Page header
+  html += '<div class="editor-section">';
+  html += '<span class="schema-tag">page ' + payload.pdfPageIndex + '</span>';
+  const pn = payload.pageNumber != null ? payload.pageNumber : '—';
+  const pt = payload.pageType ? ' — ' + escapeHtml(payload.pageType) : '';
+  html += '<h3>Page ' + payload.pdfPageIndex + ' (printed ' + pn + ')' + pt + '</h3>';
+  if (Array.isArray(payload.contentBlocks) && payload.contentBlocks.length) {
+    const labels = payload.contentBlocks.map(function(b) {
+      return (b && (b.type || b.kind)) || 'block';
+    });
+    html += '<p class="editor-page-meta">Content on this page: ' + escapeHtml(labels.join(', ')) + '</p>';
+  }
+  html += '</div>';
+
+  // Render each entity in sequenceInPage order
+  const entities = Array.isArray(payload.entities) ? payload.entities : [];
+  for (const ent of entities) {
+    html += '<div class="editor-block" data-kind="' + escapeHtml(ent.kind) + '"' +
+            ' data-id="' + escapeHtml(ent.id) + '">';
+    html += renderEntityByKind(ent.kind, ent.body);
+    html += '</div>';
+  }
+
+  host.innerHTML = html;
+}
+
+function showRebuildIndexBanner(jobIdLocal) {
+  const host = document.getElementById('editor-content');
+  if (!host) return;
+  host.innerHTML =
+    '<div class="editor-section" style="background:#fff7e6;' +
+    'border:1px solid #ffc069;padding:12px;border-radius:4px">' +
+    '<strong>Page index not built for this job.</strong>' +
+    '<p>Click below to build the per-page index. This re-runs the indexer only ' +
+    '(no PDF re-extraction).</p>' +
+    '<button id="btn-rebuild-index" style="padding:6px 14px;cursor:pointer">Rebuild Index</button>' +
+    '</div>';
+  const btn = document.getElementById('btn-rebuild-index');
+  if (btn) {
+    btn.addEventListener('click', async function() {
+      btn.disabled = true;
+      btn.textContent = 'Rebuilding…';
+      try {
+        const r = await fetch('/api/results/' + jobIdLocal + '/reindex', { method: 'POST' });
+        if (r.ok || r.status === 207) {
+          window.location.reload();
+        } else {
+          alert('Reindex failed: HTTP ' + r.status);
+          btn.disabled = false;
+          btn.textContent = 'Rebuild Index';
+        }
+      } catch (err) {
+        alert('Reindex error: ' + err);
+        btn.disabled = false;
+        btn.textContent = 'Rebuild Index';
+      }
+    });
+  }
+}
+
 function renderPageWebView(page, data) {
   const contentEl = document.getElementById('editor-content');
   const pn = page ? page.pageNumber : null;
@@ -1126,7 +1225,9 @@ async function loadEditorView() {
     // Track image IDs visible on the current page for "Select all"
     window.pageImageIds = [];
 
-    function onPageChange() {
+    let _pageSeq = 0;
+    async function onPageChange() {
+      const seq = ++_pageSeq;  // capture a per-invocation token
       const idx = pageSelect.value;
       const page = idx === '' ? null : pages[Number(idx)];
       renderPageWebView(page, data);
@@ -1139,6 +1240,20 @@ async function loadEditorView() {
         .filter(i => i.imagePath)
         .map(i => i.id);
       updateSelectionBar();
+
+      // NEW: page-locked compare view via /api/results/{job}/page/{n}
+      const ordinal = idx === '' ? null : (Number(idx) + 1);  // pages[] index → 1-based ordinal
+      if (ordinal != null) {
+        const payload = await fetchPageComposed(jobId, ordinal);
+        // Discard if a newer page-change has fired since this fetch started.
+        if (seq !== _pageSeq) return;
+        if (payload && payload._missing) {
+          showRebuildIndexBanner(jobId);
+        } else if (payload) {
+          renderPageComposed(payload);
+        }
+        // payload === null: leave legacy render in place (graceful)
+      }
     }
 
     pageSelect.addEventListener('change', onPageChange);
