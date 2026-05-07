@@ -1956,3 +1956,181 @@ async def download_output(
     return FileResponse(path=str(fpath), filename=Path(filename).name)
 
 
+# ── Page-locked compare view (added by feat/page-index-db) ────────────────────
+
+_PAGE_KIND_TO_FILE = {
+    "ACTIVITY":               ("07_activities.json", "activities"),
+    "TASK":                   ("08_tasks.json", "tasks"),
+    "STEM":                   ("09_stems.json", "stems"),
+    "IMAGE":                  ("12_images.json", "images"),
+    "INSTRUCTIONAL_PROMPT":   ("14_instructional_prompts.json", "instructionalPrompts"),
+    "INSTRUCTIONAL_SEGMENT":  ("15_instructional_segments.json", "instructionalSegments"),
+    "PRACTICE_SECTION":       ("16_practice_sections.json", "practiceSections"),
+    "RESPONSE_AREA":          ("17_response_areas.json", "responseAreas"),
+    "SCAFFOLDING":            ("18_scaffolding.json", "scaffolding"),
+    "LESSON":                 ("06_lesson.json", None),  # whole-doc payload
+}
+
+
+def _load_entity_dict(out_dir: Path, kind: str) -> dict[str, dict]:
+    """Return {id: entity_dict} for the JSON file backing this entity kind."""
+    if kind not in _PAGE_KIND_TO_FILE:
+        return {}
+    fname, key = _PAGE_KIND_TO_FILE[kind]
+    p = out_dir / fname
+    if not p.exists():
+        return {}
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return {}
+    if key is None:
+        # 06_lesson.json is a single object
+        return {data.get("id", ""): data} if isinstance(data, dict) else {}
+    arr = data.get(key) if isinstance(data, dict) else data
+    out: dict[str, dict] = {}
+    if isinstance(arr, list):
+        for e in arr:
+            if isinstance(e, dict) and e.get("id"):
+                out[e["id"]] = e
+    return out
+
+
+@jobs_router.get("/api/results/{job_id}/page/{n}")
+async def api_results_page(job_id: str, n: int, request: Request,
+                           _=Depends(require_login)):
+    """Return the composed page payload (cl_page_entity_map rows
+    + JSON-hydrated entity bodies) for editor's compare view."""
+    out_dir = config.OUTPUT_DIR / job_id
+    if not out_dir.is_dir():
+        return JSONResponse({"error": "job not found"}, status_code=404)
+
+    from database import get_connection
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            # Resolve page by (job_id, ordinal) using cl_resource_page_map
+            cur.execute(
+                """
+                SELECT p.id, p.page_number, p.page_type, p.job_id, rpm.sequence_number
+                FROM cl_page p
+                JOIN cl_resource_page_map rpm ON rpm.page_id = p.id
+                WHERE p.job_id = %s AND rpm.sequence_number = %s
+                LIMIT 1
+                """,
+                (job_id, n),
+            )
+            page_row = cur.fetchone()
+            if not page_row:
+                return JSONResponse(
+                    {"error": "page index not built — run /api/results/"
+                              f"{job_id}/reindex"},
+                    status_code=404,
+                )
+
+            cur.execute(
+                """
+                SELECT entity_type, entity_id, sequence_in_page,
+                       layout_region, is_continuation, continues_to_seq,
+                       metadata
+                FROM cl_page_entity_map
+                WHERE page_id = %s
+                ORDER BY sequence_in_page, entity_type
+                """,
+                (page_row["id"],),
+            )
+            map_rows = cur.fetchall()
+    finally:
+        conn.close()
+
+    # Hydrate entity bodies from JSON
+    by_kind: dict[str, dict[str, dict]] = {}
+    entities: list[dict] = []
+    for r in map_rows:
+        kind = r["entity_type"]
+        if kind not in by_kind:
+            by_kind[kind] = _load_entity_dict(out_dir, kind)
+        body = by_kind[kind].get(r["entity_id"])
+        meta_raw = r.get("metadata")
+        try:
+            meta = json.loads(meta_raw) if meta_raw else {}
+        except (json.JSONDecodeError, TypeError):
+            meta = {}
+        entities.append({
+            "kind": kind,
+            "id": r["entity_id"],
+            "sequenceInPage": r["sequence_in_page"],
+            "layoutRegion": r["layout_region"],
+            "isContinuation": bool(r["is_continuation"]),
+            "continuesToSeq": r["continues_to_seq"],
+            "metadata": meta,
+            "body": body or {},
+        })
+
+    # Hydrate page-level metadata + contentBlocks from 13_pages.json.
+    page_meta: dict = {}
+    content_blocks: list = []
+    pages_path = out_dir / "13_pages.json"
+    if pages_path.exists():
+        try:
+            pages_doc = json.loads(pages_path.read_text(encoding="utf-8"))
+            pages_arr = pages_doc.get("pages") if isinstance(pages_doc, dict) else pages_doc
+            if isinstance(pages_arr, list):
+                ordinal = page_row["sequence_number"]
+                if 1 <= ordinal <= len(pages_arr):
+                    p = pages_arr[ordinal - 1]
+                    if isinstance(p, dict):
+                        page_meta = p.get("metadata") or {}
+                        cb = p.get("contentBlocks")
+                        if isinstance(cb, list):
+                            content_blocks = cb
+        except json.JSONDecodeError:
+            pass
+
+    return JSONResponse({
+        "jobId": job_id,
+        "pdfPageIndex": page_row["sequence_number"],
+        "pageNumber": page_row["page_number"],
+        "pageType": page_row["page_type"],
+        "pageMeta": page_meta,
+        "contentBlocks": content_blocks,
+        "entities": entities,
+    })
+
+
+@jobs_router.post("/api/results/{job_id}/reindex")
+async def api_results_reindex(job_id: str, request: Request,
+                              _=Depends(require_login)):
+    """Re-run services.page_indexer.index_job_pages for one job. Returns
+    IndexReport as JSON; 207 if any entity inserts errored, 500 on raise."""
+    out_dir = config.OUTPUT_DIR / job_id
+    if not out_dir.is_dir():
+        return JSONResponse({"error": "job not found"}, status_code=404)
+
+    from services.page_indexer import index_job_pages
+    try:
+        report = index_job_pages(job_id, out_dir)
+    except Exception as exc:
+        return JSONResponse({"error": str(exc)}, status_code=500)
+
+    payload = {
+        "jobId": job_id,
+        "pages": report.pages,
+        "activities": report.activities,
+        "tasks": report.tasks,
+        "stems": report.stems,
+        "images": report.images,
+        "instructionalPrompts": report.instructional_prompts,
+        "instructionalSegments": report.instructional_segments,
+        "practiceSections": report.practice_sections,
+        "scaffolding": report.scaffolding,
+        "responseAreas": report.response_areas,
+        "lessons": report.lessons,
+        "skippedNoSourcePage": report.skipped_no_source_page,
+        "errors": report.errors,
+    }
+    # Return 207 Multi-Status when individual entity inserts produced errors.
+    status = 207 if report.errors else 200
+    return JSONResponse(payload, status_code=status)
+
+
