@@ -49,6 +49,8 @@ class Job:
     # DB IDs selected from dropdowns — used to pull module/topic from database
     selected_module_id: Optional[str] = None
     selected_topic_id:  Optional[str] = None
+    # Extraction mode: "SRB" (student resource book) or "TIG" (teacher implementation guide)
+    book_type:    str         = "SRB"
 
     # ── Helpers ───────────────────────────────────────────────────────────────
     def log(self, msg: str) -> None:
@@ -72,6 +74,7 @@ class Job:
             "extraction_report": self.extraction_report,
             "error":        self.error,
             "started_at":   self.started_at,
+            "book_type":    self.book_type,
         }
         if include_logs:
             d["logs"] = self.logs
@@ -90,6 +93,7 @@ class Job:
             "extraction_report": self.extraction_report,
             "error":        self.error,
             "filename":     self.filename,
+            "book_type":    self.book_type,
         }
 
 
@@ -113,6 +117,7 @@ class JobRepository:
         module_meta: Optional[str] = None,
         selected_module_id: Optional[str] = None,
         selected_topic_id: Optional[str] = None,
+        book_type: str = "SRB",
     ) -> Job:
         job = Job(
             id=str(uuid.uuid4()),
@@ -126,6 +131,7 @@ class JobRepository:
             module_meta=module_meta or None,
             selected_module_id=selected_module_id or None,
             selected_topic_id=selected_topic_id or None,
+            book_type=book_type if book_type in ("SRB", "TIG") else "SRB",
         )
         self._store[job.id] = job
         return job

@@ -718,6 +718,7 @@ async def upload(
         module_meta=module_meta.strip() or None,
         selected_module_id=selected_module_id.strip() or None,
         selected_topic_id=selected_topic_id.strip() or None,
+        book_type=content_type,
     )
 
     pdf_path = config.UPLOAD_DIR / f"{job.id}_{filename}"

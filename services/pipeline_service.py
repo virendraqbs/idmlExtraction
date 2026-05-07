@@ -21,7 +21,9 @@ from pathlib import Path
 from config import config
 from models.job import Job, JobStatus, job_repo
 from services.gemini_service import GeminiService
+from services.tig_extractor import TIGExtractor
 from services.assembler import assemble_schemas
+from services.tig_assembler import assemble_tig_schemas
 from utils.image_extractor import extract_images_from_pdf
 from database import get_module, get_topic
 
@@ -56,12 +58,14 @@ class PipelineService:
             log.info("[%s] %s", job_id[:8], msg)
 
         try:
+            is_tig = (job.book_type or "SRB").upper() == "TIG"
+
             # ── Stage 1: Health check ─────────────────────────────────────
             job.set_status(JobStatus.HEALTH_CHECK)
-            log_it("Stage 1: Checking Gemini API health...")
+            log_it(f"Stage 1: Checking Gemini API health... [mode: {job.book_type}]")
 
-            gemini = GeminiService(api_key=job.api_key)
-            gemini.health_check()           # raises RuntimeError on failure
+            extractor = TIGExtractor(api_key=job.api_key) if is_tig else GeminiService(api_key=job.api_key)
+            extractor.health_check()        # raises RuntimeError on failure
             log_it("Gemini API healthy")
 
             # ── Stage 2: Render pages ─────────────────────────────────────
@@ -93,13 +97,13 @@ class PipelineService:
                 job.current_page = i
                 log_it(f"Processing page {i}/{total}...")
 
-                page_data, report = gemini.extract_page(img, i)
+                page_data, report = extractor.extract_page(img, i)
                 page_data["_pdf_page_index"] = i
 
                 if page_data.get("page_type") == "UNKNOWN" and i <= total:
                     log_it(f"Page {i} returned UNKNOWN — retrying once after delay...")
                     time.sleep(5)
-                    retry_data, retry_report = gemini.extract_page(img, i)
+                    retry_data, retry_report = extractor.extract_page(img, i)
                     if retry_data.get("page_type") != "UNKNOWN":
                         retry_data["_pdf_page_index"] = i
                         page_data = retry_data
@@ -134,38 +138,52 @@ class PipelineService:
                 json.dump(raw_pages, rf, indent=2, ensure_ascii=False)
             log_it("Saved raw_extractions.json for debugging")
 
-            # ── Stage 3b: Extract images from PDF (raster + vector + mapping)
-            log_it("Stage 3b: Extracting print-ready images from PDF...")
-            image_manifest = extract_images_from_pdf(
-                job.pdf_path, out_dir, gemini_pages=raw_pages,
-            )
-            log_it(f"Extracted {image_manifest['total_extracted']} images + {len(image_manifest['page_images'])} page renders")
-
             # ── Stage 4: Assemble schema files ────────────────────────────
             job.set_status(JobStatus.ASSEMBLING)
-            log_it("Stage 4: Assembling 19 JSON schema files...")
             job.progress = 90
 
             # Fetch DB records for selected module/topic (if any)
             db_module = get_module(job.selected_module_id) if job.selected_module_id else None
             db_topic  = get_topic(job.selected_topic_id)   if job.selected_topic_id  else None
 
-            schema_files = assemble_schemas(
-                pages=raw_pages,
-                out_dir=out_dir,
-                source_filename=Path(job.pdf_path).name,
-                image_manifest=image_manifest,
-                book_name=job.book_name,
-                module_name=job.module_name,
-                module_subtitle=job.module_subtitle,
-                module_meta=job.module_meta,
-                db_module=db_module,
-                db_topic=db_topic,
-            )
+            if is_tig:
+                log_it("Stage 4: Assembling 5 TIG JSON schema files...")
+                schema_files = assemble_tig_schemas(
+                    pages=raw_pages,
+                    out_dir=out_dir,
+                    source_filename=Path(job.pdf_path).name,
+                    db_module=db_module,
+                    db_topic=db_topic,
+                )
+            else:
+                # ── Stage 3b: Extract images (SRB only) ───────────────────
+                log_it("Stage 3b: Extracting print-ready images from PDF...")
+                image_manifest = extract_images_from_pdf(
+                    job.pdf_path, out_dir, gemini_pages=raw_pages,
+                )
+                log_it(f"Extracted {image_manifest['total_extracted']} images + {len(image_manifest['page_images'])} page renders")
+
+                log_it("Stage 4: Assembling 19 JSON schema files...")
+                schema_files = assemble_schemas(
+                    pages=raw_pages,
+                    out_dir=out_dir,
+                    source_filename=Path(job.pdf_path).name,
+                    image_manifest=image_manifest,
+                    book_name=job.book_name,
+                    module_name=job.module_name,
+                    module_subtitle=job.module_subtitle,
+                    module_meta=job.module_meta,
+                    db_module=db_module,
+                    db_topic=db_topic,
+                )
 
             # NEW: build page-entity index in MySQL (post-assembly).
             # Failure here must NOT fail the extraction job — JSON is canonical.
+            # Skip for TIG jobs — they don't produce 03_resource.json / 12_images.json
+            # (page_indexer would early-return with "missing 03_resource.json").
             try:
+                if is_tig:
+                    raise RuntimeError("skipped — TIG job (no SRB-shape JSON to index)")
                 from services.page_indexer import index_job_pages
                 report = index_job_pages(job.id, out_dir)
                 log_it(
